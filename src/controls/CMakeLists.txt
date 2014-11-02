@@ -1,0 +1,35 @@
+# %Tag(FULLTEXT)%
+
+cmake_minimum_required(VERSION 2.8.3)
+project(controls)
+
+## Find catkin and any catkin packages
+find_package(catkin REQUIRED COMPONENTS geometry_msgs roscpp rospy std_msgs sensors state)
+
+## Declare ROS messages, services and actions 
+#add_message_files(DIRECTORY msg FILES sonar.msg sonarArray.msg compass.msg motor.msg motorArray.msg forces.msg imuros.msg state.msg)
+#add_service_files(FILES AddTwoInts.srv)
+
+## Generate added messages and services
+#generate_messages(DEPENDENCIES std_msgs geometry_msgs sensor_msgs)
+
+## Declare a catkin package
+catkin_package( INCLUDE_DIRS include
+# Libraries
+CATKIN_DEPENDS  sensor_msgs geometry_msgs sensors state)
+
+##Specify additional locations of header files
+## Your package locations should be listed before other locations
+include_directories( ${catkin_INCLUDE_DIRS})
+
+
+## Build talker and listener
+include_directories(include ${catkin_INCLUDE_DIRS})
+
+
+add_executable(control src/control.cpp)
+target_link_libraries(control ${catkin_LIBRARIES})
+add_dependencies(control sensors_gencpp std_msgs geometry_msgs sensors state)
+
+#%EndTag(FULLTEXT)%
+

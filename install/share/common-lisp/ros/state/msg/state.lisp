@@ -1,0 +1,190 @@
+; Auto-generated. Do not edit!
+
+
+(cl:in-package state-msg)
+
+
+;//! \htmlinclude state.msg.html
+
+(cl:defclass <state> (roslisp-msg-protocol:ros-message)
+  ((pos
+    :reader pos
+    :initarg :pos
+    :type (cl:vector cl:float)
+   :initform (cl:make-array 3 :element-type 'cl:float :initial-element 0.0))
+   (vel
+    :reader vel
+    :initarg :vel
+    :type (cl:vector cl:float)
+   :initform (cl:make-array 3 :element-type 'cl:float :initial-element 0.0))
+   (quat
+    :reader quat
+    :initarg :quat
+    :type (cl:vector cl:float)
+   :initform (cl:make-array 4 :element-type 'cl:float :initial-element 0.0))
+   (angvel
+    :reader angvel
+    :initarg :angvel
+    :type (cl:vector cl:float)
+   :initform (cl:make-array 3 :element-type 'cl:float :initial-element 0.0)))
+)
+
+(cl:defclass state (<state>)
+  ())
+
+(cl:defmethod cl:initialize-instance :after ((m <state>) cl:&rest args)
+  (cl:declare (cl:ignorable args))
+  (cl:unless (cl:typep m 'state)
+    (roslisp-msg-protocol:msg-deprecation-warning "using old message class name state-msg:<state> is deprecated: use state-msg:state instead.")))
+
+(cl:ensure-generic-function 'pos-val :lambda-list '(m))
+(cl:defmethod pos-val ((m <state>))
+  (roslisp-msg-protocol:msg-deprecation-warning "Using old-style slot reader state-msg:pos-val is deprecated.  Use state-msg:pos instead.")
+  (pos m))
+
+(cl:ensure-generic-function 'vel-val :lambda-list '(m))
+(cl:defmethod vel-val ((m <state>))
+  (roslisp-msg-protocol:msg-deprecation-warning "Using old-style slot reader state-msg:vel-val is deprecated.  Use state-msg:vel instead.")
+  (vel m))
+
+(cl:ensure-generic-function 'quat-val :lambda-list '(m))
+(cl:defmethod quat-val ((m <state>))
+  (roslisp-msg-protocol:msg-deprecation-warning "Using old-style slot reader state-msg:quat-val is deprecated.  Use state-msg:quat instead.")
+  (quat m))
+
+(cl:ensure-generic-function 'angvel-val :lambda-list '(m))
+(cl:defmethod angvel-val ((m <state>))
+  (roslisp-msg-protocol:msg-deprecation-warning "Using old-style slot reader state-msg:angvel-val is deprecated.  Use state-msg:angvel instead.")
+  (angvel m))
+(cl:defmethod roslisp-msg-protocol:serialize ((msg <state>) ostream)
+  "Serializes a message object of type '<state>"
+  (cl:map cl:nil #'(cl:lambda (ele) (cl:let ((bits (roslisp-utils:encode-double-float-bits ele)))
+    (cl:write-byte (cl:ldb (cl:byte 8 0) bits) ostream)
+    (cl:write-byte (cl:ldb (cl:byte 8 8) bits) ostream)
+    (cl:write-byte (cl:ldb (cl:byte 8 16) bits) ostream)
+    (cl:write-byte (cl:ldb (cl:byte 8 24) bits) ostream)
+    (cl:write-byte (cl:ldb (cl:byte 8 32) bits) ostream)
+    (cl:write-byte (cl:ldb (cl:byte 8 40) bits) ostream)
+    (cl:write-byte (cl:ldb (cl:byte 8 48) bits) ostream)
+    (cl:write-byte (cl:ldb (cl:byte 8 56) bits) ostream)))
+   (cl:slot-value msg 'pos))
+  (cl:map cl:nil #'(cl:lambda (ele) (cl:let ((bits (roslisp-utils:encode-double-float-bits ele)))
+    (cl:write-byte (cl:ldb (cl:byte 8 0) bits) ostream)
+    (cl:write-byte (cl:ldb (cl:byte 8 8) bits) ostream)
+    (cl:write-byte (cl:ldb (cl:byte 8 16) bits) ostream)
+    (cl:write-byte (cl:ldb (cl:byte 8 24) bits) ostream)
+    (cl:write-byte (cl:ldb (cl:byte 8 32) bits) ostream)
+    (cl:write-byte (cl:ldb (cl:byte 8 40) bits) ostream)
+    (cl:write-byte (cl:ldb (cl:byte 8 48) bits) ostream)
+    (cl:write-byte (cl:ldb (cl:byte 8 56) bits) ostream)))
+   (cl:slot-value msg 'vel))
+  (cl:map cl:nil #'(cl:lambda (ele) (cl:let ((bits (roslisp-utils:encode-double-float-bits ele)))
+    (cl:write-byte (cl:ldb (cl:byte 8 0) bits) ostream)
+    (cl:write-byte (cl:ldb (cl:byte 8 8) bits) ostream)
+    (cl:write-byte (cl:ldb (cl:byte 8 16) bits) ostream)
+    (cl:write-byte (cl:ldb (cl:byte 8 24) bits) ostream)
+    (cl:write-byte (cl:ldb (cl:byte 8 32) bits) ostream)
+    (cl:write-byte (cl:ldb (cl:byte 8 40) bits) ostream)
+    (cl:write-byte (cl:ldb (cl:byte 8 48) bits) ostream)
+    (cl:write-byte (cl:ldb (cl:byte 8 56) bits) ostream)))
+   (cl:slot-value msg 'quat))
+  (cl:map cl:nil #'(cl:lambda (ele) (cl:let ((bits (roslisp-utils:encode-double-float-bits ele)))
+    (cl:write-byte (cl:ldb (cl:byte 8 0) bits) ostream)
+    (cl:write-byte (cl:ldb (cl:byte 8 8) bits) ostream)
+    (cl:write-byte (cl:ldb (cl:byte 8 16) bits) ostream)
+    (cl:write-byte (cl:ldb (cl:byte 8 24) bits) ostream)
+    (cl:write-byte (cl:ldb (cl:byte 8 32) bits) ostream)
+    (cl:write-byte (cl:ldb (cl:byte 8 40) bits) ostream)
+    (cl:write-byte (cl:ldb (cl:byte 8 48) bits) ostream)
+    (cl:write-byte (cl:ldb (cl:byte 8 56) bits) ostream)))
+   (cl:slot-value msg 'angvel))
+)
+(cl:defmethod roslisp-msg-protocol:deserialize ((msg <state>) istream)
+  "Deserializes a message object of type '<state>"
+  (cl:setf (cl:slot-value msg 'pos) (cl:make-array 3))
+  (cl:let ((vals (cl:slot-value msg 'pos)))
+    (cl:dotimes (i 3)
+    (cl:let ((bits 0))
+      (cl:setf (cl:ldb (cl:byte 8 0) bits) (cl:read-byte istream))
+      (cl:setf (cl:ldb (cl:byte 8 8) bits) (cl:read-byte istream))
+      (cl:setf (cl:ldb (cl:byte 8 16) bits) (cl:read-byte istream))
+      (cl:setf (cl:ldb (cl:byte 8 24) bits) (cl:read-byte istream))
+      (cl:setf (cl:ldb (cl:byte 8 32) bits) (cl:read-byte istream))
+      (cl:setf (cl:ldb (cl:byte 8 40) bits) (cl:read-byte istream))
+      (cl:setf (cl:ldb (cl:byte 8 48) bits) (cl:read-byte istream))
+      (cl:setf (cl:ldb (cl:byte 8 56) bits) (cl:read-byte istream))
+    (cl:setf (cl:aref vals i) (roslisp-utils:decode-double-float-bits bits)))))
+  (cl:setf (cl:slot-value msg 'vel) (cl:make-array 3))
+  (cl:let ((vals (cl:slot-value msg 'vel)))
+    (cl:dotimes (i 3)
+    (cl:let ((bits 0))
+      (cl:setf (cl:ldb (cl:byte 8 0) bits) (cl:read-byte istream))
+      (cl:setf (cl:ldb (cl:byte 8 8) bits) (cl:read-byte istream))
+      (cl:setf (cl:ldb (cl:byte 8 16) bits) (cl:read-byte istream))
+      (cl:setf (cl:ldb (cl:byte 8 24) bits) (cl:read-byte istream))
+      (cl:setf (cl:ldb (cl:byte 8 32) bits) (cl:read-byte istream))
+      (cl:setf (cl:ldb (cl:byte 8 40) bits) (cl:read-byte istream))
+      (cl:setf (cl:ldb (cl:byte 8 48) bits) (cl:read-byte istream))
+      (cl:setf (cl:ldb (cl:byte 8 56) bits) (cl:read-byte istream))
+    (cl:setf (cl:aref vals i) (roslisp-utils:decode-double-float-bits bits)))))
+  (cl:setf (cl:slot-value msg 'quat) (cl:make-array 4))
+  (cl:let ((vals (cl:slot-value msg 'quat)))
+    (cl:dotimes (i 4)
+    (cl:let ((bits 0))
+      (cl:setf (cl:ldb (cl:byte 8 0) bits) (cl:read-byte istream))
+      (cl:setf (cl:ldb (cl:byte 8 8) bits) (cl:read-byte istream))
+      (cl:setf (cl:ldb (cl:byte 8 16) bits) (cl:read-byte istream))
+      (cl:setf (cl:ldb (cl:byte 8 24) bits) (cl:read-byte istream))
+      (cl:setf (cl:ldb (cl:byte 8 32) bits) (cl:read-byte istream))
+      (cl:setf (cl:ldb (cl:byte 8 40) bits) (cl:read-byte istream))
+      (cl:setf (cl:ldb (cl:byte 8 48) bits) (cl:read-byte istream))
+      (cl:setf (cl:ldb (cl:byte 8 56) bits) (cl:read-byte istream))
+    (cl:setf (cl:aref vals i) (roslisp-utils:decode-double-float-bits bits)))))
+  (cl:setf (cl:slot-value msg 'angvel) (cl:make-array 3))
+  (cl:let ((vals (cl:slot-value msg 'angvel)))
+    (cl:dotimes (i 3)
+    (cl:let ((bits 0))
+      (cl:setf (cl:ldb (cl:byte 8 0) bits) (cl:read-byte istream))
+      (cl:setf (cl:ldb (cl:byte 8 8) bits) (cl:read-byte istream))
+      (cl:setf (cl:ldb (cl:byte 8 16) bits) (cl:read-byte istream))
+      (cl:setf (cl:ldb (cl:byte 8 24) bits) (cl:read-byte istream))
+      (cl:setf (cl:ldb (cl:byte 8 32) bits) (cl:read-byte istream))
+      (cl:setf (cl:ldb (cl:byte 8 40) bits) (cl:read-byte istream))
+      (cl:setf (cl:ldb (cl:byte 8 48) bits) (cl:read-byte istream))
+      (cl:setf (cl:ldb (cl:byte 8 56) bits) (cl:read-byte istream))
+    (cl:setf (cl:aref vals i) (roslisp-utils:decode-double-float-bits bits)))))
+  msg
+)
+(cl:defmethod roslisp-msg-protocol:ros-datatype ((msg (cl:eql '<state>)))
+  "Returns string type for a message object of type '<state>"
+  "state/state")
+(cl:defmethod roslisp-msg-protocol:ros-datatype ((msg (cl:eql 'state)))
+  "Returns string type for a message object of type 'state"
+  "state/state")
+(cl:defmethod roslisp-msg-protocol:md5sum ((type (cl:eql '<state>)))
+  "Returns md5sum for a message object of type '<state>"
+  "ffedcd09c7959513979d11f3021f4fde")
+(cl:defmethod roslisp-msg-protocol:md5sum ((type (cl:eql 'state)))
+  "Returns md5sum for a message object of type 'state"
+  "ffedcd09c7959513979d11f3021f4fde")
+(cl:defmethod roslisp-msg-protocol:message-definition ((type (cl:eql '<state>)))
+  "Returns full string definition for message of type '<state>"
+  (cl:format cl:nil "float64[3] pos~%float64[3] vel~%float64[4] quat~%float64[3] angvel~%~%~%"))
+(cl:defmethod roslisp-msg-protocol:message-definition ((type (cl:eql 'state)))
+  "Returns full string definition for message of type 'state"
+  (cl:format cl:nil "float64[3] pos~%float64[3] vel~%float64[4] quat~%float64[3] angvel~%~%~%"))
+(cl:defmethod roslisp-msg-protocol:serialization-length ((msg <state>))
+  (cl:+ 0
+     0 (cl:reduce #'cl:+ (cl:slot-value msg 'pos) :key #'(cl:lambda (ele) (cl:declare (cl:ignorable ele)) (cl:+ 8)))
+     0 (cl:reduce #'cl:+ (cl:slot-value msg 'vel) :key #'(cl:lambda (ele) (cl:declare (cl:ignorable ele)) (cl:+ 8)))
+     0 (cl:reduce #'cl:+ (cl:slot-value msg 'quat) :key #'(cl:lambda (ele) (cl:declare (cl:ignorable ele)) (cl:+ 8)))
+     0 (cl:reduce #'cl:+ (cl:slot-value msg 'angvel) :key #'(cl:lambda (ele) (cl:declare (cl:ignorable ele)) (cl:+ 8)))
+))
+(cl:defmethod roslisp-msg-protocol:ros-message-to-list ((msg <state>))
+  "Converts a ROS message object to a list"
+  (cl:list 'state
+    (cl:cons ':pos (pos msg))
+    (cl:cons ':vel (vel msg))
+    (cl:cons ':quat (quat msg))
+    (cl:cons ':angvel (angvel msg))
+))

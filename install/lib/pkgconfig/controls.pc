@@ -1,0 +1,8 @@
+prefix=/home/py/ROSTryphon_Organized/install
+
+Name: controls
+Description: Description of controls
+Version: 0.0.0
+Cflags: -I/home/py/ROSTryphon_Organized/install/include
+Libs: -L/home/py/ROSTryphon_Organized/install/lib 
+Requires: sensor_msgs geometry_msgs sensors state

@@ -1,0 +1,7 @@
+<launch>
+
+	<node name="sensors_thrusters" pkg="sensors" type="sensors_thrusters" respawn="false"/>
+
+</launch>
+
+

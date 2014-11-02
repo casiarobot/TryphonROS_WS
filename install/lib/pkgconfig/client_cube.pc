@@ -1,0 +1,8 @@
+prefix=/home/py/ROSTryphon_Organized/install
+
+Name: client_cube
+Description: Description of client_cube
+Version: 0.0.0
+Cflags: -I/home/py/ROSTryphon_Organized/install/include -I/opt/ros/hydro/include/opencv -I/opt/ros/hydro/include
+Libs: -L/home/py/ROSTryphon_Organized/install/lib -l:/opt/ros/hydro/lib/libopencv_videostab.so.2.4.9 -l:/opt/ros/hydro/lib/libopencv_video.so.2.4.9 -l:/opt/ros/hydro/lib/libopencv_superres.so.2.4.9 -l:/opt/ros/hydro/lib/libopencv_stitching.so.2.4.9 -l:/opt/ros/hydro/lib/libopencv_photo.so.2.4.9 -l:/opt/ros/hydro/lib/libopencv_ocl.so.2.4.9 -l:/opt/ros/hydro/lib/libopencv_objdetect.so.2.4.9 -l:/opt/ros/hydro/lib/libopencv_nonfree.so.2.4.9 -l:/opt/ros/hydro/lib/libopencv_ml.so.2.4.9 -l:/opt/ros/hydro/lib/libopencv_legacy.so.2.4.9 -l:/opt/ros/hydro/lib/libopencv_imgproc.so.2.4.9 -l:/opt/ros/hydro/lib/libopencv_highgui.so.2.4.9 -l:/opt/ros/hydro/lib/libopencv_gpu.so.2.4.9 -l:/opt/ros/hydro/lib/libopencv_flann.so.2.4.9 -l:/opt/ros/hydro/lib/libopencv_features2d.so.2.4.9 -l:/opt/ros/hydro/lib/libopencv_core.so.2.4.9 -l:/opt/ros/hydro/lib/libopencv_contrib.so.2.4.9 -l:/opt/ros/hydro/lib/libopencv_calib3d.so.2.4.9
+Requires: message_runtime roscpp cv_bridge image_transport sensor_msgs camera_info_manager

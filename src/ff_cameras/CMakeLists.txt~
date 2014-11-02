@@ -1,0 +1,25 @@
+cmake_minimum_required(VERSION 2.8.3)
+project(cameras)
+
+## Find catkin macros and libraries
+## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
+## is used, also find other catkin packages
+find_package(catkin REQUIRED COMPONENTS
+  roscpp rospy std_msgs sensor_msgs geometry_msgs 
+)
+
+include_directories("/usr/include/flycapture")
+find_library(FLYCAPTURE2 flycapture)
+
+include_directories(include ${catkin_INCLUDE_DIRS})
+
+
+add_executable(pgrff_node src/pgrff_node.cpp)
+target_link_libraries(pgrff_node ${catkin_LIBRARIES} ${FLYCAPTURE2})
+add_dependencies(pgrff_node std_msgs)
+
+
+
+
+#%EndTag(FULLTEXT)%
+

@@ -1,0 +1,7 @@
+<launch>
+
+        <node name="state_estimator" pkg="state" type="state_estimator" respawn="false"/>
+
+</launch>
+
+

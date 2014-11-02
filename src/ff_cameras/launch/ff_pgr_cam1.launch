@@ -1,0 +1,8 @@
+<launch>
+    <node pkg="camera1394" type="camera1394_node" name="camera1" >
+      <rosparam file="$(find cameras)/launch/ffmv2c.yaml" />
+      <param name="guid" value="00b09d0100ca5729" />
+      <param name="camera_info_url" value="file://$(find cameras)/launch/calibration/camera1.yaml" />
+      <remap from="camera" to="camera1" />
+    </node>
+</launch>
