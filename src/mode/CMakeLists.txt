@@ -13,7 +13,7 @@ find_package(catkin REQUIRED COMPONENTS roscpp rospy std_msgs sensor_msgs geomet
 ## Generate added messages and services
 
 ## Declare a catkin package
-catkin_package( INCLUDE_DIRS include
+catkin_package( INCLUDE_DIRS 
 #Libraries
 CATKIN_DEPENDS  sensor_msgs geometry_msgs)
 ## Build talker and listener

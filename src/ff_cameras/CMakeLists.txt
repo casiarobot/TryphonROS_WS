@@ -14,7 +14,7 @@ find_package(catkin REQUIRED COMPONENTS roscpp rospy std_msgs sensor_msgs geomet
 #generate_messages(DEPENDENCIES std_msgs geometry_msgs sensor_msgs )
 
 ## Declare a catkin package
-catkin_package( INCLUDE_DIRS include
+catkin_package( INCLUDE_DIRS 
 #Libraries
 CATKIN_DEPENDS  sensor_msgs geometry_msgs camera_info_manager image_transport)
 include_directories("/usr/include/flycapture")

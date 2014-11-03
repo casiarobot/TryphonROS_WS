@@ -342,9 +342,7 @@ bool VideoSourceMulti::GetAndFillFrameBW(std::string camName, ros::WallDuration 
 bool VideoSourceMulti::GetAndFillFrameBW(ros::WallDuration timeout, ImageBWMap &imBW, ros::Time& timestamp)
 {
   imBW.clear();
-  ROS_INFO("VideoSourceMulti: starting new aquisition");
   bool success = NewAcquistion(timeout);
-  ROS_INFO("VideoSourceMulti: finished acquisition");
 
   if(!success)
     return false;
