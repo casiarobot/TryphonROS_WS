@@ -1,8 +1,0 @@
-<launch>
-<!-- run the driver with software triggering enabled -->
-  <node pkg="camera1394" type="camera1394_node" name="camera1394_node">
-    <param name="external_trigger" value="true" />
-    <param name="software_trigger" value="false" />
-    <param name="trigger_mode" value="mode_0" />
-  </node>
-</launch>

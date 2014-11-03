@@ -16,7 +16,7 @@ find_package(SUITESPARSE REQUIRED)
 find_package(CVD REQUIRED)
 find_package(OpenGL REQUIRED)
 find_package(OpenCV REQUIRED)
-find_package(GLUT REQUIRED)
+# find_package(GLUT REQUIRED)
 find_package(G2O REQUIRED)
 find_package(GVars3 REQUIRED)
 
