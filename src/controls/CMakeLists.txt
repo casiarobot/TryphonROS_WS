@@ -30,6 +30,9 @@ include_directories(include ${catkin_INCLUDE_DIRS})
 add_executable(control src/control.cpp)
 target_link_libraries(control ${catkin_LIBRARIES})
 add_dependencies(control sensors_gencpp std_msgs geometry_msgs sensors state)
+add_executable(ctr_fuzzy src/ctr_fuzzy.cpp)
+target_link_libraries(ctr_fuzzy ${catkin_LIBRARIES})
+add_dependencies(ctr_fuzzy sensors_gencpp std_msgs geometry_msgs sensors state)
 
 #%EndTag(FULLTEXT)%
 

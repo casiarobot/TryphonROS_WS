@@ -32,6 +32,7 @@
 /***************************************************************************
 ********* PARAMETERS OF THE FUZZY CONTROLER*********************************
 ****************************************************************************/
+#include "cube.h"
 
 //#define	FUZZY_TIME			100000		// microsec time between control loops !!! Has to be at least twice the sensor loop times
 #define MAX_ERROR_FORCE_XY		.45 //0.45			// .25 Maximal force XY due to error [N]
