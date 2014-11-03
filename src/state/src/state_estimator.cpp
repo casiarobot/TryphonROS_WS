@@ -53,7 +53,6 @@ double dsx1=0;
 double dsy1=0;
 double rz=0;
 double rz0=0;
-double rzold=0;
 double ax=0;
 double ay=0;
 double az=0;
@@ -66,6 +65,21 @@ double mz=0;
 
 
 double hmax=6000;
+double x[5]={0,0,0,0,0};
+double y[5]={0,0,0,0,0};
+double z[5]={0,0,0,0,0};
+double xf[5]={0,0,0,0,0};
+double yf[5]={0,0,0,0,0};
+double zf[5]={0,0,0,0,0};
+
+double q0[5]={0,0,0,0,0};
+double q1[5]={0,0,0,0,0};
+double q2[5]={0,0,0,0,0};
+double q3[5]={0,0,0,0,0};
+double q0f[5]={0,0,0,0,0};
+double q1f[5]={0,0,0,0,0};
+double q2f[5]={0,0,0,0,0};
+double q3f[5]={0,0,0,0,0};
 
 void subSonar(const sensors::sonarArray::ConstPtr& msg)
 {
@@ -154,48 +168,90 @@ mz=imudata->magn[2];
 //ROS_INFO("mx: %f, my: %f, mz: %f",mx,my,mz);
 }
 
+void subMCPTAM(const geometry_msgs::Pose pose)
+{
+    for(int i=0; i<4;i++){
+        x[i]=x[i+1];
+        xf[i]=xf[i+1];
+        y[i]=y[i+1];
+        yf[i]=yf[i+1];
+        z[i]=z[i+1];
+        zf[i]=zf[i+1];
+
+        q0[i]=q0[i+1];
+        q0f[i]=q0f[i+1];
+        q1[i]=q1[i+1];
+        q1f[i]=q1f[i+1];
+        q2[i]=q2[i+1];
+        q2f[i]=q2f[i+1];
+        q3[i]=q3[i+1];
+        q3f[i]=q3f[i+1];
+
+    }
+    x[4]=pose.position.x;
+    y[4]=pose.position.y;
+    z[4]=pose.position.z;
+
+    q0[4]=pose.orientation.x;
+    q1[4]=pose.orientation.y;
+    q2[4]=pose.orientation.z;
+    q3[4]=pose.orientation.z;
+
+
+}
+
 
 int main(int argc, char **argv)
 {
-    	ros::init(argc, argv, "state_estimator");
-    	ros::NodeHandle node;
-    	ros::Publisher Controle_node = node.advertise<state::state>("state",1);
-    	ros::Rate loop_rate(20);
-    	geometry_msgs::Pose pose;
-    	state::state state;
-	int print=0;
+   ros::init(argc, argv, "state_estimator");
+   ros::NodeHandle node;
+   ros::Publisher Controle_node = node.advertise<state::state>("state",1);
+   ros::Rate loop_rate(10);
+   geometry_msgs::Pose pose;
+   state::state state;
+   int print=0;
 
 	//ros::Subscriber subA = node.subscribe("/android/imu", 1, poseCallback);
-	ros::Subscriber subS = node.subscribe("sonars", 1, subSonar);
-	ros::Subscriber subC = node.subscribe("compass",1,subComp);
-	ros::Subscriber subI = node.subscribe("imu",1,subImu);
-	while (ros::ok())
-	{
-        	////////////////////////////////////
-        	////       State estimator      ////
-        	////////////////////////////////////
-		dsztf[4]=1.119*dsztf[3]-0.8843*dsztf[2]+0.2898*dsztf[1]-0.04457*dsztf[0]+0.03251*dszt[4]+0.13*dszt[3]+0.1951*dszt[2]+0.13*dszt[1]+0.03251*dszt[0];
+   ros::Subscriber subS = node.subscribe("sonars", 1, subSonar);
+   ros::Subscriber subC = node.subscribe("compass",1,subComp);
+   //ros::Subscriber subI = node.subscribe("imu",1,subImu);
+   ros::Subscriber subM = node.subscribe("mcptam_pose",1,subMCPTAM);
 
-        	state.pos[0]=dsx1;
-        	state.pos[1]=dsy1;
-        	state.pos[2]=dszt[4];
-        	state.quat[0]=0;
-        	state.quat[1]=0;
-        	state.quat[2]=rz;
-        	state.quat[3]=0;
-		state.vel[0]=0;
-		state.vel[1]=0;
-		state.vel[2]=0;
-		state.angvel[0]=0;
-                state.angvel[1]=0;
-                state.angvel[2]=0;
+   while (ros::ok())
+   {
+        ////////////////////////////////////
+        ////       State estimator      ////
+        ////////////////////////////////////
+        dsztf[4]=1.119*dsztf[3]-0.8843*dsztf[2]+0.2898*dsztf[1]-0.04457*dsztf[0]+0.03251*dszt[4]+0.13*dszt[3]+0.1951*dszt[2]+0.13*dszt[1]+0.03251*dszt[0];
+
+
+
+
+        /////////////////////////////////////
+        /////////////////////////////////////
+
+
+
+        state.pos[0]=xf[4];
+        state.pos[1]=yf[4];
+        state.pos[2]=zf[4];//dszt[4];
+        state.quat[0]=q0f[4];
+        state.quat[1]=q1f[4];
+        state.quat[2]=q2f[4];
+        state.quat[3]=q3f[4];
+        state.vel[0]=0;
+        state.vel[1]=0;
+        state.vel[2]=0;
+        state.angvel[0]=0;
+        state.angvel[1]=0;
+        state.angvel[2]=0;
              	/////////////////////////////////
-        	if(print==0){ROS_INFO("dist z(raw): %f, z(filtered): %f, dist x : %f, dist y : %f, rz : %f,z1:%f,z2:%f,z3:%f,z4:%f",dszt[4]-dszt[3],dsztf[4]-dsztf[3],dsx1,dsy1,rz,dsz1,dsz2,dsz3,dsz4);
-		print=0;}
-		else {++print;}
-	        Controle_node.publish(state);
-		ros::spinOnce();
-		loop_rate.sleep();
-	}
-	return 0;
+        if(print==10){ROS_INFO("dist z(raw): %f, z(filtered): %f, dist x : %f, dist y : %f, rz : %f,z1:%f,z2:%f,z3:%f,z4:%f",dszt[4]-dszt[3],dsztf[4]-dsztf[3],dsx1,dsy1,rz,dsz1,dsz2,dsz3,dsz4);
+            print=0;}
+        else {++print;}
+        Controle_node.publish(state);
+        ros::spinOnce();
+        loop_rate.sleep();
+}
+return 0;
 }
