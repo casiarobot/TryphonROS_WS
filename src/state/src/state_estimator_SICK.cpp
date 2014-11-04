@@ -3,6 +3,15 @@
 #include <stdlib.h>
 #include <math.h>
 #include <ctime>
+#include <unistd.h>
+#include <string.h> /* for strncpy */
+
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/ioctl.h>
+#include <netinet/in.h>
+#include <net/if.h>
+#include <arpa/inet.h>
 
 //library for ros
 #include <ros/ros.h>
@@ -72,6 +81,12 @@ double mz=0;
 
 
 double hmax=6000;
+
+
+template <typename T> int sgn(T val) {
+    return (T(0) < val) - (val < T(0));
+}
+
 
 void subSonar(const sensors::sonarArray::ConstPtr& msg)
 {
@@ -168,14 +183,46 @@ void poseCallback(geometry_msgs::PoseStamped ps){
 	    //Eigen::Quaterniond orientation = Eigen::Quaterniond(Eigen::AngleAxisd(cubesAngles[0], Eigen::Vector3d::UnitZ()));
 	    //Eigen::AngleAxisf ang = Eigen::Quaternionf(ps.pose.orientation);
 	    
-  //rz2=ang.angle;
+  rz2=-sgn(ps.pose.orientation.z)*ps.pose.orientation.w;
+  if(rz2 != rz2) //Testing if NaN
+    rz2=0;
+}
+
+const char* get_ip()
+{
+  int fd;
+ struct ifreq ifr;
+ char *ip = new char[100];
+
+ fd = socket(AF_INET, SOCK_DGRAM, 0);
+
+ /* I want to get an IPv4 IP address */
+ ifr.ifr_addr.sa_family = AF_INET;
+
+ /* I want IP address attached to "eth0" */
+ strncpy(ifr.ifr_name, "eth0", IFNAMSIZ-1);
+
+ ioctl(fd, SIOCGIFADDR, &ifr);
+
+ close(fd);
+
+ /* display result */
+ sprintf(ip,"%s", inet_ntoa(((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr));
+ std::string s = ip;
+ std::replace(s.begin(), s.end(), '.', '_');
+ //ip=s.c_str();
+ return s.c_str();
 }
 
 int main(int argc, char **argv)
 {
-    	ros::init(argc, argv, "tryphon241_state_estimator");
+    	char rosname[100];
+	//gethostname(rosname,100);
+	sprintf(rosname,"state_estimator_%s",get_ip());
+	
+	ros::init(argc, argv, rosname);
     	ros::NodeHandle node;
-    	ros::Publisher Controle_node = node.advertise<state::state>("/tryphon241/state",1);
+    	ros::Publisher Controle_node = node.advertise<state::state>("/192_168_10_241/state",1);
     	ros::Rate loop_rate(10);
     	geometry_msgs::Pose pose;
     	state::state state;
@@ -183,11 +230,10 @@ int main(int argc, char **argv)
    double time[5]={0,1,2,3,4};
 
 	//ros::Subscriber subA = node.subscribe("/android/imu", 1, poseCallback);
-	ros::Subscriber subS = node.subscribe("/tryphon241/sonars", 1, subSonar);
-	ros::Subscriber subC = node.subscribe("/tryphon241/compass",1,subComp);
-	ros::Subscriber subI = node.subscribe("/tryphon241/imubuf",1,subImu);
+	ros::Subscriber subS = node.subscribe("/192_168_10_241/sonars", 1, subSonar);
+	ros::Subscriber subC = node.subscribe("/192_168_10_241/compass",1,subComp);
+	ros::Subscriber subI = node.subscribe("/192_168_10_241/imubuf",1,subImu);
 	ros::Subscriber subSick = node.subscribe("/cubeA_pose", 1, poseCallback);
-	
 	while (ros::ok())
 	{
         	////////////////////////////////////

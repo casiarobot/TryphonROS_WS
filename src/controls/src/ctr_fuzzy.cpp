@@ -1,5 +1,14 @@
 #include "ctr_fuzzy.h"
+#include <unistd.h>
+#include <string.h> /* for strncpy */
 
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/ioctl.h>
+#include <netinet/in.h>
+#include <net/if.h>
+#include <arpa/inet.h>
+#include <signal.h>
 
 bool start=true;
 state::state init_state;
@@ -13,7 +22,20 @@ state::state D;		// Derivative of error
 double wlimit=((double)DISTANCE_SECURITE)/100;	// The collision limit
 double zlimit=((double)DISTANCE_SECURITEZ)/100;
 t_gainfuzzy gfuz;
-float FMAX=0.35;
+float FMAX=0.75;
+
+ros::Publisher Controle_node;
+
+void mySigintHandler(int sig)
+{
+   // Do some custom action.
+   // For example, publish a stop message to some other nodes.
+   F.force.x=0;F.force.y=0;F.force.z=0;F.torque.x=0;F.torque.y=0;F.torque.z=0;
+   Controle_node.publish(F);
+   ROS_INFO("fx: %f, fy: %f, fz: %f,Tx: %f, Ty: %f, Tz: %f",F.force.x, F.force.y, F.force.z, F.torque.x, F.torque.y, F.torque.z);
+   // All the default sigint handler does is call shutdown()
+   ros::shutdown();
+}
 
 void initctr(const state::state state)
 {
@@ -142,8 +164,8 @@ F.torque.z=gfuz.mef_tz*(sig(E.quat[0], gfuz.etz)-sig(E.quat[0], -gfuz.etz))+gfuz
 	  F.force.y=FMAX;
 	if(F.force.z>FMAX)
 	  F.force.z=FMAX;
-	if(F.torque.z>FMAX)
-	  F.torque.z=FMAX;
+	if(F.torque.z>FMAX/2)
+	  F.torque.z=FMAX/2;
 } 
 
 void subState(const state::state state)
@@ -157,14 +179,57 @@ void subState(const state::state state)
 	fuzzy_control(state);
 }
 
+const char* get_ip()
+{
+  int fd;
+ struct ifreq ifr;
+ char *ip = new char[100];
+
+ fd = socket(AF_INET, SOCK_DGRAM, 0);
+
+ /* I want to get an IPv4 IP address */
+ ifr.ifr_addr.sa_family = AF_INET;
+
+ /* I want IP address attached to "eth0" */
+ strncpy(ifr.ifr_name, "eth0", IFNAMSIZ-1);
+
+ ioctl(fd, SIOCGIFADDR, &ifr);
+
+ close(fd);
+
+ /* display result */
+ sprintf(ip,"%s", inet_ntoa(((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr));
+ std::string s = ip;
+ std::replace(s.begin(), s.end(), '.', '_');
+ //ip=s.c_str();
+ return s.c_str();
+}
+
 int main(int argc, char **argv)
 {
-    ros::init(argc, argv, "tryphon241_control");
+      	char rosname[100], ip[100];
+	sprintf(rosname,"control_%s",get_ip());
+	std::string s;
+	
+	ros::init(argc, argv, rosname);
+    //ros::init(argc, argv, "control");
     ros::NodeHandle node;
-    ros::Publisher Controle_node = node.advertise<geometry_msgs::Wrench>("/tryphon241/command_control",1);
+    
+    signal(SIGINT, mySigintHandler);
+       /* if (node.getParam("target", s))
+        {
+          ROS_INFO("TARGET IS: %s", s.c_str());
+        }
+        else
+        {
+          ROS_ERROR("Failed to get param 'target'");
+	  return 0;
+        }*/
+    
+    Controle_node = node.advertise<geometry_msgs::Wrench>("/192_168_10_241/command_control",1);
     ros::Rate loop_rate(5); //CHANGE TIME OF FUZZY CONTROL IF DIFF zOF 5H
 
-	ros::Subscriber subS = node.subscribe("/tryphon241/state", 1, subState);
+	ros::Subscriber subS = node.subscribe("/192_168_10_241/state", 1, subState);
 	while (ros::ok())
 	{
 /*        	geometry_msgs::Wrench wrenchMsg;
@@ -185,6 +250,7 @@ int main(int argc, char **argv)
 		ros::spinOnce();
 		loop_rate.sleep();
 	}
+	
 	return 0;
 }
 
