@@ -1,7 +1,4 @@
 #include "controls.h"
-
-
-
 /*#define DEVICE_I2C      "/dev/i2c-3"
 typedef enum {FALSE, TRUE}
 BOOLEAN;
