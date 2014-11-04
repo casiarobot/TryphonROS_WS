@@ -166,9 +166,9 @@ void poseCallback(geometry_msgs::PoseStamped ps){
   
   	    //Convert from angle to Quaterion
 	    //Eigen::Quaterniond orientation = Eigen::Quaterniond(Eigen::AngleAxisd(cubesAngles[0], Eigen::Vector3d::UnitZ()));
-	    Eigen::AngleAxisf ang = Eigen::Quaternionf(ps.pose.orientation);
+	    //Eigen::AngleAxisf ang = Eigen::Quaternionf(ps.pose.orientation);
 	    
-  rz2=ang.angle;
+  //rz2=ang.angle;
 }
 
 int main(int argc, char **argv)
