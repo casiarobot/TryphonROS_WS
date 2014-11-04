@@ -5,6 +5,7 @@ project(state)
 
 ## Find catkin and any catkin packages
 find_package(catkin REQUIRED COMPONENTS geometry_msgs sensor_msgs roscpp rospy std_msgs genmsg sensors)
+find_package(Eigen REQUIRED)
 
 ## Declare ROS messages, services and actions
 add_message_files(DIRECTORY msg FILES state.msg)
@@ -17,7 +18,8 @@ generate_messages(DEPENDENCIES std_msgs geometry_msgs sensor_msgs)
 ## Declare a catkin package
 catkin_package( INCLUDE_DIRS 
 # Libraries
-CATKIN_DEPENDS  sensor_msgs geometry_msgs)
+CATKIN_DEPENDS  sensor_msgs geometry_msgs
+DEPENDS eigen)
 
 ##Specify additional locations of header files
 ## Your package locations should be listed before other locations
@@ -25,7 +27,8 @@ include_directories(include ${catkin_INCLUDE_DIRS})
 
 
 ## Build talker and listener
-include_directories( ${catkin_INCLUDE_DIRS})
+include_directories( ${catkin_INCLUDE_DIRS}
+  ${EIGEN_INCLUDE_DIRS})
 
 
 add_executable(state_estimator src/state_estimator.cpp)

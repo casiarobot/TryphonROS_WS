@@ -42,6 +42,10 @@
 #include "sensors/motorArray.h"
 //#include "cube.h"       // Cube geometry, inertia, etc.
 
+
+#include <Eigen/Dense>
+#include <Eigen/Geometry>
+
 bool start=true;
 double dsz1=0;
 double dsz2=0;
@@ -159,7 +163,12 @@ mz=msg->buffer[0].magn[2];
 void poseCallback(geometry_msgs::PoseStamped ps){
   dsx2=ps.pose.position.x;
   dsy2=ps.pose.position.y;
-  rz2=ps.pose.orientation.w;
+  
+  	    //Convert from angle to Quaterion
+	    //Eigen::Quaterniond orientation = Eigen::Quaterniond(Eigen::AngleAxisd(cubesAngles[0], Eigen::Vector3d::UnitZ()));
+	    Eigen::AngleAxisf ang = Eigen::Quaternionf(ps.pose.orientation);
+	    
+  rz2=ang.angle;
 }
 
 int main(int argc, char **argv)
@@ -171,6 +180,7 @@ int main(int argc, char **argv)
     	geometry_msgs::Pose pose;
     	state::state state;
 	int print=0;
+   double time[5]={0,1,2,3,4};
 
 	//ros::Subscriber subA = node.subscribe("/android/imu", 1, poseCallback);
 	ros::Subscriber subS = node.subscribe("/tryphon241/sonars", 1, subSonar);
@@ -183,11 +193,19 @@ int main(int argc, char **argv)
         	////////////////////////////////////
         	////       State estimator      ////
         	////////////////////////////////////
-		dsztf[4]=1.119*dsztf[3]-0.8843*dsztf[2]+0.2898*dsztf[1]-0.04457*dsztf[0]+0.03251*dszt[4]+0.13*dszt[3]+0.1951*dszt[2]+0.13*dszt[1]+0.03251*dszt[0];
-
+		dsztf[4]=3.159*dsztf[3]-3.815*dsztf[2]+2.076*dsztf[1]-0.4291*dsztf[0]+0.01223*dszt[4]-0.02416*dszt[3]+0.03202*dszt[2]-0.02416*dszt[1]+0.01223*dszt[0];
+		double avgz=(dsztf[4]+dsztf[3]+dsztf[2]+dsztf[1]+dsztf[0])/5;
+		double avgt=(time[4]+time[3]+time[2]+time[1]+time[0])/(10*5);
+		double Sxy=0;
+		double Sx=0;
+		for(int i=0;i<5;i++){
+		    Sxy=(time[i]-avgt)*(dsztf[i]-avgz);
+		    Sx=(time[i]-avgt)*(time[i]-avgt);
+		}
+		
         	state.pos[0]=dsx2;//dsx1;
         	state.pos[1]=dsy2;//dsy1;
-        	state.pos[2]=dsztf[4];
+        	state.pos[2]=dsztf[4]/1000;
         	state.quat[0]=rz2;//rz1
         	state.quat[1]=0;
         	state.quat[2]=0;
@@ -199,7 +217,7 @@ int main(int argc, char **argv)
                 state.angvel[1]=0;
                 state.angvel[2]=0;
              	/////////////////////////////////
-        	if(print==10){ROS_INFO("dist z(raw): %f, z(filtered): %f, dist x : %f, dist y : %f, rz : %f,z1:%f,z2:%f,z3:%f,z4:%f",dszt[4],dsztf[4],dsx2,dsy2,rz2,dsz1,dsz2,dsz3,dsz4);
+        	if(print==5){ROS_INFO("dist z(raw): %f, z(filtered): %f, dist x : %f, dist y : %f, rz : %f,z1:%f,z2:%f,z3:%f,z4:%f",dszt[4],dsztf[4]/1000,dsx2,dsy2,rz2,dsz1,dsz2,dsz3,dsz4);
 		print=0;}
 		else {print++;}
 	        Controle_node.publish(state);
