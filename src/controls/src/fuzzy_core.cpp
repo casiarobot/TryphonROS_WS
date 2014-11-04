@@ -5,6 +5,7 @@ Author:			Stefan Bracher
 History:		14.01.2008	Created by Stefan Bracher & David St-Onge
 History:		10.14.2014	Adapted for ROS by David St-Onge
 *************************************************************************************/
+#include "ctr_fuzzy.h"
 
 double Ls=(double)CUBE_LENGTH;				// Cube lengh
 state::state E;		// The error
