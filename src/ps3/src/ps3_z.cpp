@@ -4,7 +4,7 @@
 #include <sensor_msgs/Joy.h>
 
 #include "std_msgs/String.h"
-#include "std_msgs/Int8/h"
+#include "std_msgs/Bool.h"
 #include "state/state.h"
 #include <sstream>
 
@@ -95,6 +95,8 @@ bool start=true;
 float kz=0.0015;
 
 float incx=0,incy=0,incz=0;
+std_msgs::Bool button_magnet;
+
 
 int bool_input(float a,float b)
 {
@@ -118,14 +120,17 @@ float k=.06;
  //this is the safety number
 
 float button_x=0, button_y=0, button_z=0;
-std_msgs::Int8 button_magnet=0;
 
 button_x =bool_input(Joy->buttons[PS3_BUTTON_CROSS_RIGHT],Joy->buttons[PS3_BUTTON_CROSS_LEFT]);
 button_y = bool_input(Joy->buttons[PS3_BUTTON_CROSS_UP],Joy->buttons[PS3_BUTTON_CROSS_DOWN]);
 button_z =bool_input(Joy->buttons[PS3_BUTTON_REAR_RIGHT_2],Joy->buttons[PS3_BUTTON_REAR_LEFT_2]);
 
 //electromagnet switch button
-if (Joy->buttons[PS3_BUTTON_ACTION_SQUARE]){button_magnet=-button_magnet+1}
+if (Joy->buttons[PS3_BUTTON_ACTION_SQUARE])
+{
+	if (button_magnet.data==false){button_magnet.data=true;}
+	else if (button_magnet.data==true){button_magnet.data=false;}
+}
 
 //increment x with max and min 
 if((incx<30 && button_x>0)||(incx>-30 && button_x<0)){incx=incx+button_x;}
@@ -204,7 +209,7 @@ ros::init(argc, argv, "ps3_z");
 ros::NodeHandle n;
 
 geometry_msgs::Wrench ft;
-
+button_magnet.data=false;
 move_to.force.x=0;
 move_to.force.y=0;
 move_to.force.z=0;
@@ -219,7 +224,7 @@ ros::Subscriber subS = n.subscribe("state", 1, subState);
 
 
 ros::Publisher  to_control = n.advertise<geometry_msgs::Wrench>("ps3_control",1);
-ros::Publisher  e_magnet = n.advertise<std_msgs::Int8>("e_mag",1);
+ros::Publisher  e_magnet = n.advertise<std_msgs::Bool>("e_mag",1);
 ros::Rate loop_rate(20);
 
 	while (ros::ok())
@@ -248,7 +253,7 @@ ros::Rate loop_rate(20);
 		ft.torque.y=move_to.torque.y+wrenchMsg.torque.y;
 		ft.torque.z=move_to.torque.z+wrenchMsg.torque.z;
 		if(print==0){print=0;
-		ROS_INFO("x:%f, y:%f, z:%f, rz:%f, dszwant:%f, deriv: %f, derivz: %f, e_magnet: %d", ft.force.x,ft.force.y,ft.force.z,ft.torque.z,dszwant,deriv,derivz,button_magnet);
+		ROS_INFO("x:%f, y:%f, z:%f, rz:%f, dszwant:%f, deriv: %f, derivz: %f, e_magnet: %d", ft.force.x,ft.force.y,ft.force.z,ft.torque.z,dszwant,deriv,derivz,button_magnet.data);
   		}
 		else {++print;}
 		e_magnet.publish(button_magnet);
