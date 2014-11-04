@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <ctime>
+#include <Eigen/Geometry>
 
 //library for ros
 #include <ros/ros.h>
@@ -216,8 +217,8 @@ int main(int argc, char **argv)
    ros::Subscriber subC = node.subscribe("compass",1,subComp);
    //ros::Subscriber subI = node.subscribe("imu",1,subImu);
    ros::Subscriber subM = node.subscribe("mcptam_pose",1,subMCPTAM);
-   double time[5]={0,1,2,3,4};
-
+   double temps[5]={0,1,2,3,4};
+   double avgt,avgx,avgy,avgz,St,Stx,Sty,Stz;
 
    while (ros::ok())
    {
@@ -225,13 +226,18 @@ int main(int argc, char **argv)
         ////       State estimator      ////
         ////////////////////////////////////
         dsztf[4]=3.159*dsztf[3]-3.815*dsztf[2]+2.076*dsztf[1]-0.4291*dsztf[0]+0.01223*dszt[4]-0.02416*dszt[3]+0.03202*dszt[2]-0.02416*dszt[1]+0.01223*dszt[0];
-        double avgz=(dsztf[4]+dsztf[3]+dsztf[2]+dsztf[1]+dsztf[0])/5;
-        double avgt=(time[4]+time[3]+time[2]+time[1]+time[0])/(10*5);
-        double Sxy=0;
-        double Sx=0;
+        avgz=(dsztf[4]+dsztf[3]+dsztf[2]+dsztf[1]+dsztf[0])/5;
+        avgt=(temps[4]+temps[3]+temps[2]+temps[1]+temps[0])/(10*5);
+        Stx=0;
+        Sty=0;
+        Stz=0;
+        St=0;
         for(int i=0;i<5;i++){
-            Sxy=(time[i]-avgt)*(dsztf[i]-avgz);
-            Sx=(time[i]-avgt)*(time[i]-avgt);
+            Stx=(temps[i]-avgt)*(xf[i]-avgz);
+            Sty=(temps[i]-avgt)*(yf[i]-avgz);
+            //Stz=(temps[i]-avgt)*(zf[i]-avgz);
+            Stz=(temps[i]-avgt)*(dsztf[i]-avgz);
+            St=(temps[i]-avgt)*(temps[i]-avgt);
         }
 
 
@@ -242,14 +248,14 @@ int main(int argc, char **argv)
 
         state.pos[0]=xf[4];
         state.pos[1]=yf[4];
-        state.pos[2]=dsztf[4];//dszt[4];
+        state.pos[2]=dsztf[4];//zf[4];
         state.quat[0]=q0f[4];
         state.quat[1]=q1f[4];
         state.quat[2]=q2f[4];
         state.quat[3]=q3f[4];
-        state.vel[0]=0;
-        state.vel[1]=0;
-        state.vel[2]=Sxy/Sx;
+        state.vel[0]=Stx/St;
+        state.vel[1]=Sty/St;
+        state.vel[2]=Stz/St;
         state.angvel[0]=0;
         state.angvel[1]=0;
         state.angvel[2]=0;

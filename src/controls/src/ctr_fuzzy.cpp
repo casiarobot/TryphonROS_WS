@@ -13,6 +13,7 @@ state::state D;		// Derivative of error
 double wlimit=((double)DISTANCE_SECURITE)/100;	// The collision limit
 double zlimit=((double)DISTANCE_SECURITEZ)/100;
 t_gainfuzzy gfuz;
+float FMAX=0.35;
 
 void initctr(const state::state state)
 {
@@ -134,7 +135,15 @@ F.force.z=gfuz.mef_z*(sig(E.pos[2], gfuz.ez)-sig(E.pos[2], -gfuz.ez))+gfuz.miz*(
 //F.Ty=-2*gfuz->mef_txy*(sig(E.theta_y, etxy)-sig(E.theta_y, -etxy));
 //F.Ty=gfuz->mef_txy*(sig(E.theta_y, gfuz->etxy)-sig(E.theta_y, -gfuz->etxy))+gfuz->mitxy*(sig(E.theta_y, gfuz->itxy)*sig(I.theta_y, gfuz->awinup_txy)-sig(E.theta_y, -gfuz->itxy)*sig(I.theta_y, -gfuz->awinup_txy))+gfuz->minc_txy*(sig(E.theta_y, gfuz->inctxy)*sig(D.theta_y, gfuz->incstxy)-sig(E.theta_y, -gfuz->inctxy)*sig(D.theta_y, -gfuz->incstxy))-gfuz->mdec_txy*(isig(E.theta_y, gfuz->dectxy)*sig(D.theta_y, -gfuz->decstxy)-isig(E.theta_y, -gfuz->dectxy)*sig(D.theta_y, gfuz->decstxy));
 F.torque.z=gfuz.mef_tz*(sig(E.quat[0], gfuz.etz)-sig(E.quat[0], -gfuz.etz))+gfuz.mitz*(sig(E.quat[0], gfuz.itz)*sig(I.quat[0], gfuz.awinup_tz)-sig(E.quat[0], -gfuz.itz)*sig(I.quat[0], -gfuz.awinup_tz))+gfuz.minc_tz*(sig(E.quat[0], gfuz.inctz)*sig(D.quat[0], gfuz.incstz)-sig(E.quat[0], -gfuz.inctz)*sig(D.quat[0], -gfuz.incstz))-gfuz.mdec_tz*(isig(E.quat[0], gfuz.dectz)*sig(D.quat[0], -gfuz.decstz)-isig(E.quat[0], -gfuz.dectz)*sig(D.quat[0], gfuz.decstz));
-	
+
+	if(F.force.x>FMAX)
+	  F.force.x=FMAX;
+	if(F.force.y>FMAX)
+	  F.force.y=FMAX;
+	if(F.force.z>FMAX)
+	  F.force.z=FMAX;
+	if(F.torque.z>FMAX)
+	  F.torque.z=FMAX;
 } 
 
 void subState(const state::state state)
@@ -170,6 +179,7 @@ int main(int argc, char **argv)
     		wrenchMsg.torque.z=-0.012*errorz;
 */
 		ROS_INFO("fx: %f, fy: %f, fz: %f,Tx: %f, Ty: %f, Tz: %f",F.force.x, F.force.y, F.force.z, F.torque.x, F.torque.y, F.torque.z);
+		ROS_INFO("ex: %f, ey: %f, ez: %f,eTx: %f, eTy: %f, eTz: %f",E.pos[0], E.pos[1], E.pos[2], E.quat[1], E.quat[2], E.quat[0]);
        		 /////////////////////////////////
         	Controle_node.publish(F);
 		ros::spinOnce();
