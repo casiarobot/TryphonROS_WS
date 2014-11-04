@@ -8,6 +8,7 @@
 #include <ros/ros.h>
 #include "geometry_msgs/Wrench.h"
 #include "geometry_msgs/Pose.h"
+#include "geometry_msgs/PoseStamped.h"
 
 //library for Android msg
 #include <sensor_msgs/Imu.h>
@@ -17,6 +18,7 @@
 #include "sensors/sonarArray.h"
 #include "sensors/compass.h"
 #include "sensors/imuros.h"
+#include "sensors/imubuff.h"
 #include "state/state.h"
 
 //libraries for the array
@@ -49,9 +51,9 @@ double dszt[5]={0,0,0,0,0};
 double dsztf[5]={0,0,0,0,0};
 //double dszt=0;
 //double dszto=0;
-double dsx1=0;
-double dsy1=0;
-double rz=0;
+double dsx1=0,dsx2=0;
+double dsy1=0,dsy2=0;
+double rz1=0,rz2=0;
 double rz0=0;
 double rzold=0;
 double ax=0;
@@ -130,46 +132,51 @@ void subComp(const sensors::compass::ConstPtr& msg)
     //                ", RZ1: " << msg->rz[1]);
 	
     if (msg->id == 96){
-	rz=(msg->rz[0])-rz0;}
-    if (start && rz!=0){rz0=rz;
+	rz1=(msg->rz[0])-rz0;}
+    if (start && rz1!=0){rz0=rz1;
 	start=false;}
     
     //ROS_INFO("rotation: %f",rz); 
 }
 
-void subImu(const sensors::imuros::ConstPtr& imudata)
+void subImu(const sensors::imubuff::ConstPtr& msg)
 {
-ax=imudata->accel[0];
-ay=imudata->accel[1];
-az=imudata->accel[2];
-gx=imudata->gyro[0];
-gy=imudata->gyro[1];
-gz=imudata->gyro[2];
-mx=imudata->magn[0];
-my=imudata->magn[1];
-mz=imudata->magn[2];
+ax=msg->buffer[0].accel[0];
+ay=msg->buffer[0].accel[1];
+az=msg->buffer[0].accel[2];
+gx=msg->buffer[0].gyro[0];
+gy=msg->buffer[0].gyro[1];
+gz=msg->buffer[0].gyro[2];
+mx=msg->buffer[0].magn[0];
+my=msg->buffer[0].magn[1];
+mz=msg->buffer[0].magn[2];
 
 //ROS_INFO("ax: %f, ay: %f, az: %f",ax,ay,az);
 //ROS_INFO("gx: %f, gy: %f, gz: %f",gx,gy,gz);
 //ROS_INFO("mx: %f, my: %f, mz: %f",mx,my,mz);
 }
 
+void poseCallback(geometry_msgs::PoseStamped ps){
+  dsx2=ps.pose.position.x;
+  dsy2=ps.pose.position.y;
+  rz2=ps.pose.orientation.w;
+}
 
 int main(int argc, char **argv)
 {
-    	ros::init(argc, argv, "state_estimator");
+    	ros::init(argc, argv, "tryphon241_state_estimator");
     	ros::NodeHandle node;
-    	ros::Publisher Controle_node = node.advertise<state::state>("state",1);
+    	ros::Publisher Controle_node = node.advertise<state::state>("/tryphon241/state",1);
     	ros::Rate loop_rate(10);
     	geometry_msgs::Pose pose;
     	state::state state;
 	int print=0;
 
 	//ros::Subscriber subA = node.subscribe("/android/imu", 1, poseCallback);
-	ros::Subscriber subS = node.subscribe("sonars", 1, subSonar);
-	ros::Subscriber subC = node.subscribe("compass",1,subComp);
-	ros::Subscriber subI = node.subscribe("imu",1,subImu);
-	ros::Subscriber subSick = node.subscribe("/cubeB_pose", 1, poseCallback);
+	ros::Subscriber subS = node.subscribe("/tryphon241/sonars", 1, subSonar);
+	ros::Subscriber subC = node.subscribe("/tryphon241/compass",1,subComp);
+	ros::Subscriber subI = node.subscribe("/tryphon241/imubuf",1,subImu);
+	ros::Subscriber subSick = node.subscribe("/cubeA_pose", 1, poseCallback);
 	
 	while (ros::ok())
 	{
@@ -178,12 +185,12 @@ int main(int argc, char **argv)
         	////////////////////////////////////
 		dsztf[4]=1.119*dsztf[3]-0.8843*dsztf[2]+0.2898*dsztf[1]-0.04457*dsztf[0]+0.03251*dszt[4]+0.13*dszt[3]+0.1951*dszt[2]+0.13*dszt[1]+0.03251*dszt[0];
 
-        	state.pos[0]=dsx1;
-        	state.pos[1]=dsy1;
-        	state.pos[2]=dszt[4];
-        	state.quat[0]=0;
+        	state.pos[0]=dsx2;//dsx1;
+        	state.pos[1]=dsy2;//dsy1;
+        	state.pos[2]=dsztf[4];
+        	state.quat[0]=rz2;//rz1
         	state.quat[1]=0;
-        	state.quat[2]=rz;
+        	state.quat[2]=0;
         	state.quat[3]=0;
 		state.vel[0]=0;
 		state.vel[1]=0;
@@ -192,9 +199,9 @@ int main(int argc, char **argv)
                 state.angvel[1]=0;
                 state.angvel[2]=0;
              	/////////////////////////////////
-        	if(print==0){ROS_INFO("dist z(raw): %f, z(filtered): %f, dist x : %f, dist y : %f, rz : %f,z1:%f,z2:%f,z3:%f,z4:%f",dszt[4]-dszt[3],dsztf[4]-dsztf[3],dsx1,dsy1,rz,dsz1,dsz2,dsz3,dsz4);
+        	if(print==10){ROS_INFO("dist z(raw): %f, z(filtered): %f, dist x : %f, dist y : %f, rz : %f,z1:%f,z2:%f,z3:%f,z4:%f",dszt[4],dsztf[4],dsx2,dsy2,rz2,dsz1,dsz2,dsz3,dsz4);
 		print=0;}
-		else {++print;}
+		else {print++;}
 	        Controle_node.publish(state);
 		ros::spinOnce();
 		loop_rate.sleep();

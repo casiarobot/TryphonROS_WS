@@ -148,23 +148,14 @@ void subState(const state::state state)
 	fuzzy_control(state);
 }
 
-void poseCallback(const geometry_msgs::Pose2D pose)
-{
-  state::state tmp;
-  tmp.pos[0]=pose.x;
-  tmp.pos[1]=pose.y;
-  tmp.pos[2]=pose.z;
-}
-
 int main(int argc, char **argv)
 {
-    ros::init(argc, argv, "control");
+    ros::init(argc, argv, "tryphon241_control");
     ros::NodeHandle node;
-    ros::Publisher Controle_node = node.advertise<geometry_msgs::Wrench>("command_control",1);
+    ros::Publisher Controle_node = node.advertise<geometry_msgs::Wrench>("/tryphon241/command_control",1);
     ros::Rate loop_rate(5); //CHANGE TIME OF FUZZY CONTROL IF DIFF zOF 5H
 
-	//ros::Subscriber subA = node.subscribe("/android/imu", 1, poseCallback);
-	ros::Subscriber subS = node.subscribe("state", 1, subState);
+	ros::Subscriber subS = node.subscribe("/tryphon241/state", 1, subState);
 	while (ros::ok())
 	{
 /*        	geometry_msgs::Wrench wrenchMsg;

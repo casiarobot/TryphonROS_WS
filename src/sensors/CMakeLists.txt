@@ -7,7 +7,7 @@ project(sensors)
 find_package(catkin REQUIRED COMPONENTS roscpp rospy std_msgs sensor_msgs geometry_msgs genmsg)
 
 ## Declare ROS messages and services
-add_message_files(DIRECTORY msg FILES sonar.msg sonarArray.msg compass.msg motor.msg motorArray.msg forces.msg imuros.msg)
+add_message_files(DIRECTORY msg FILES sonar.msg sonarArray.msg compass.msg motor.msg motorArray.msg forces.msg imuros.msg imubuff.msg)
 #add_service_files(FILES AddTwoInts.srv)
 
 ## Generate added messages and services
