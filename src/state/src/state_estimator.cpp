@@ -247,9 +247,9 @@ int main(int argc, char **argv)
         state.quat[1]=q1f[4];
         state.quat[2]=q2f[4];
         state.quat[3]=q3f[4];
-        state.vel[0]=Sxy/Sx;
+        state.vel[0]=0;
         state.vel[1]=0;
-        state.vel[2]=0;
+        state.vel[2]=Sxy/Sx;
         state.angvel[0]=0;
         state.angvel[1]=0;
         state.angvel[2]=0;

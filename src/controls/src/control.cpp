@@ -69,7 +69,7 @@ int main(int argc, char **argv)
     ros::init(argc, argv, "control");
     ros::NodeHandle node;
     ros::Publisher Controle_node = node.advertise<geometry_msgs::Wrench>("command_control",1);
-    ros::Rate loop_rate(20);
+    ros::Rate loop_rate(10);
 
 	//ros::Subscriber subA = node.subscribe("/android/imu", 1, poseCallback);
 	ros::Subscriber subS = node.subscribe("state", 1, subState);
@@ -84,9 +84,9 @@ int main(int argc, char **argv)
         	if(dsx>2000){ wrenchMsg.force.x=0;}
        		if(dsy<2000){ wrenchMsg.force.y=-0.0015*(dsy-1500);}
     		if(dsy>2000){ wrenchMsg.force.y=0;}*/
-		wrenchMsg.force.x=0;
-		wrenchMsg.force.y=0;
-		wrenchMsg.force.z=0.0012*(errorn+1.2*deriv);
+		    wrenchMsg.force.x=0;
+		    wrenchMsg.force.y=0;
+		    wrenchMsg.force.z=0.0012*(errorn+1.2*deriv);
       	  	wrenchMsg.torque.x=0;
         	wrenchMsg.torque.y=0;
     		wrenchMsg.torque.z=-0.012*errorz;
