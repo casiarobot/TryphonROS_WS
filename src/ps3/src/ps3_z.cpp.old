@@ -79,7 +79,6 @@ geometry_msgs::Wrench wrenchMsg;
 geometry_msgs::Pose go_to; //used with MCPTAM to go to a location
 
 int ps3_mode=0; // 1 for mcptam pose
-int print=0;
 double dsx=0;
 double dsy=0;
 double dsz[5]={0,0,0,0,0};
@@ -97,7 +96,7 @@ bool start=true;
 float kz=0.0015;
 
 float incx=0,incy=0,incz=0;  //for open loop control
-float posx=0;posy=0;posz=1; //for pose
+float posx=0;posy=0;posz=0; //for pose
 std_msgs::Bool button_magnet;
 
 
@@ -118,7 +117,7 @@ int bool_input(float a,float b)
 
 void joycallback(const sensor_msgs::Joy::ConstPtr& Joy)
 {
-print=0;
+
 float k=.06;
  //this is the safety number
 float max_d=0.5; //controls max distance and increments of displacements
@@ -184,7 +183,7 @@ move_to.torque.z=0;
 
 go_to.position.x=max_d*posx;
 go_to.position.y=max_d*posy;
-go_to.position.z=posz;
+go_to.position.z=0;
 go_to.quaternion.x=0;
 go_to.quaternion.y=0;
 go_to.quaternion.z=0;
@@ -246,18 +245,19 @@ move_to.torque.z=0;
 
 go_to.position.x=0;
 go_to.position.y=0;
-go_to.position.z=posz;
+go_to.position.z=1000;
 go_to.quaternion.x=0;
 go_to.quaternion.y=0;
 go_to.quaternion.z=0;
 go_to.quaternion.w=0; 
 
+int print=0;
 ros::Subscriber  joy_stick = n.subscribe<sensor_msgs::Joy>("joy",1,&joycallback);
 ros::Subscriber subS = n.subscribe("state", 1, subState);
 
 
 
-ros::Publisher  pose_des = n.advertise<geometry_msgs::Pose>("desired_state",1)
+
 ros::Publisher  to_control = n.advertise<geometry_msgs::Wrench>("ps3_control",1);
 ros::Publisher  e_magnet = n.advertise<std_msgs::Bool>("magnet_on",1);
 ros::Rate loop_rate(20);
@@ -265,49 +265,34 @@ ros::Rate loop_rate(20);
 	while (ros::ok())
 	{
 
-		if (ps3_mode==1)
-		{
-			if(print==0)
-			{	
-				ROS_INFO("posx:%f, posy:%f, posz:%f, e_magnet: %d",go_to.position.x,go_to.position.y,go_to.position.z,button_magnet.data);
-  				++print;
-  			}
-		
-		pose_des.publish(go_to);
+                ////////////////////////////////////
+                ////       Controller           ////
+                ////////////////////////////////////
 
-		}
-		else
-		{
-
-               ////////////////////////////////////
-               ////       Controller           ////
-               ////////////////////////////////////
                 /*if(dsx<2000){ wrenchMsg.force.x=0.0015*(dsx-1500);}
-            	if(dsx>2000){ wrenchMsg.force.x=0;}
+                if(dsx>2000){ wrenchMsg.force.x=0;}
                 if(dsy<2000){ wrenchMsg.force.y=-0.0015*(dsy-1500);}
                 if(dsy>2000){ wrenchMsg.force.y=0;}*/
-            wrenchMsg.force.x=0;
-            wrenchMsg.force.y=0;
-            wrenchMsg.force.z=0.001*(errorn+1.65*deriv);
-            wrenchMsg.torque.x=0;
-            wrenchMsg.torque.y=0;
-            wrenchMsg.torque.z=0.18*(errorz+1.18*derivz);
-			//ROS_INFO("x:%f, y:%f, z:%f \n", wrenchMsg.force.x,wrenchMsg.force.y,wrenchMsg.force.z);
-			ft.force.x=move_to.force.x+wrenchMsg.force.x;
-			ft.force.y=move_to.force.y+wrenchMsg.force.y;
-			ft.force.z=move_to.force.z+wrenchMsg.force.z;
-			ft.torque.x=move_to.torque.x+wrenchMsg.torque.x;
-			ft.torque.y=move_to.torque.y+wrenchMsg.torque.y;
-			ft.torque.z=move_to.torque.z+wrenchMsg.torque.z;
-			to_control.publish(ft);
-			if(print==0)
-			{	
-				ROS_INFO("x:%f, y:%f, z:%f, rz:%f, dszwant:%f, deriv: %f, derivz: %f, e_magnet: %d", ft.force.x,ft.force.y,ft.force.z,ft.torque.z,dszwant,deriv,derivz,button_magnet.data);
-  				++print;
-  			}
-		}
-		
+                wrenchMsg.force.x=0;
+                wrenchMsg.force.y=0;
+                wrenchMsg.force.z=0.001*(errorn+1.65*deriv);
+                wrenchMsg.torque.x=0;
+                wrenchMsg.torque.y=0;
+                wrenchMsg.torque.z=0.18*(errorz+1.18*derivz);
+		//ROS_INFO("x:%f, y:%f, z:%f \n", wrenchMsg.force.x,wrenchMsg.force.y,wrenchMsg.force.z);
+
+		ft.force.x=move_to.force.x+wrenchMsg.force.x;
+		ft.force.y=move_to.force.y+wrenchMsg.force.y;
+		ft.force.z=move_to.force.z+wrenchMsg.force.z;
+		ft.torque.x=move_to.torque.x+wrenchMsg.torque.x;
+		ft.torque.y=move_to.torque.y+wrenchMsg.torque.y;
+		ft.torque.z=move_to.torque.z+wrenchMsg.torque.z;
+		if(print==0){print=0;
+		ROS_INFO("x:%f, y:%f, z:%f, rz:%f, dszwant:%f, deriv: %f, derivz: %f, e_magnet: %d", ft.force.x,ft.force.y,ft.force.z,ft.torque.z,dszwant,deriv,derivz,button_magnet.data);
+  		}
+		else {++print;}
 		e_magnet.publish(button_magnet);
+		to_control.publish(ft);
   		ros::spinOnce();
   		loop_rate.sleep();
 	}
