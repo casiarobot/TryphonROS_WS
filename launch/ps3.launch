@@ -1,0 +1,4 @@
+<launch>
+	<include file="/launch/ps3_mode.launch" />
+
+</launch>

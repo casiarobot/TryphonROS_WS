@@ -1,0 +1,7 @@
+<launch>
+
+        <node name="ps3_z" pkg="ps3" type="ps3_z" respawn="false" args="1" output="screen"/>
+
+</launch>
+
+

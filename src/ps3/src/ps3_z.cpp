@@ -93,11 +93,11 @@ double derivo=0;
 double derivz=0;
 double rz=0;
 double rzo=0;
-bool start=true;
+//bool start=true;
 float kz=0.0015;
 
 float incx=0,incy=0,incz=0;  //for open loop control
-float posx=0;posy=0;posz=1; //for pose
+float posx=0,posy=0,posz=1; //for pose
 std_msgs::Bool button_magnet;
 
 
@@ -185,10 +185,10 @@ move_to.torque.z=0;
 go_to.position.x=max_d*posx;
 go_to.position.y=max_d*posy;
 go_to.position.z=posz;
-go_to.quaternion.x=0;
-go_to.quaternion.y=0;
-go_to.quaternion.z=0;
-go_to.quaternion.w=0; 
+go_to.orientation.x=0;
+go_to.orientation.y=0;
+go_to.orientation.z=0;
+go_to.orientation.w=0; 
 
 //ROS_INFO("x:%f, y:%f, z:%f \n", move_to.force.x,move_to.force.y,move_to.force.z);
 
@@ -231,7 +231,7 @@ int main(int argc, char** argv)
 ros::init(argc, argv, "ps3_z");
 ros::NodeHandle n;
 
-ps3_mode=argv[1]; //this will determine whether to use pose (MCPTAM) or open loop control
+ps3_mode=atoi(argv[1]); //this will determine whether to use pose (MCPTAM) or open loop control
 
 geometry_msgs::Wrench ft;
 button_magnet.data=false;
@@ -247,17 +247,17 @@ move_to.torque.z=0;
 go_to.position.x=0;
 go_to.position.y=0;
 go_to.position.z=posz;
-go_to.quaternion.x=0;
-go_to.quaternion.y=0;
-go_to.quaternion.z=0;
-go_to.quaternion.w=0; 
+go_to.orientation.x=0;
+go_to.orientation.y=0;
+go_to.orientation.z=0;
+go_to.orientation.w=0; 
 
 ros::Subscriber  joy_stick = n.subscribe<sensor_msgs::Joy>("joy",1,&joycallback);
 ros::Subscriber subS = n.subscribe("state", 1, subState);
 
 
 
-ros::Publisher  pose_des = n.advertise<geometry_msgs::Pose>("desired_state",1)
+ros::Publisher  pose_des = n.advertise<geometry_msgs::Pose>("desired_state",1);
 ros::Publisher  to_control = n.advertise<geometry_msgs::Wrench>("ps3_control",1);
 ros::Publisher  e_magnet = n.advertise<std_msgs::Bool>("magnet_on",1);
 ros::Rate loop_rate(20);

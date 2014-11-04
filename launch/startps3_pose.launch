@@ -1,0 +1,8 @@
+
+
+<launch>
+	<include file="$(find mode)/launch/ps3_mode.launch" />
+	<include file="$(find ps3)/launch/ps3_pose.launch" />
+	<include file="$(find state)/launch/state_estimator.launch" />
+	<include file="$(find sensors)/launch/sensors_thrusters.launch" /> 
+</launch>
