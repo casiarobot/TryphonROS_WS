@@ -224,7 +224,7 @@ ros::Subscriber subS = n.subscribe("state", 1, subState);
 
 
 ros::Publisher  to_control = n.advertise<geometry_msgs::Wrench>("ps3_control",1);
-ros::Publisher  e_magnet = n.advertise<std_msgs::Bool>("e_mag",1);
+ros::Publisher  e_magnet = n.advertise<std_msgs::Bool>("magnet_on",1);
 ros::Rate loop_rate(20);
 
 	while (ros::ok())
