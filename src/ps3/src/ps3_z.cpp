@@ -4,6 +4,7 @@
 #include <sensor_msgs/Joy.h>
 
 #include "std_msgs/String.h"
+#include "std_msgs/Int8/h"
 #include "state/state.h"
 #include <sstream>
 
@@ -117,32 +118,42 @@ float k=.06;
  //this is the safety number
 
 float button_x=0, button_y=0, button_z=0;
+std_msgs::Int8 button_magnet=0;
 
 button_x =bool_input(Joy->buttons[PS3_BUTTON_CROSS_RIGHT],Joy->buttons[PS3_BUTTON_CROSS_LEFT]);
 button_y = bool_input(Joy->buttons[PS3_BUTTON_CROSS_UP],Joy->buttons[PS3_BUTTON_CROSS_DOWN]);
 button_z =bool_input(Joy->buttons[PS3_BUTTON_REAR_RIGHT_2],Joy->buttons[PS3_BUTTON_REAR_LEFT_2]);
 
-if((incx<30 && button_x>0)||(incx>-30 && button_x<0)){incx=incx+button_x;}
-if((incy<30 && button_y>0)||(incy>-30 && button_y<0)){incy=incy+button_y;}
-if(button_z)
- {
-dszwant+=button_z*20;
-	if (dszwant>2300) {dszwant=2300;}
+//electromagnet switch button
+if (Joy->buttons[PS3_BUTTON_ACTION_SQUARE]){button_magnet=-button_magnet+1}
 
+//increment x with max and min 
+if((incx<30 && button_x>0)||(incx>-30 && button_x<0)){incx=incx+button_x;}
+
+//increment y with max and min
+if((incy<30 && button_y>0)||(incy>-30 && button_y<0)){incy=incy+button_y;}
+
+//Z button inputs
+if(button_z)
+{
+	dszwant+=button_z*20;
+	if (dszwant>2300) {dszwant=2300;}
 }
 
-	if (Joy->buttons[PS3_BUTTON_ACTION_CIRCLE])
-	{
-		incx=0;
-		incy=0;
-	}
+//auto shut off x and y
+if (Joy->buttons[PS3_BUTTON_ACTION_CIRCLE])
+{
+	incx=0;
+	incy=0;
+}
 
-	if (Joy->buttons[PS3_BUTTON_ACTION_CROSS])
-	{
-		incx=0;
-		incy=0;
-		dszwant=600;
-	}
+// auto shut off all values
+if (Joy->buttons[PS3_BUTTON_ACTION_CROSS])
+{
+	incx=0;
+	incy=0;
+	dszwant=600;
+}
 
 
 move_to.force.x=k*incx;
@@ -208,6 +219,7 @@ ros::Subscriber subS = n.subscribe("state", 1, subState);
 
 
 ros::Publisher  to_control = n.advertise<geometry_msgs::Wrench>("ps3_control",1);
+ros::Publisher  e_magnet = n.advertise<std_msgs::Int8>("e_mag",1);
 ros::Rate loop_rate(20);
 
 	while (ros::ok())
@@ -236,10 +248,10 @@ ros::Rate loop_rate(20);
 		ft.torque.y=move_to.torque.y+wrenchMsg.torque.y;
 		ft.torque.z=move_to.torque.z+wrenchMsg.torque.z;
 		if(print==0){print=0;
-		ROS_INFO("x:%f, y:%f, z:%f, rz:%f, dszwant:%f, deriv: %f, derivz: %f ", ft.force.x,ft.force.y,ft.force.z,ft.torque.z,dszwant,deriv,derivz);
+		ROS_INFO("x:%f, y:%f, z:%f, rz:%f, dszwant:%f, deriv: %f, derivz: %f, e_magnet: %d", ft.force.x,ft.force.y,ft.force.z,ft.torque.z,dszwant,deriv,derivz,button_magnet);
   		}
 		else {++print;}
-
+		e_magnet.publish(button_magnet);
 		to_control.publish(ft);
   		ros::spinOnce();
   		loop_rate.sleep();

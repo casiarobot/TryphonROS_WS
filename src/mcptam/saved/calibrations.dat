@@ -1,0 +1,7 @@
+% Camera calibration parameters, format:
+% Total number of cameras
+% Camera Name, image size (2 vector), projection center (2 vector), polynomial coefficients (5 vector), affine matrix components (3 vector)
+2
+camera1, 640, 480, 317.666, 228.408, 260.757, 0, -0.00142816, 8.33302e-07, -3.85502e-09, 0.999712, -0.00554923, 0.00552433
+camera2, 640, 480, 315.996, 235.01, 259.705, 0, -0.0014395, 1.00794e-06, -4.26252e-09, 1.00023, 0.00371351, -0.00384795
+% The end

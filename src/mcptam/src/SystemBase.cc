@@ -137,7 +137,7 @@ SystemBase::SystemBase(std::string windowName, bool bFullSize, bool bDrawWindow)
       
       double dDiffMagSquared = v6Diff * v6Diff;
       
-      if(dDiffMagSquared > 1e-10)
+      if(dDiffMagSquared > 1e-6)
       {
         ROS_FATAL_STREAM("Difference between live and loaded poses for camera "<<camName<<" too great! Diff mag squared: "<<dDiffMagSquared);
         ros::shutdown();
@@ -162,9 +162,11 @@ SystemBase::SystemBase(std::string windowName, bool bFullSize, bool bDrawWindow)
       
       double dDiffMagSquared = v9Diff * v9Diff;
       
-      if(dDiffMagSquared > 1e-10)
+      if(dDiffMagSquared > 1e-6)
       {
         ROS_FATAL_STREAM("Difference between live and loaded calibration parameters for camera "<<camName<<" too great! Diff mag squared: "<<dDiffMagSquared);
+        ROS_FATAL_STREAM("Live params: "<<mmCameraModels[camName].GetParams());
+        ROS_FATAL_STREAM("Loaded params: "<<camera.GetParams());
         ros::shutdown();
         return;
       }

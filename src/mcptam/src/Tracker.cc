@@ -1522,8 +1522,8 @@ void Tracker::ApplyMotionModel()
   mse3StartPose = mpCurrentMKF->mse3BaseFromWorld;
   
   // Old style motion update with simple velocity  model
-  Vector<6> v6Motion = mv6BaseVelocity * mLastProcessDur.toSec();
-  //Vector<6> v6Motion = Zeros;
+  //Vector<6> v6Motion = mv6BaseVelocity * mLastProcessDur.toSec();
+  Vector<6> v6Motion = Zeros;
   
   if(Tracker::sbUseRotationEstimator)  // estimate the rotation component of the motion from SmallBlurryImage differences
   {

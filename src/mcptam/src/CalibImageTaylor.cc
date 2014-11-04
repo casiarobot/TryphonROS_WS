@@ -56,7 +56,7 @@ using namespace TooN;
 
 // Static members
 int CalibImageTaylor::snCornerPatchSize = 20;
-double CalibImageTaylor::sdBlurSigma = 0.0;
+double CalibImageTaylor::sdBlurSigma = 1.0;
 int CalibImageTaylor::snMeanGate = 20;
 int CalibImageTaylor::snMinCornersForGrabbedImage = 20;
 double CalibImageTaylor::sdExpandByStepMaxDistFrac = 0.3;
