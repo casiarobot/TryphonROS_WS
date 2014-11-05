@@ -1,0 +1,27 @@
+<launch>
+  <group ns="camera1">
+  	  <!-- nodelet manager process -->
+  <node pkg="nodelet" type="nodelet" name="camera_nodelet_manager"
+        args="manager" />
+
+  <!-- camera driver nodelet -->
+  <node pkg="nodelet" type="nodelet" name="camera1394_nodelet"
+        args="load camera1394/driver camera_nodelet_manager">
+        <rosparam file="$(find cameras)/launch/ffmv.yaml" />
+  </node>
+
+  </group>
+  <group ns="camera2">
+          <!-- nodelet manager process -->
+  <node pkg="nodelet" type="nodelet" name="camera_nodelet_manager"
+        args="manager" />
+
+  <!-- camera driver nodelet -->
+  <node pkg="nodelet" type="nodelet" name="camera1394_nodelet"
+        args="load camera1394/driver camera_nodelet_manager">
+        <rosparam file="$(find cameras)/launch/ffmv2.yaml" />
+  </node>
+  </group>
+
+
+ </launch>

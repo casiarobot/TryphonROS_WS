@@ -22,7 +22,7 @@ find_package(Eigen REQUIRED)
 ## catkin specific configuration ##
 ###################################
 catkin_package(
-  INCLUDE_DIRS include
+  INCLUDE_DIRS
   CATKIN_DEPENDS message_runtime roscpp cv_bridge sensor_msgs state
   DEPENDS eigen OpenCV
 )
