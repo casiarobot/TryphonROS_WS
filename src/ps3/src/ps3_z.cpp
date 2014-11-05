@@ -3,6 +3,7 @@
 #include <ros/ros.h>
 #include <sensor_msgs/Joy.h>
 
+
 #include "std_msgs/String.h"
 #include "std_msgs/Bool.h"
 #include "state/state.h"
@@ -13,7 +14,6 @@
 //#include <unistd.h>
 //#include <errno.h>
 #include <math.h>
-
 //#include "i2c-dev.h"
 //#include "motors.h"
 //#include "sensors/motor.h"
@@ -118,10 +118,10 @@ int bool_input(float a,float b)
 
 void joycallback(const sensor_msgs::Joy::ConstPtr& Joy)
 {
-print=0;
+
 float k=.06;
  //this is the safety number
-float max_d=0.5; //controls max distance and increments of displacements
+float max_d=0.01; //controls max distance and increments of displacements
 
 float button_x=0, button_y=0, button_z=0;
 
@@ -129,24 +129,29 @@ button_x =bool_input(Joy->buttons[PS3_BUTTON_CROSS_RIGHT],Joy->buttons[PS3_BUTTO
 button_y = bool_input(Joy->buttons[PS3_BUTTON_CROSS_UP],Joy->buttons[PS3_BUTTON_CROSS_DOWN]);
 button_z =bool_input(Joy->buttons[PS3_BUTTON_REAR_RIGHT_2],Joy->buttons[PS3_BUTTON_REAR_LEFT_2]);
 
+
 //electromagnet switch button
 if (Joy->buttons[PS3_BUTTON_ACTION_SQUARE])
 {
+	
 	if (button_magnet.data==false){button_magnet.data=true;}
 	else if (button_magnet.data==true){button_magnet.data=false;}
+    ros::Duration(.5).sleep();
 }
 
 if (ps3_mode==1)
 {
+	
     //increment x with max and min for pose
-	if((posx<20 && button_x>0)||(posx>-20 && button_x<0)){posx=posx+button_x;}
+	if((posx<2000 && button_x>0)||(posx>-2000 && button_x<0)){posx=posx+button_x;}
 	//increment y with max and min for pose
-	if((posy<20 && button_y>0)||(posy>-20 && button_y<0)){posy=posy+button_y;}
+	if((posy<2000 && button_y>0)||(posy>-2000 && button_y<0)){posy=posy+button_y;}
     //increment z with max and min for pose
-	if((posz<2 && button_z>0)||(posy>0.15 && button_z<0)){posz=posz+0.1*button_z;}
+	if((posz<2.4 && button_z>0)||(posz>0.15 && button_z<0)){posz=posz+0.01*button_z;}
 }
 else
 {
+	
 	//increment x with max and min 
 	if((incx<30 && button_x>0)||(incx>-30 && button_x<0)){incx=incx+button_x;}
 	//increment y with max and min
@@ -162,12 +167,14 @@ else
 //auto shut off x and y
 if (Joy->buttons[PS3_BUTTON_ACTION_CIRCLE])
 {
+	
 	incx=0;
 	incy=0;
 }
 // auto shut off all values
 if (Joy->buttons[PS3_BUTTON_ACTION_CROSS])
 {
+	
 	incx=0;
 	incy=0;
 	dszwant=600;
@@ -264,14 +271,14 @@ ros::Rate loop_rate(20);
 
 	while (ros::ok())
 	{
-
+		if(print>10){print=0;} 
 		if (ps3_mode==1)
 		{
 			if(print==0)
 			{	
 				ROS_INFO("posx:%f, posy:%f, posz:%f, e_magnet: %d",go_to.position.x,go_to.position.y,go_to.position.z,button_magnet.data);
-  				++print;
   			}
+  			print+=1;
 		
 		pose_des.publish(go_to);
 
@@ -303,10 +310,10 @@ ros::Rate loop_rate(20);
 			if(print==0)
 			{	
 				ROS_INFO("x:%f, y:%f, z:%f, rz:%f, dszwant:%f, deriv: %f, derivz: %f, e_magnet: %d", ft.force.x,ft.force.y,ft.force.z,ft.torque.z,dszwant,deriv,derivz,button_magnet.data);
-  				++print;
-  			}
+   			}
+   			print+=1;
 		}
-		
+		if(print>20){print=0;}
 		e_magnet.publish(button_magnet);
   		ros::spinOnce();
   		loop_rate.sleep();
