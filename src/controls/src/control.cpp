@@ -5,7 +5,7 @@ BOOLEAN;
 typedef unsigned char BYTE;
 #define INTERACTION     0
 */
-
+#include <Eigen/Dense>
 
 double dsz=0;
 double dsx=0;
