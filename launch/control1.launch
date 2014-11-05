@@ -1,0 +1,7 @@
+
+<launch>
+   <!-- <include file="$(find mode)/launch/control_mode.launch" /> -->
+	<include file="$(find controls)/launch/controls1.launch" />
+	<include file="$(find state)/launch/state_estimator.launch" />
+	<include file="$(find sensors)/launch/sensors_thrusters.launch" /> 
+</launch>

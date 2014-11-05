@@ -1,0 +1,6 @@
+<launch>
+
+	 <node name="controls" pkg="controls" type="controls" respawn="false" />
+
+
+</launch>
