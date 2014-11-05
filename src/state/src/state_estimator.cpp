@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <ctime>
-#include <Eigen/Geometry>
+#include <Eigen/Dense>
 
 //library for ros
 #include <ros/ros.h>
@@ -204,28 +204,37 @@ void subMCPTAM(const geometry_msgs::Pose pose)
 
 int main(int argc, char **argv)
 {
-   ros::init(argc, argv, "state_estimator");
-   ros::NodeHandle node;
-   ros::Publisher Controle_node = node.advertise<state::state>("state",1);
-   ros::Rate loop_rate(10);
-   geometry_msgs::Pose pose;
-   state::state state;
-   int print=0;
+    ros::init(argc, argv, "state_estimator");
+    ros::NodeHandle node;
+    ros::Publisher Controle_node = node.advertise<state::state>("state",1);
+    ros::Rate loop_rate(10);
+    geometry_msgs::Pose pose;
+    state::state state;
+    int print=0;
 
 	//ros::Subscriber subA = node.subscribe("/android/imu", 1, poseCallback);
-   ros::Subscriber subS = node.subscribe("sonars", 1, subSonar);
-   ros::Subscriber subC = node.subscribe("compass",1,subComp);
-   //ros::Subscriber subI = node.subscribe("imu",1,subImu);
-   ros::Subscriber subM = node.subscribe("mcptam_pose",1,subMCPTAM);
-   double temps[5]={0,1,2,3,4};
-   double avgt,avgx,avgy,avgz,St,Stx,Sty,Stz;
-
-   while (ros::ok())
-   {
+    ros::Subscriber subS = node.subscribe("sonars", 1, subSonar);
+    ros::Subscriber subC = node.subscribe("compass",1,subComp);
+    //ros::Subscriber subI = node.subscribe("imu",1,subImu);
+    ros::Subscriber subM = node.subscribe("mcptam_pose",1,subMCPTAM);
+    double temps[5]={0,1,2,3,4};
+    double avgt,avgx,avgy,avgz,St,Stx,Sty,Stz;
+    Eigen::Matrix3cd Rmatrix;
+    Rmatrix<< 1, 0, 0,
+              0, 1, 0,
+              0, 0, 1;
+    Eigen::Vector3d poscamf, posglobf, orientcamf, orientglobf, velcamf, velglobf, avelcamf, avelglobf;
+    while (ros::ok())
+    {
         ////////////////////////////////////
         ////       State estimator      ////
         ////////////////////////////////////
         dsztf[4]=3.159*dsztf[3]-3.815*dsztf[2]+2.076*dsztf[1]-0.4291*dsztf[0]+0.01223*dszt[4]-0.02416*dszt[3]+0.03202*dszt[2]-0.02416*dszt[1]+0.01223*dszt[0];
+        xf[4]=3.159*xf[3]-3.815*xf[2]+2.076*xf[1]-0.4291*xf[0]+0.01223*x[4]-0.02416*x[3]+0.03202*x[2]-0.02416*x[1]+0.01223*x[0];
+        yf[4]=3.159*yf[3]-3.815*yf[2]+2.076*yf[1]-0.4291*yf[0]+0.01223*y[4]-0.02416*y[3]+0.03202*y[2]-0.02416*y[1]+0.01223*y[0];
+        zf[4]=3.159*zf[3]-3.815*zf[2]+2.076*zf[1]-0.4291*zf[0]+0.01223*z[4]-0.02416*z[3]+0.03202*z[2]-0.02416*z[1]+0.01223*z[0];
+
+
         avgz=(dsztf[4]+dsztf[3]+dsztf[2]+dsztf[1]+dsztf[0])/5;
         avgt=(temps[4]+temps[3]+temps[2]+temps[1]+temps[0])/(10*5);
         Stx=0;
@@ -242,10 +251,30 @@ int main(int argc, char **argv)
 
 
         /////////////////////////////////////
+
+        ////////////////////////////////////
+        ////          Rotation          ////
+        ////////////////////////////////////   
+
+        poscamf(0)=xf[4]; 
+        poscamf(1)=yf[4];   
+        poscamf(2)=zf[4];
+
+        orientcamf(0)=q1f[4];
+        orientcamf(1)=q2f[4];
+        orientcamf(2)=q3f[4];
+
+        velcamf(0)=Stx/St;
+        velcamf(1)=Sty/St;   
+        velcamf(2)=Stz/St;
+
+        //posglobf=Rmatrix*poscamf;
+        //velglobf=Rmatrix*velcamf;
+        //orientglobf=Rmatrix*velglobf;
+
+
+
         /////////////////////////////////////
-
-
-
         state.pos[0]=xf[4];
         state.pos[1]=yf[4];
         state.pos[2]=dsztf[4];//zf[4];
@@ -266,6 +295,6 @@ int main(int argc, char **argv)
         Controle_node.publish(state);
         ros::spinOnce();
         loop_rate.sleep();
-}
+    }
 return 0;
 }
