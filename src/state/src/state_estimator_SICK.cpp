@@ -183,7 +183,9 @@ void poseCallback(geometry_msgs::PoseStamped ps){
 	    //Eigen::Quaterniond orientation = Eigen::Quaterniond(Eigen::AngleAxisd(cubesAngles[0], Eigen::Vector3d::UnitZ()));
 	    //Eigen::AngleAxisf ang = Eigen::Quaternionf(ps.pose.orientation);
 	    
-  rz2=-sgn(ps.pose.orientation.z)*ps.pose.orientation.w;
+  //rz2=-sgn(ps.pose.orientation.z)*ps.pose.orientation.w;
+  Eigen::Quaterniond quad(ps.pose.orientation.x,ps.pose.orientation.y,ps.pose.orientation.z,ps.pose.orientation.w);
+  rz2 = atan2(quad.toRotationMatrix()(1, 2), quad.toRotationMatrix()(2, 2));
   if(rz2 != rz2) //Testing if NaN
     rz2=0;
 }
