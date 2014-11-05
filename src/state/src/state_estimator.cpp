@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <ctime>
+#include <iostream>
 #include <Eigen/Dense>
 
 //library for ros
@@ -40,6 +41,7 @@
 #include "sensors/motor.h"
 #include "sensors/motorArray.h"
 //#include "cube.h"       // Cube geometry, inertia, etc.
+
 
 bool start=true;
 double dsz1=0;
@@ -219,10 +221,13 @@ int main(int argc, char **argv)
     ros::Subscriber subM = node.subscribe("mcptam_pose",1,subMCPTAM);
     double temps[5]={0,1,2,3,4};
     double avgt,avgx,avgy,avgz,St,Stx,Sty,Stz;
-    Eigen::Matrix3cd Rmatrix;
+    double theta=7.00/12.00*M_PI;
+    Eigen::Matrix3d Rmatrix;
+    ROS_INFO("theta : %f",theta);
     Rmatrix<< 1, 0, 0,
-              0, 1, 0,
-              0, 0, 1;
+              0, cos(theta), -sin(theta),
+              0, sin(theta), cos(theta);
+    std::cout<<Rmatrix<<std::endl;
     Eigen::Vector3d poscamf, posglobf, orientcamf, orientglobf, velcamf, velglobf, avelcamf, avelglobf;
     while (ros::ok())
     {
@@ -234,16 +239,23 @@ int main(int argc, char **argv)
         yf[4]=3.159*yf[3]-3.815*yf[2]+2.076*yf[1]-0.4291*yf[0]+0.01223*y[4]-0.02416*y[3]+0.03202*y[2]-0.02416*y[1]+0.01223*y[0];
         zf[4]=3.159*zf[3]-3.815*zf[2]+2.076*zf[1]-0.4291*zf[0]+0.01223*z[4]-0.02416*z[3]+0.03202*z[2]-0.02416*z[1]+0.01223*z[0];
 
+        q0f[4]=3.159*q0f[3]-3.815*q0f[2]+2.076*q0f[1]-0.4291*q0f[0]+0.01223*q0[4]-0.02416*q0[3]+0.03202*q0[2]-0.02416*q0[1]+0.01223*q0[0];
+        q1f[4]=3.159*q1f[3]-3.815*q1f[2]+2.076*q1f[1]-0.4291*q1f[0]+0.01223*q1[4]-0.02416*q1[3]+0.03202*q1[2]-0.02416*q1[1]+0.01223*q1[0];
+        q2f[4]=3.159*q2f[3]-3.815*q2f[2]+2.076*q2f[1]-0.4291*q2f[0]+0.01223*q2[4]-0.02416*q2[3]+0.03202*q2[2]-0.02416*q2[1]+0.01223*q2[0];
+        q3f[4]=3.159*q3f[3]-3.815*q3f[2]+2.076*q3f[1]-0.4291*q3f[0]+0.01223*q3[4]-0.02416*q3[3]+0.03202*q3[2]-0.02416*q3[1]+0.01223*q3[0];
 
         avgz=(dsztf[4]+dsztf[3]+dsztf[2]+dsztf[1]+dsztf[0])/5;
+        avgx=(xf[4]+xf[3]+xf[2]+xf[1]+xf[0])/5;
+        avgy=(yf[4]+yf[3]+yf[2]+yf[1]+yf[0])/5;
+        //avgz=(zf[4]+zf[3]+zf[2]+zf[1]+zf[0])/5;
         avgt=(temps[4]+temps[3]+temps[2]+temps[1]+temps[0])/(10*5);
         Stx=0;
         Sty=0;
         Stz=0;
         St=0;
         for(int i=0;i<5;i++){
-            Stx=(temps[i]-avgt)*(xf[i]-avgz);
-            Sty=(temps[i]-avgt)*(yf[i]-avgz);
+            Stx=(temps[i]-avgt)*(xf[i]-avgx);
+            Sty=(temps[i]-avgt)*(yf[i]-avgy);
             //Stz=(temps[i]-avgt)*(zf[i]-avgz);
             Stz=(temps[i]-avgt)*(dsztf[i]-avgz);
             St=(temps[i]-avgt)*(temps[i]-avgt);
@@ -268,23 +280,23 @@ int main(int argc, char **argv)
         velcamf(1)=Sty/St;   
         velcamf(2)=Stz/St;
 
-        //posglobf=Rmatrix*poscamf;
-        //velglobf=Rmatrix*velcamf;
-        //orientglobf=Rmatrix*velglobf;
+        posglobf=Rmatrix*poscamf;
+        velglobf=Rmatrix*velcamf;
+        orientglobf=Rmatrix*orientcamf;
 
 
 
         /////////////////////////////////////
-        state.pos[0]=xf[4];
-        state.pos[1]=yf[4];
-        state.pos[2]=dsztf[4];//zf[4];
-        state.quat[0]=q0f[4];
-        state.quat[1]=q1f[4];
-        state.quat[2]=q2f[4];
-        state.quat[3]=q3f[4];
-        state.vel[0]=Stx/St;
-        state.vel[1]=Sty/St;
-        state.vel[2]=Stz/St;
+        state.pos[0]=posglobf(0);
+        state.pos[1]=posglobf(1);
+        state.pos[2]=dsztf[4];//posglobf(2);
+        state.quat[0]=orientglobf(0);
+        state.quat[1]=orientglobf(1);
+        state.quat[2]=orientglobf(2);
+        state.quat[3]=orientglobf(3);
+        state.vel[0]=velglobf(0);
+        state.vel[1]=velglobf(1);
+        state.vel[2]=velglobf(2);
         state.angvel[0]=0;
         state.angvel[1]=0;
         state.angvel[2]=0;
