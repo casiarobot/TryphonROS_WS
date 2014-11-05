@@ -187,7 +187,6 @@ void subState(const state::state state)
 	fuzzy_control(state);
 }
 
-<<<<<<< HEAD
 void subdPose(const geometry_msgs::Pose dPose)
 {
 
@@ -210,13 +209,8 @@ void subdPose(const geometry_msgs::Pose dPose)
     des_state.quat[0]=init_state.quat[0]+atan2(quad.toRotationMatrix()(1, 2), quad.toRotationMatrix()(2, 2));
   
   
-ROS_INFO("Dx: %f, Dy: %f, Dz: %f,DTx: %f, DTy: %f, DTz: %f",des_state.pos[0], des_state.pos[1], des_state.pos[2], des_state.quat[1], des_state.quat[2], des_state.quat[0]);
+  //ROS_INFO("Dx: %f, Dy: %f, Dz: %f,DTx: %f, DTy: %f, DTz: %f",des_state.pos[0], des_state.pos[1], des_state.pos[2], des_state.quat[1], des_state.quat[2], des_state.quat[0]);
 }
-=======
-//void desired_deltapose_callback(const geometry_msgs::Pose d_pose) 
-//{
-//}
->>>>>>> a7de105d13cc6b4523c3708d52d54c464b74490f
 
 const char* get_ip()
 {
@@ -273,26 +267,11 @@ int main(int argc, char **argv)
 
     sprintf(rosname,"/%s/state",temp_arg.c_str());
 	ros::Subscriber subS = node.subscribe(rosname, 1, subState);
-<<<<<<< HEAD
 
 	ros::Subscriber subdP = node.subscribe("/desired_deltapose", 1, subdPose);
 
-=======
-	//ros::Subscriber delta_des = node.subscribe("desired_deltapose",1,desired_deltapose_callback);
->>>>>>> a7de105d13cc6b4523c3708d52d54c464b74490f
 	while (ros::ok())
 	{
-/*        	geometry_msgs::Wrench wrenchMsg;
-        	////////////////////////////////////
-        	////       Controller           ////
-        	////////////////////////////////////
-
-		wrenchMsg.force.y=0;
-		wrenchMsg.force.z=0.0012*(errorn+1.2*deriv);
-      	  	wrenchMsg.torque.x=0;
-        	wrenchMsg.torque.y=0;
-    		wrenchMsg.torque.z=-0.012*errorz;
-*/
 		//ROS_INFO("fx: %f, fy: %f, fz: %f,Tx: %f, Ty: %f, Tz: %f",F.force.x, F.force.y, F.force.z, F.torque.x, F.torque.y, F.torque.z);
 		//ROS_INFO("ex: %f, ey: %f, ez: %f,eTx: %f, eTy: %f, eTz: %f",E.pos[0], E.pos[1], E.pos[2], E.quat[1], E.quat[2], E.quat[0]);
        		 /////////////////////////////////
