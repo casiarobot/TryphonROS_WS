@@ -267,6 +267,8 @@ int main(int argc, char **argv)
 	sprintf(rosname,"/%s/imbuf",temp_arg.c_str());
 	ros::Subscriber subI = node.subscribe(rosname,1,subImu);
 	ros::Subscriber subSick = node.subscribe("/cubeA_pose", 1, poseCallback);
+	
+	
 	while (ros::ok())
 	{
         	////////////////////////////////////
