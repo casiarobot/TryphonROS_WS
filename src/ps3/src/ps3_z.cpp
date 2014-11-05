@@ -73,10 +73,12 @@ BOOLEAN;
 typedef unsigned char BYTE;
 #define INTERACTION     0
 
+ros::Publisher  pose_des;
 
 geometry_msgs::Wrench  move_to;
 geometry_msgs::Wrench wrenchMsg;
 geometry_msgs::Pose go_to; //used with MCPTAM to go to a location
+geometry_msgs::Pose old_go_to;
 
 int ps3_mode=0; // 1 for mcptam pose
 int print=0;
@@ -97,7 +99,7 @@ double rzo=0;
 float kz=0.0015;
 
 float incx=0,incy=0,incz=0;  //for open loop control
-float posx=0,posy=0,posz=1; //for pose
+float posx=0,posy=0,posz=0; //for pose
 std_msgs::Bool button_magnet;
 
 
@@ -143,11 +145,13 @@ if (ps3_mode==1)
 {
 	
     //increment x with max and min for pose
-	if((posx<2000 && button_x>0)||(posx>-2000 && button_x<0)){posx=posx+button_x;}
+	if((posx<500 && button_x>0)||(posx>-500 && button_x<0)){posx=posx+button_x;} //500*max_d (.01) is max
 	//increment y with max and min for pose
-	if((posy<2000 && button_y>0)||(posy>-2000 && button_y<0)){posy=posy+button_y;}
+	if((posy<500 && button_y>0)||(posy>-500 && button_y<0)){posy=posy+button_y;}
     //increment z with max and min for pose
-	if((posz<2.4 && button_z>0)||(posz>0.15 && button_z<0)){posz=posz+0.01*button_z;}
+	if((posz<1.2 && button_z>0)||(posz>-0.8 && button_z<0)){posz=posz+0.01*button_z;}
+			
+
 }
 else
 {
@@ -180,6 +184,7 @@ if (Joy->buttons[PS3_BUTTON_ACTION_CROSS])
 	dszwant=600;
 	posx=0;
 	posy=0;
+	posz=0;
 }
 
 
@@ -196,6 +201,12 @@ go_to.orientation.x=0;
 go_to.orientation.y=0;
 go_to.orientation.z=0;
 go_to.orientation.w=0; 
+
+ROS_INFO("posx:%f, posy:%f, posz:%f, e_magnet: %d",go_to.position.x,go_to.position.y,go_to.position.z,button_magnet.data);
+  			
+  		
+
+		pose_des.publish(go_to);
 
 //ROS_INFO("x:%f, y:%f, z:%f \n", move_to.force.x,move_to.force.y,move_to.force.z);
 
@@ -253,18 +264,26 @@ move_to.torque.z=0;
 
 go_to.position.x=0;
 go_to.position.y=0;
-go_to.position.z=posz;
+go_to.position.z=0;
 go_to.orientation.x=0;
 go_to.orientation.y=0;
 go_to.orientation.z=0;
-go_to.orientation.w=0; 
+go_to.orientation.w=0;
+
+old_go_to.position.x=0;
+old_go_to.position.y=0;
+old_go_to.position.z=0;
+old_go_to.orientation.x=0;
+old_go_to.orientation.y=0;
+old_go_to.orientation.z=0;
+old_go_to.orientation.w=0;  
 
 ros::Subscriber  joy_stick = n.subscribe<sensor_msgs::Joy>("joy",1,&joycallback);
 ros::Subscriber subS = n.subscribe("state", 1, subState);
 
 
 
-ros::Publisher  pose_des = n.advertise<geometry_msgs::Pose>("desired_state",1);
+pose_des = n.advertise<geometry_msgs::Pose>("desired_deltapose",1);
 ros::Publisher  to_control = n.advertise<geometry_msgs::Wrench>("ps3_control",1);
 ros::Publisher  e_magnet = n.advertise<std_msgs::Bool>("magnet_on",1);
 ros::Rate loop_rate(20);
@@ -272,20 +291,8 @@ ros::Rate loop_rate(20);
 	while (ros::ok())
 	{
 		if(print>10){print=0;} 
-		if (ps3_mode==1)
+		if (ps3_mode!=1)
 		{
-			if(print==0)
-			{	
-				ROS_INFO("posx:%f, posy:%f, posz:%f, e_magnet: %d",go_to.position.x,go_to.position.y,go_to.position.z,button_magnet.data);
-  			}
-  			print+=1;
-		
-		pose_des.publish(go_to);
-
-		}
-		else
-		{
-
                ////////////////////////////////////
                ////       Controller           ////
                ////////////////////////////////////
