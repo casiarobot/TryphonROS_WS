@@ -703,6 +703,13 @@ void Map::LoadFromFolder(std::string folder, SE3Map mPoses, TaylorCameraMap mCam
   
   file.close();
   
+  // Refresh the scene depths for the MKFs
+  for(MultiKeyFramePtrList::iterator mkf_it = mlpMultiKeyFrames.begin(); mkf_it != mlpMultiKeyFrames.end(); ++mkf_it)
+  {
+    MultiKeyFrame& mkf = *(*mkf_it);
+    mkf.RefreshSceneDepthRobust();
+  }
+  
   mbGood = true;
   MakeSnapshot();
   
