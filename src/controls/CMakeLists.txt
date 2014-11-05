@@ -5,6 +5,7 @@ project(controls)
 
 ## Find catkin and any catkin packages
 find_package(catkin REQUIRED COMPONENTS geometry_msgs roscpp rospy std_msgs sensors state)
+find_package(Eigen REQUIRED)
 
 ## Declare ROS messages, services and actions 
 #add_message_files(DIRECTORY msg FILES sonar.msg sonarArray.msg compass.msg motor.msg motorArray.msg forces.msg imuros.msg state.msg)
@@ -16,7 +17,8 @@ find_package(catkin REQUIRED COMPONENTS geometry_msgs roscpp rospy std_msgs sens
 ## Declare a catkin package
 catkin_package( INCLUDE_DIRS include
 # Libraries
-CATKIN_DEPENDS  sensor_msgs geometry_msgs sensors state)
+CATKIN_DEPENDS  sensor_msgs geometry_msgs sensors state
+DEPENDS eigen)
 
 ##Specify additional locations of header files
 ## Your package locations should be listed before other locations
@@ -24,7 +26,8 @@ include_directories( ${catkin_INCLUDE_DIRS})
 
 
 ## Build talker and listener
-include_directories(include ${catkin_INCLUDE_DIRS})
+include_directories(include ${catkin_INCLUDE_DIRS}
+  ${EIGEN_INCLUDE_DIRS})
 
 
 add_executable(control src/control.cpp)

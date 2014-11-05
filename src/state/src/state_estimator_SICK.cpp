@@ -66,7 +66,7 @@ double dsztf[5]={0,0,0,0,0};
 //double dszto=0;
 double dsx1=0,dsx2=0;
 double dsy1=0,dsy2=0;
-double rz1=0,rz2=0;
+double rz1=0,rz2=0,last_rz2=0, rz2_init=0;
 double rz0=0;
 double rzold=0;
 double ax=0;
@@ -178,16 +178,29 @@ mz=msg->buffer[0].magn[2];
 void poseCallback(geometry_msgs::PoseStamped ps){
   dsx2=ps.pose.position.x;
   dsy2=ps.pose.position.y;
-  
-  	    //Convert from angle to Quaterion
-	    //Eigen::Quaterniond orientation = Eigen::Quaterniond(Eigen::AngleAxisd(cubesAngles[0], Eigen::Vector3d::UnitZ()));
-	    //Eigen::AngleAxisf ang = Eigen::Quaternionf(ps.pose.orientation);
 	    
   //rz2=-sgn(ps.pose.orientation.z)*ps.pose.orientation.w;
   Eigen::Quaterniond quad(ps.pose.orientation.x,ps.pose.orientation.y,ps.pose.orientation.z,ps.pose.orientation.w);
   rz2 = atan2(quad.toRotationMatrix()(1, 2), quad.toRotationMatrix()(2, 2));
   if(rz2 != rz2) //Testing if NaN
     rz2=0;
+  				
+  if ((last_rz2-rz2) < -1.6)
+	  rz2_init=rz2_init+3.1416;
+  
+  if ((last_rz2-rz2) > 1.6)
+	  rz2_init=rz2_init-3.1416;	
+	  
+  float rz2_tmp = rz2 - rz2_init;
+  
+  if (rz2_tmp > 1.6)
+	  rz2_init=rz2_init+3.1416;	
+	  
+  if (rz2_tmp < -1.6)
+	  rz2_init=rz2_init-3.1416;
+  
+  last_rz2 = rz2;
+  rz2 = rz2 - rz2_init;
 }
 
 const char* get_ip()

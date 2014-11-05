@@ -65,3 +65,13 @@
 // orientation
 #define	ANGLE_INDEFINI				-360.1F		// degres
 #define	TEMPERATURE_INDEFINIE			100.1F		// degres
+
+// Environnement SICK
+#define MAX_X					10	//m
+#define MIN_X					0.2	//m
+#define MAX_Y					5	//m
+#define MIN_Y					-5	//m
+#define MAX_Z					3	//m
+#define MIN_Z					0	//m
+#define MAX_TZ					3.14	//rad
+#define MIN_TZ					0	//rad

@@ -10,13 +10,17 @@
 #include <arpa/inet.h>
 #include <signal.h>
 
+#include <Eigen/Dense>
+#include <Eigen/Geometry>
+
 bool start=true;
 state::state init_state;
+state::state des_state;
 geometry_msgs::Wrench F;
 
 double Ls=(double)CUBE_LENGTH;				// Cube lengh
 state::state E;		// The error
-state::state oE;		// The old error
+state::state oE;	// The old error
 state::state I;		// Integral of error
 state::state D;		// Derivative of error
 double wlimit=((double)DISTANCE_SECURITE)/100;	// The collision limit
@@ -39,23 +43,23 @@ void mySigintHandler(int sig)
 
 void initctr(const state::state state)
 {
-  //init_state=state;
-	init_state.pos[0]=4;
+  init_state=state;des_state=state;
+/*	init_state.pos[0]=4;
 	init_state.pos[1]=-2.5;
 	init_state.pos[2]=2;
-	init_state.quat[0]=3;
+	init_state.quat[0]=3;*/
   I.pos[0]=0.0;
-I.pos[1]=0.0;
-I.pos[2]=0.0;
-//I.theta_x=0.0;
-//I.theta_y=0.0;
-I.quat[0]=0.0;
-oE.pos[0]=0.0;
-oE.pos[1]=0.0;
-oE.pos[2]=0.0;
-//oE.theta_x=0.0;
-//oE.theta_y=0.0;
-oE.quat[0]=0.0;
+  I.pos[1]=0.0;
+  I.pos[2]=0.0;
+  //I.theta_x=0.0;
+  //I.theta_y=0.0;
+  I.quat[0]=0.0;
+  oE.pos[0]=0.0;
+  oE.pos[1]=0.0;
+  oE.pos[2]=0.0;
+  //oE.theta_x=0.0;
+  //oE.theta_y=0.0;
+  oE.quat[0]=0.0;
  gfuz = {((double)1/5), (double)MAX_ERROR_FORCE_XY, (double)MAX_ERROR_FORCE_Z, (double)MAX_ERROR_FORCE_TZ, (double)MAX_ERROR_FORCE_TXY, (double)ERROR_RANGE_XY, (double)ERROR_RANGE_Z, (double)ERROR_RANGE_TZ, (double)ERROR_RANGE_TXY, (double)MAX_INTEGRAL_FORCE_XY, (double)MAX_INTEGRAL_FORCE_Z, (double)MAX_INTEGRAL_FORCE_TZ, (double)MAX_INTEGRAL_FORCE_TXY, (double)INTEGRAL_RANGE_XY, (double)INTEGRAL_RANGE_Z, (double)INTEGRAL_RANGE_TZ, (double)INTEGRAL_RANGE_TXY, (double)MAX_INC_FORCE_XY, (double)MAX_INC_FORCE_Z, (double)MAX_INC_FORCE_TZ, (double)MAX_INC_FORCE_TXY, (double)INC_RANGE_XY, (double)INC_RANGE_Z, (double)INC_RANGE_TZ, (double)INC_RANGE_TXY, (double)INC_SLOPE_XY, (double)INC_SLOPE_Z, (double)INC_SLOPE_TZ, (double)INC_SLOPE_TXY, (double)MAX_DEC_FORCE_XY, (double)MAX_DEC_FORCE_Z, (double)MAX_DEC_FORCE_TZ, (double)MAX_DEC_FORCE_TXY, (double)DEC_RANGE_XY, (double)DEC_RANGE_Z, (double)DEC_RANGE_TZ, (double)DEC_RANGE_TXY, (double)DEC_SLOPE_XY, (double)DEC_SLOPE_Z, (double)DEC_SLOPE_TZ, (double)DEC_SLOPE_TXY, (double)ANTI_WINDUP_XY, (double)ANTI_WINDUP_Z, (double)ANTI_WINDUP_TZ, (double)ANTI_WINDUP_TXY};
 }
 
@@ -99,10 +103,10 @@ void fuzzy_control(const state::state state)
 		oE.quat[0]=E.quat[0];
 
 		// Calculate the error
-		E.pos[0]=init_state.pos[0]-state.pos[0];
-		E.pos[1]=init_state.pos[1]-state.pos[1];
-		E.pos[2]=init_state.pos[2]-state.pos[2];
-		E.quat[0]=init_state.quat[0]-state.quat[0];
+		E.pos[0]=des_state.pos[0]-state.pos[0];
+		E.pos[1]=des_state.pos[1]-state.pos[1];
+		E.pos[2]=des_state.pos[2]-state.pos[2];
+		E.quat[0]=des_state.quat[0]-state.quat[0];
 		
 		/*...Integral of Error.................................................................*/
 
@@ -183,6 +187,31 @@ void subState(const state::state state)
 	fuzzy_control(state);
 }
 
+void subdPose(const geometry_msgs::Pose dPose)
+{
+
+  if(start)
+    return;
+  
+  if(dPose.position.x+init_state.pos[0]<=MAX_X && dPose.position.x+init_state.pos[0]>=MIN_X)
+	des_state.pos[0]=init_state.pos[0]+dPose.position.x;
+  
+  if(dPose.position.y+init_state.pos[1]<=MAX_Y && dPose.position.y+init_state.pos[1]>=MIN_Y)
+	des_state.pos[1]=init_state.pos[1]+dPose.position.y;
+  
+  if(dPose.position.z+init_state.pos[2]<=MAX_Z && dPose.position.z+init_state.pos[2]>=MIN_Z)
+	des_state.pos[2]=init_state.pos[2]+dPose.position.z;
+	
+  Eigen::Quaterniond quad(dPose.orientation.x,dPose.orientation.y,dPose.orientation.z,dPose.orientation.w);
+  float ang = atan2(quad.toRotationMatrix()(1, 2), quad.toRotationMatrix()(2, 2));
+  
+  if(ang+init_state.quat[0]<=MAX_TZ && ang+init_state.quat[0]>=MIN_TZ)
+    des_state.quat[0]=init_state.quat[0]+atan2(quad.toRotationMatrix()(1, 2), quad.toRotationMatrix()(2, 2));
+  
+  
+ROS_INFO("Dx: %f, Dy: %f, Dz: %f,DTx: %f, DTy: %f, DTz: %f",des_state.pos[0], des_state.pos[1], des_state.pos[2], des_state.quat[1], des_state.quat[2], des_state.quat[0]);
+}
+
 const char* get_ip()
 {
   int fd;
@@ -238,6 +267,9 @@ int main(int argc, char **argv)
 
     sprintf(rosname,"/%s/state",temp_arg.c_str());
 	ros::Subscriber subS = node.subscribe(rosname, 1, subState);
+
+	ros::Subscriber subdP = node.subscribe("/desired_deltapose", 1, subdPose);
+
 	while (ros::ok())
 	{
 /*        	geometry_msgs::Wrench wrenchMsg;
@@ -251,8 +283,8 @@ int main(int argc, char **argv)
         	wrenchMsg.torque.y=0;
     		wrenchMsg.torque.z=-0.012*errorz;
 */
-		ROS_INFO("fx: %f, fy: %f, fz: %f,Tx: %f, Ty: %f, Tz: %f",F.force.x, F.force.y, F.force.z, F.torque.x, F.torque.y, F.torque.z);
-		ROS_INFO("ex: %f, ey: %f, ez: %f,eTx: %f, eTy: %f, eTz: %f",E.pos[0], E.pos[1], E.pos[2], E.quat[1], E.quat[2], E.quat[0]);
+		//ROS_INFO("fx: %f, fy: %f, fz: %f,Tx: %f, Ty: %f, Tz: %f",F.force.x, F.force.y, F.force.z, F.torque.x, F.torque.y, F.torque.z);
+		//ROS_INFO("ex: %f, ey: %f, ez: %f,eTx: %f, eTy: %f, eTz: %f",E.pos[0], E.pos[1], E.pos[2], E.quat[1], E.quat[2], E.quat[0]);
        		 /////////////////////////////////
         	Controle_node.publish(F);
 		ros::spinOnce();
