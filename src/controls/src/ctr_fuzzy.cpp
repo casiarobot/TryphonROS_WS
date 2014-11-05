@@ -39,7 +39,11 @@ void mySigintHandler(int sig)
 
 void initctr(const state::state state)
 {
-  init_state=state;
+  //init_state=state;
+	init_state.pos[0]=4;
+	init_state.pos[1]=-2.5;
+	init_state.pos[2]=2;
+	init_state.quat[0]=3;
   I.pos[0]=0.0;
 I.pos[1]=0.0;
 I.pos[2]=0.0;
@@ -207,29 +211,33 @@ const char* get_ip()
 
 int main(int argc, char **argv)
 {
-      	char rosname[100], ip[100];
+      	char rosname[100],ip[100];
 	sprintf(rosname,"control_%s",get_ip());
-	std::string s;
+	std::string s, temp_arg ;
 	
 	ros::init(argc, argv, rosname);
     //ros::init(argc, argv, "control");
     ros::NodeHandle node;
     
     signal(SIGINT, mySigintHandler);
-       /* if (node.getParam("target", s))
+        if (argc==2)
         {
-          ROS_INFO("TARGET IS: %s", s.c_str());
+          ROS_INFO("TARGET IS: %s", argv[1]);
         }
         else
         {
           ROS_ERROR("Failed to get param 'target'");
-	  return 0;
-        }*/
-    
-    Controle_node = node.advertise<geometry_msgs::Wrench>("/192_168_10_241/command_control",1);
-    ros::Rate loop_rate(5); //CHANGE TIME OF FUZZY CONTROL IF DIFF zOF 5H
+	  	return 0;
+        }
 
-	ros::Subscriber subS = node.subscribe("/192_168_10_241/state", 1, subState);
+    temp_arg = argv[1];
+    std::replace(temp_arg.begin(), temp_arg.end(), '.', '_');
+    sprintf(rosname,"/%s/command_control",temp_arg.c_str());
+    Controle_node = node.advertise<geometry_msgs::Wrench>(rosname,1);
+    ros::Rate loop_rate(5); //CHANGE TIME OF FUZZY CONTROL OF DIFF zOF 5H
+
+    sprintf(rosname,"/%s/state",temp_arg.c_str());
+	ros::Subscriber subS = node.subscribe(rosname, 1, subState);
 	while (ros::ok())
 	{
 /*        	geometry_msgs::Wrench wrenchMsg;
