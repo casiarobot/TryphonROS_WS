@@ -27,7 +27,6 @@ Server::Server(){
     this->loop();
 }
 
-//sscanf(p->buffer_in, "l-x:%ld/y:%ld/z:%ld/yaw:%ld/pitch:%ld/roll:%ld\n", &lposx, &lposy, &lposz, &lthetax, &lthetay, &lthetaz);
 void Server::loop(){
     ROS_INFO("Star loop");
     while(ros::ok()){
@@ -64,7 +63,7 @@ void Server::receiveLoop(){
     char buff[255];
     long int  lposx, lposy, lposz, lthetax, lthetay, lthetaz;
     size_t size = 255;
-    int comErrorCode;
+    int comErrorCode, socketErrCode;
     do{
         comErrorCode = recv(comSocket, buff, size, 0);
         this->checkForError(comErrorCode, "ERROR on receive");
@@ -79,8 +78,8 @@ void Server::generateAndPublishPoseMsg(long int  posx, long int  posy, long int 
                                        long int  thetax, long int  thetay, long int  thetaz){
     geometry_msgs::Pose msg;
     
-	    //Convert from angle to Quaterion (SUPPOSE 4DDL ONLY!!!)
-	    Eigen::Quaterniond orientation = Eigen::Quaterniond(Eigen::AngleAxisd(thetaz*3.1416/1800, Eigen::Vector3d::UnitZ()));
+    //Convert from angle to Quaterion (SUPPOSE 4DDL ONLY!!!)
+    Eigen::Quaterniond orientation = Eigen::Quaterniond(Eigen::AngleAxisd((double)thetaz*3.1416/1800, Eigen::Vector3d::UnitZ()));
 	    
     msg.position.x = (double)posx/100;
     msg.position.y = (double)posy/100;

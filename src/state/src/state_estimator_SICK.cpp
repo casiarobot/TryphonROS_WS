@@ -184,7 +184,7 @@ void poseCallback(geometry_msgs::PoseStamped ps){
   rz2 = atan2(quad.toRotationMatrix()(1, 2), quad.toRotationMatrix()(2, 2));
   if(rz2 != rz2) //Testing if NaN
     rz2=0;
-  				
+/*
   if ((last_rz2-rz2) < -1.6)
 	  rz2_init=rz2_init+3.1416;
   
@@ -200,7 +200,8 @@ void poseCallback(geometry_msgs::PoseStamped ps){
 	  rz2_init=rz2_init-3.1416;
   
   last_rz2 = rz2;
-  rz2 = rz2 - rz2_init;
+  rz2 = rz2 - rz2_init;*/
+  rz2=3.14*sin(rz2);
 }
 
 const char* get_ip()
@@ -232,22 +233,39 @@ const char* get_ip()
 int main(int argc, char **argv)
 {
     	char rosname[100];
+	std::string temp_arg;
 	//gethostname(rosname,100);
 	sprintf(rosname,"state_estimator_%s",get_ip());
-	
 	ros::init(argc, argv, rosname);
     	ros::NodeHandle node;
-    	ros::Publisher Controle_node = node.advertise<state::state>("/192_168_10_241/state",1);
+	
+	if (argc==2)
+        {
+          ROS_INFO("TARGET IS: %s", argv[1]);
+        }
+        else
+        {
+          ROS_ERROR("Failed to get param 'target'");
+	  	return 0;
+        }
+	temp_arg = argv[1];
+	std::replace(temp_arg.begin(), temp_arg.end(), '.', '_');
+	
+	sprintf(rosname,"/%s/state",temp_arg.c_str());
+    	ros::Publisher Controle_node = node.advertise<state::state>(rosname,1);
     	ros::Rate loop_rate(10);
     	geometry_msgs::Pose pose;
     	state::state state;
 	int print=0;
-   double time[5]={0,1,2,3,4};
-
+	double time[5]={0,1,2,3,4};
+	
 	//ros::Subscriber subA = node.subscribe("/android/imu", 1, poseCallback);
-	ros::Subscriber subS = node.subscribe("/192_168_10_241/sonars", 1, subSonar);
-	ros::Subscriber subC = node.subscribe("/192_168_10_241/compass",1,subComp);
-	ros::Subscriber subI = node.subscribe("/192_168_10_241/imubuf",1,subImu);
+	sprintf(rosname,"/%s/sonars",temp_arg.c_str());
+	ros::Subscriber subS = node.subscribe(rosname, 1, subSonar);
+	sprintf(rosname,"/%s/compass",temp_arg.c_str());
+	ros::Subscriber subC = node.subscribe(rosname,1,subComp);
+	sprintf(rosname,"/%s/imbuf",temp_arg.c_str());
+	ros::Subscriber subI = node.subscribe(rosname,1,subImu);
 	ros::Subscriber subSick = node.subscribe("/cubeA_pose", 1, poseCallback);
 	while (ros::ok())
 	{

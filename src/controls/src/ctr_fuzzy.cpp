@@ -240,11 +240,11 @@ const char* get_ip()
 
 int main(int argc, char **argv)
 {
-      	char rosname[100],ip[100];
-	sprintf(rosname,"control_%s",get_ip());
-	std::string s, temp_arg ;
+    char rosname[100];
+    sprintf(rosname,"control_%s",get_ip());
+    std::string temp_arg ;
 	
-	ros::init(argc, argv, rosname);
+    ros::init(argc, argv, rosname);
     //ros::init(argc, argv, "control");
     ros::NodeHandle node;
     
@@ -258,9 +258,9 @@ int main(int argc, char **argv)
           ROS_ERROR("Failed to get param 'target'");
 	  	return 0;
         }
-
     temp_arg = argv[1];
     std::replace(temp_arg.begin(), temp_arg.end(), '.', '_');
+    
     sprintf(rosname,"/%s/command_control",temp_arg.c_str());
     Controle_node = node.advertise<geometry_msgs::Wrench>(rosname,1);
     ros::Rate loop_rate(5); //CHANGE TIME OF FUZZY CONTROL OF DIFF zOF 5H
