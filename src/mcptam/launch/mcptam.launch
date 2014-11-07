@@ -21,6 +21,7 @@
   
   <param name="save_folder" type="string" value="$(find mcptam)/saved" />
   <param name="load_map" type="bool" value="$(arg load)" />
+  <param name="fix_loaded_map" type="bool" value="false" />
   
   <!--
   <param name="camera_pose_file" type="string" value="$(find mcptam)/poses/poses.dat" />

@@ -471,7 +471,7 @@ void Tracker::TrackFrame(ImageBWMap& imFrames, ros::Time timestamp, bool bDraw)
          (*gvnAddingMKFs &&
           mOverallTrackingQuality == GOOD &&
           mnLostFrames == 0 &&
-          ros::Time::now() - mtLastMultiKeyFrameDropped > ros::Duration(0.1) &&
+          ros::Time::now() - mtLastMultiKeyFrameDropped > ros::Duration(0.5) &&
           //mMapMaker.NeedNewMultiKeyFrame(*mpCurrentMKF, CountMeasurements()))
           mMapMaker.NeedNewMultiKeyFrame(*mpCurrentMKF)))
       {

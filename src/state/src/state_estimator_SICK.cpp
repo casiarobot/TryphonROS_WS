@@ -216,7 +216,7 @@ void poseCallback(geometry_msgs::PoseStamped ps){
   
   last_rz2 = rz2;
   rz2 = rz2 - rz2_init;*/
-  rz2=3.14*sin(rz2);
+  //rz2=-3.14*sin(rz2);
 }
 
 const char* get_ip()

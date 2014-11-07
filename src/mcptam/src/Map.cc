@@ -252,6 +252,9 @@ void Map::SaveToFolder(std::string folder)
     return;
   }
   
+  // IMPORTANT! Set precision so that the discrepancy between saved and then reloaded maps is very very small
+  ofs.precision(20);
+  
   boost::mutex::scoped_lock lock(mMutex);
   
   // First write BaseFromWorld for each MKF in system
@@ -383,7 +386,7 @@ void Map::SaveToFolder(std::string folder)
 }
 
 // Load all map information to a file
-void Map::LoadFromFolder(std::string folder, SE3Map mPoses, TaylorCameraMap mCameraModels)
+void Map::LoadFromFolder(std::string folder, SE3Map mPoses, TaylorCameraMap mCameraModels, bool bFix)
 { 
   Reset();
   
@@ -435,7 +438,7 @@ void Map::LoadFromFolder(std::string folder, SE3Map mPoses, TaylorCameraMap mCam
       
       // MKF number, Position (3 vector), Orientation (quaternion, 4 vector)
       MultiKeyFrame* pMKF = new MultiKeyFrame;
-      pMKF->mbFixed = (i == 0);
+      pMKF->mbFixed = bFix ? true : (i == 0);
       
       // First is MKF id
       std::getline(readlineSS,conversion,',');
@@ -572,7 +575,7 @@ void Map::LoadFromFolder(std::string folder, SE3Map mPoses, TaylorCameraMap mCam
       conversionSS.clear();
       conversionSS.str(conversion);
       conversionSS >> nFixed;
-      pPointNew->mbFixed = static_cast<bool>(nFixed);
+      pPointNew->mbFixed = bFix ? true : static_cast<bool>(nFixed);
       
       // Optimized flag
       std::getline(readlineSS,conversion,',');
@@ -912,5 +915,16 @@ void Map::Restore()
   // Need to overwrite the new stuff in the "snapshot" variables with copies
   // of the restored map
   MakeSnapshot();
+}
+
+bool Map::Contains(MultiKeyFrame* pMKF)
+{
+  for(MultiKeyFramePtrList::iterator mkf_it = mlpMultiKeyFrames.begin(); mkf_it != mlpMultiKeyFrames.end(); ++mkf_it)
+  {
+    if(pMKF == *mkf_it)
+      return true;
+  }
+  
+  return false;
 }
 
