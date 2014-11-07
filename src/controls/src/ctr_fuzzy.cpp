@@ -16,7 +16,6 @@
 bool start=true;
 state::state init_state;
 state::state des_state;
-geometry_msgs::Wrench F;
 
 double Ls=(double)CUBE_LENGTH;				// Cube lengh
 state::state E;		// The error
@@ -26,12 +25,17 @@ state::state D;		// Derivative of error
 double wlimit=((double)DISTANCE_SECURITE)/100;	// The collision limit
 double zlimit=((double)DISTANCE_SECURITEZ)/100;
 t_gainfuzzy gfuz;
-float FMAX=0.75;
+double force_max=0.5;
 
 ros::Publisher Controle_node;
 
+template <typename T> int sgn(T val) {
+    return (T(0) < val) - (val < T(0));
+}
+
 void mySigintHandler(int sig)
 {
+  geometry_msgs::Wrench F;
    // Do some custom action.
    // For example, publish a stop message to some other nodes.
    F.force.x=0;F.force.y=0;F.force.z=0;F.torque.x=0;F.torque.y=0;F.torque.z=0;
@@ -41,9 +45,8 @@ void mySigintHandler(int sig)
    ros::shutdown();
 }
 
-void initctr(const state::state state)
+void initctr()
 {
-  init_state=state;des_state=state;
 /*	init_state.pos[0]=4;
 	init_state.pos[1]=-2.5;
 	init_state.pos[2]=2;
@@ -60,7 +63,52 @@ void initctr(const state::state state)
   //oE.theta_x=0.0;
   //oE.theta_y=0.0;
   oE.quat[0]=0.0;
- gfuz = {((double)1/5), (double)MAX_ERROR_FORCE_XY, (double)MAX_ERROR_FORCE_Z, (double)MAX_ERROR_FORCE_TZ, (double)MAX_ERROR_FORCE_TXY, (double)ERROR_RANGE_XY, (double)ERROR_RANGE_Z, (double)ERROR_RANGE_TZ, (double)ERROR_RANGE_TXY, (double)MAX_INTEGRAL_FORCE_XY, (double)MAX_INTEGRAL_FORCE_Z, (double)MAX_INTEGRAL_FORCE_TZ, (double)MAX_INTEGRAL_FORCE_TXY, (double)INTEGRAL_RANGE_XY, (double)INTEGRAL_RANGE_Z, (double)INTEGRAL_RANGE_TZ, (double)INTEGRAL_RANGE_TXY, (double)MAX_INC_FORCE_XY, (double)MAX_INC_FORCE_Z, (double)MAX_INC_FORCE_TZ, (double)MAX_INC_FORCE_TXY, (double)INC_RANGE_XY, (double)INC_RANGE_Z, (double)INC_RANGE_TZ, (double)INC_RANGE_TXY, (double)INC_SLOPE_XY, (double)INC_SLOPE_Z, (double)INC_SLOPE_TZ, (double)INC_SLOPE_TXY, (double)MAX_DEC_FORCE_XY, (double)MAX_DEC_FORCE_Z, (double)MAX_DEC_FORCE_TZ, (double)MAX_DEC_FORCE_TXY, (double)DEC_RANGE_XY, (double)DEC_RANGE_Z, (double)DEC_RANGE_TZ, (double)DEC_RANGE_TXY, (double)DEC_SLOPE_XY, (double)DEC_SLOPE_Z, (double)DEC_SLOPE_TZ, (double)DEC_SLOPE_TXY, (double)ANTI_WINDUP_XY, (double)ANTI_WINDUP_Z, (double)ANTI_WINDUP_TZ, (double)ANTI_WINDUP_TXY};
+  
+  gfuz.time=1.0/10.0;
+  gfuz.mef_xy=(double)MAX_ERROR_FORCE_XY;
+  gfuz.mef_z=(double)MAX_ERROR_FORCE_Z;
+  gfuz.mef_tz=(double)MAX_ERROR_FORCE_TZ;
+  gfuz.mef_txy=(double)MAX_ERROR_FORCE_TXY;
+  gfuz.exy=(double)ERROR_RANGE_XY;
+  gfuz.ez=(double)ERROR_RANGE_Z;
+  gfuz.etz=(double)ERROR_RANGE_TZ;
+  gfuz.etxy=(double)ERROR_RANGE_TXY;
+  gfuz.mixy=(double)MAX_INTEGRAL_FORCE_XY;
+  gfuz.miz=(double)MAX_INTEGRAL_FORCE_Z;
+  gfuz.mitz=(double)MAX_INTEGRAL_FORCE_TZ;
+  gfuz.mitxy=(double)MAX_INTEGRAL_FORCE_TXY;
+  gfuz.ixy=(double)INTEGRAL_RANGE_XY;
+  gfuz.iz=(double)INTEGRAL_RANGE_Z;
+  gfuz.itz=(double)INTEGRAL_RANGE_TZ;
+  gfuz.itxy=(double)INTEGRAL_RANGE_TXY;
+  gfuz.minc_xy=(double)MAX_INC_FORCE_XY;
+  gfuz.minc_z=(double)MAX_INC_FORCE_Z;
+  gfuz.minc_tz=(double)MAX_INC_FORCE_TZ;
+  gfuz.minc_txy=(double)MAX_INC_FORCE_TXY;
+  gfuz.incxy=(double)INC_RANGE_XY;
+  gfuz.incz=(double)INC_RANGE_Z;
+  gfuz.inctz=(double)INC_RANGE_TZ;
+  gfuz.inctxy=(double)INC_RANGE_TXY;
+  gfuz.incsxy=(double)INC_SLOPE_XY;
+  gfuz.incsz=(double)INC_SLOPE_Z;
+  gfuz.incstz=(double)INC_SLOPE_TZ;
+  gfuz.incstxy=(double)INC_SLOPE_TXY;
+  gfuz.mdec_xy=(double)MAX_DEC_FORCE_XY;
+  gfuz.mdec_z=(double)MAX_DEC_FORCE_Z;
+  gfuz.mdec_tz=(double)MAX_DEC_FORCE_TZ;
+  gfuz.mdec_txy=(double)MAX_DEC_FORCE_TXY;
+  gfuz.decxy=(double)DEC_RANGE_XY;
+  gfuz.decz=(double)DEC_RANGE_Z;
+  gfuz.dectz=(double)DEC_RANGE_TZ;
+  gfuz.dectxy=(double)DEC_RANGE_TXY;
+  gfuz.decsxy=(double)DEC_SLOPE_XY;
+  gfuz.decsz=(double)DEC_SLOPE_Z;
+  gfuz.decstz=(double)DEC_SLOPE_TZ;
+  gfuz.decstxy=(double)DEC_SLOPE_TXY;
+  gfuz.awinup_xy=(double)ANTI_WINDUP_XY;		
+  gfuz.awinup_z=(double)ANTI_WINDUP_Z;		
+  gfuz.awinup_tz=(double)ANTI_WINDUP_TZ;		
+  gfuz.awinup_txy=(double)ANTI_WINDUP_TXY;
 }
 
 double isig(double value, double peak)			// Membership function, inverse triangle
@@ -94,6 +142,8 @@ return sigma;
 
 void fuzzy_control(const state::state state)
 {
+		geometry_msgs::Wrench F;
+	
 		// Update old error
 		oE.pos[0]=E.pos[0];
 		oE.pos[1]=E.pos[1];
@@ -166,14 +216,21 @@ F.force.z=gfuz.mef_z*(sig(E.pos[2], gfuz.ez)-sig(E.pos[2], -gfuz.ez))+gfuz.miz*(
 //F.Ty=gfuz->mef_txy*(sig(E.theta_y, gfuz->etxy)-sig(E.theta_y, -gfuz->etxy))+gfuz->mitxy*(sig(E.theta_y, gfuz->itxy)*sig(I.theta_y, gfuz->awinup_txy)-sig(E.theta_y, -gfuz->itxy)*sig(I.theta_y, -gfuz->awinup_txy))+gfuz->minc_txy*(sig(E.theta_y, gfuz->inctxy)*sig(D.theta_y, gfuz->incstxy)-sig(E.theta_y, -gfuz->inctxy)*sig(D.theta_y, -gfuz->incstxy))-gfuz->mdec_txy*(isig(E.theta_y, gfuz->dectxy)*sig(D.theta_y, -gfuz->decstxy)-isig(E.theta_y, -gfuz->dectxy)*sig(D.theta_y, gfuz->decstxy));
 F.torque.z=gfuz.mef_tz*(sig(E.quat[0], gfuz.etz)-sig(E.quat[0], -gfuz.etz))+gfuz.mitz*(sig(E.quat[0], gfuz.itz)*sig(I.quat[0], gfuz.awinup_tz)-sig(E.quat[0], -gfuz.itz)*sig(I.quat[0], -gfuz.awinup_tz))+gfuz.minc_tz*(sig(E.quat[0], gfuz.inctz)*sig(D.quat[0], gfuz.incstz)-sig(E.quat[0], -gfuz.inctz)*sig(D.quat[0], -gfuz.incstz))-gfuz.mdec_tz*(isig(E.quat[0], gfuz.dectz)*sig(D.quat[0], -gfuz.decstz)-isig(E.quat[0], -gfuz.dectz)*sig(D.quat[0], gfuz.decstz));
 
-	if(F.force.x>FMAX)
-	  F.force.x=FMAX;
-	if(F.force.y>FMAX)
-	  F.force.y=FMAX;
-	if(F.force.z>FMAX)
-	  F.force.z=FMAX;
-	if(F.torque.z>FMAX/2)
-	  F.torque.z=FMAX/2;
+	
+	if(fabs(F.force.x)>force_max){
+	  F.force.x=sgn(F.force.x)*force_max;}
+	if(fabs(F.force.y)>force_max){
+	  F.force.y=sgn(F.force.y)*force_max;}
+	if(fabs(F.force.z)>force_max*2){
+	  F.force.z=sgn(F.force.z)*force_max*2;}
+	if(fabs(F.torque.z)>force_max/2){
+	  F.torque.z=sgn(F.torque.z)*force_max/2;}
+	
+	//ROS_INFO("GAINS: %f,%f,%f,%f,%f,%f,%f",gfuz.mef_xy,gfuz.mef_z,gfuz.mef_tz,gfuz.exy,gfuz.ez,gfuz.etz,gfuz.time);
+	ROS_INFO("fx: %f, fy: %f, fz: %f,Tx: %f, Ty: %f, Tz: %f",F.force.x, F.force.y, F.force.z, F.torque.x, F.torque.y, F.torque.z);
+	ROS_INFO("ex: %f, ey: %f, ez: %f,eTx: %f, eTy: %f, eTz: %f",E.pos[0], E.pos[1], E.pos[2], E.quat[1], E.quat[2], E.quat[0]);
+        
+	Controle_node.publish(F);
 } 
 
 void subState(const state::state state)
@@ -181,7 +238,7 @@ void subState(const state::state state)
 
 	if(start){
 //    	rz0=rz;
-	initctr(state);
+	init_state=state;des_state=state;
     	start=false;}
 
 	fuzzy_control(state);
@@ -242,11 +299,13 @@ int main(int argc, char **argv)
 {
     char rosname[100];
     sprintf(rosname,"control_%s",get_ip());
+    printf(rosname);
     std::string temp_arg ;
 	
     ros::init(argc, argv, rosname);
     //ros::init(argc, argv, "control");
     ros::NodeHandle node;
+    initctr();
     
     signal(SIGINT, mySigintHandler);
         if (argc==2)
@@ -272,10 +331,9 @@ int main(int argc, char **argv)
 
 	while (ros::ok())
 	{
-		//ROS_INFO("fx: %f, fy: %f, fz: %f,Tx: %f, Ty: %f, Tz: %f",F.force.x, F.force.y, F.force.z, F.torque.x, F.torque.y, F.torque.z);
-		//ROS_INFO("ex: %f, ey: %f, ez: %f,eTx: %f, eTy: %f, eTz: %f",E.pos[0], E.pos[1], E.pos[2], E.quat[1], E.quat[2], E.quat[0]);
+	  
+		//F.force.x=0;F.force.y=0.25;F.force.z=0;F.torque.x=0;F.torque.y=0;F.torque.z=0; //FOR TEST!!!!
        		 /////////////////////////////////
-        	Controle_node.publish(F);
 		ros::spinOnce();
 		loop_rate.sleep();
 	}

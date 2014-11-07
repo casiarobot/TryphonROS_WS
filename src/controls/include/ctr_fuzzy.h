@@ -36,7 +36,7 @@
 
 //#define	FUZZY_TIME			100000		// microsec time between control loops !!! Has to be at least twice the sensor loop times
 #define MAX_ERROR_FORCE_XY		.45 //0.45			// .25 Maximal force XY due to error [N]
-#define MAX_ERROR_FORCE_Z		.25 //0.2			// .15 Maximal force Z due to error [N]
+#define MAX_ERROR_FORCE_Z		.3 //0.2			// .15 Maximal force Z due to error [N]
 #define MAX_ERROR_FORCE_TZ		0.5//0.35			// .35 Maximal force Theta due to error [Nm]
 #define MAX_ERROR_FORCE_TXY		0.4			// .35 Maximal force Theta due to error [Nm]
 #define ERROR_RANGE_XY			4			// Maximal admittable errors in XY [m]
@@ -45,7 +45,7 @@
 #define ERROR_RANGE_TXY			0.7			// Maximal admittable errors in T [rad]
 
 #define MAX_INTEGRAL_FORCE_XY		.25 //0.4			// .25 Maximal force XY for integral error [N]
-#define MAX_INTEGRAL_FORCE_Z		.35 //0.25			// .1 Maximal force XY for integral error [N]
+#define MAX_INTEGRAL_FORCE_Z		.45 //0.25			// .1 Maximal force XY for integral error [N]
 #define MAX_INTEGRAL_FORCE_TZ		0.4//0.3			// .5 Maximal force theta for integral error [N]
 #define MAX_INTEGRAL_FORCE_TXY		0.5			// .5 Maximal force tXY for integral error [N]
 #define ANTI_WINDUP_XY			20	//20		// Anti windup limits for integrals XY[m*s]
@@ -59,20 +59,20 @@
 
 
 #define MAX_INC_FORCE_XY		.65 //0.85			// .65 Maximal force XY for increasing error [N]
-#define MAX_INC_FORCE_Z			.75 //0.55			// .35 Maximal force Z for increasing error [N]
+#define MAX_INC_FORCE_Z			.85 //0.55			// .35 Maximal force Z for increasing error [N]
 #define MAX_INC_FORCE_TZ		0.85//0.35			// .5 Maximal force theta for increasing error [Nm]
 #define MAX_INC_FORCE_TXY		0.6			// .5 Maximal force theta for increasing error [Nm]
 #define INC_RANGE_XY			1			// Range for increasing error XY[m]
-#define INC_RANGE_Z			0.5			// Range for increasing error Z [m]
+#define INC_RANGE_Z			0.65	//0.5		// Range for increasing error Z [m]
 #define INC_RANGE_TZ			0.65//0.5			// Range for increasing error Theta [rad]
 #define INC_RANGE_TXY			0.5			// Range for increasing error Theta [rad]
 #define INC_SLOPE_XY			0.2			// Slope for increasing error XY[m]
-#define INC_SLOPE_Z			0.2			// Slope for increasing error Z	[m/s]
+#define INC_SLOPE_Z			0.3	//0.2		// Slope for increasing error Z	[m/s]
 #define INC_SLOPE_TZ			0.2			// Slope for increasing error T [rad/sž]
 #define INC_SLOPE_TXY			0.2			// Slope for increasing error T [rad/sž]
 
 #define MAX_DEC_FORCE_XY		0.85 //0.95		// Maximal force XY for decreasing error [N]
-#define MAX_DEC_FORCE_Z			0.6	//.7		// Maximal force Z for decreasing error [N]
+#define MAX_DEC_FORCE_Z			0.55	//.7		// Maximal force Z for decreasing error [N]
 #define MAX_DEC_FORCE_TZ		0.95	//0.65			// Maximal force T for decreasing error [N]
 #define MAX_DEC_FORCE_TXY		0.6			// Maximal force T for decreasing error [N]
 #define DEC_RANGE_XY			1			// Range for decreasing error XY[m]

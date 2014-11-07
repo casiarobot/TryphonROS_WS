@@ -60,8 +60,14 @@ double dsz1=0;
 double dsz2=0;
 double dsz3=0;
 double dsz4=0;
+double dsxt[5]={0,0,0,0,0};
+double dsyt[5]={0,0,0,0,0};
 double dszt[5]={0,0,0,0,0};
+double dsrt[5]={0,0,0,0,0};
+double dsxtf[5]={0,0,0,0,0};
+double dsytf[5]={0,0,0,0,0};
 double dsztf[5]={0,0,0,0,0};
+double dsrtf[5]={0,0,0,0,0};
 //double dszt=0;
 //double dszto=0;
 double dsx1=0,dsx2=0;
@@ -97,7 +103,12 @@ void subSonar(const sensors::sonarArray::ConstPtr& msg)
     dsx1=0;
     dsy1=0;
     int okdsz=0;
-    for(int i=0; i<4;i++){dszt[i]=dszt[i+1];
+    for(int i=0; i<4;i++){
+      	dsxt[i]=dsxt[i+1];
+	dsxtf[i]=dsxtf[i+1];
+	dsyt[i]=dsyt[i+1];
+	dsytf[i]=dsytf[i+1];
+	dszt[i]=dszt[i+1];
 	dsztf[i]=dsztf[i+1];}
     //dszto=dszt;
     for (int i=0; i<msg->sonars.size(); ++i)
@@ -107,39 +118,40 @@ void subSonar(const sensors::sonarArray::ConstPtr& msg)
         //	               ", D1: " << sonar.distance[1]);
         
         // Average but not dividing by ten to convert cm into mm
-        if (sonar.id == 112){
+        if (sonar.id == (int)(0xE0)/2){
             for (int j=0;j<10;j++)
-            {dsx1=dsx1+sonar.distance[j];}
+            {dsx1=dsx1-sonar.distance[j];}
         }
-        if (sonar.id == 115){
+        if (sonar.id == (int)(0xE6)/2){
             for (int j=0;j<10;j++)
             {dsy1=dsy1+sonar.distance[j];}
         }
-        if (sonar.id == 124){
+        if (sonar.id == (int)(0xF8)/2){
             for (int j=0;j<10;j++)
             {dsz3=dsz3+sonar.distance[j];}
 	    if(dsz3>hmax){dsz3=0;}
 	    else {++okdsz;}}
         
-        if (sonar.id == 125){
+        if (sonar.id == (int)(0xFA)/2){
             for (int j=0;j<10;j++)
             {dsz4=dsz4+sonar.distance[j];}
             if(dsz4>hmax){dsz4=0;} 
             else {++okdsz;}}
         
-        if (sonar.id == 126){
+        if (sonar.id == (int)(0xFC)/2){
             for (int j=0;j<10;j++)
             {dsz1=dsz1+sonar.distance[j];}
             if(dsz1>hmax){dsz1=0;} 
             else {++okdsz;}}
         
-        if (sonar.id == 127){
+        if (sonar.id == (int)(0xFE)/2){
             for (int j=0;j<10;j++)
             {dsz2=dsz2+sonar.distance[j];}
             if(dsz2>hmax){dsz2=0;} 
             else {++okdsz;}}
         
     }
+    dsxt[4]=dsx1;dsyt[4]=dsy1;
     if(okdsz!=0){dszt[4]=(dsz1+dsz2+dsz3+dsz4)/okdsz;}
     else {dszt[4]=dszt[3];}
     //ROS_INFO("distance 1: %f, distance 2: %f, distance x : %f, distance y : %f",dsz1,dsz2,dsx1,dsy//
@@ -149,12 +161,15 @@ void subComp(const sensors::compass::ConstPtr& msg)
 {
     //ROS_INFO_STREAM("ID: " << msg->id << " - RZ0: " << msg->rz[0] <<
     //                ", RZ1: " << msg->rz[1]);
+        for(int i=0; i<4;i++){
+      	dsrt[i]=dsrt[i+1];
+	dsrtf[i]=dsrtf[i+1];}
 	
-    if (msg->id == 96){
+    if (msg->id == (int)(0xC0)/2){
 	rz1=(msg->rz[0])-rz0;}
     if (start && rz1!=0){rz0=rz1;
 	start=false;}
-    
+    dsrt[4]=rz1;
     //ROS_INFO("rotation: %f",rz); 
 }
 
@@ -238,14 +253,16 @@ int main(int argc, char **argv)
 	sprintf(rosname,"state_estimator_%s",get_ip());
 	ros::init(argc, argv, rosname);
     	ros::NodeHandle node;
+	int pos_src=0;
 	
-	if (argc==2)
+	if (argc==3)
         {
-          ROS_INFO("TARGET IS: %s", argv[1]);
+	  pos_src=atoi(argv[2]);
+          ROS_INFO("TARGET IS: %s AND POSE SOURCE: %i", argv[1], pos_src);
         }
         else
         {
-          ROS_ERROR("Failed to get param 'target'");
+          ROS_ERROR("Failed to get param 'target' and 'pose source'");
 	  	return 0;
         }
 	temp_arg = argv[1];
@@ -257,7 +274,6 @@ int main(int argc, char **argv)
     	geometry_msgs::Pose pose;
     	state::state state;
 	int print=0;
-	double time[5]={0,1,2,3,4};
 	
 	//ros::Subscriber subA = node.subscribe("/android/imu", 1, poseCallback);
 	sprintf(rosname,"/%s/sonars",temp_arg.c_str());
@@ -274,20 +290,21 @@ int main(int argc, char **argv)
         	////////////////////////////////////
         	////       State estimator      ////
         	////////////////////////////////////
+		dsxtf[4]=3.159*dsxtf[3]-3.815*dsxtf[2]+2.076*dsxtf[1]-0.4291*dsxtf[0]+0.01223*dsxt[4]-0.02416*dsxt[3]+0.03202*dsxt[2]-0.02416*dsxt[1]+0.01223*dsxt[0];
+		dsytf[4]=3.159*dsytf[3]-3.815*dsytf[2]+2.076*dsytf[1]-0.4291*dsytf[0]+0.01223*dsyt[4]-0.02416*dsyt[3]+0.03202*dsyt[2]-0.02416*dsyt[1]+0.01223*dsyt[0];
 		dsztf[4]=3.159*dsztf[3]-3.815*dsztf[2]+2.076*dsztf[1]-0.4291*dsztf[0]+0.01223*dszt[4]-0.02416*dszt[3]+0.03202*dszt[2]-0.02416*dszt[1]+0.01223*dszt[0];
-		double avgz=(dsztf[4]+dsztf[3]+dsztf[2]+dsztf[1]+dsztf[0])/5;
-		double avgt=(time[4]+time[3]+time[2]+time[1]+time[0])/(10*5);
-		double Sxy=0;
-		double Sx=0;
-		for(int i=0;i<5;i++){
-		    Sxy=(time[i]-avgt)*(dsztf[i]-avgz);
-		    Sx=(time[i]-avgt)*(time[i]-avgt);
-		}
+		dsrtf[4]=3.159*dsrtf[3]-3.815*dsrtf[2]+2.076*dsrtf[1]-0.4291*dsrtf[0]+0.01223*dsrt[4]-0.02416*dsrt[3]+0.03202*dsrt[2]-0.02416*dsrt[1]+0.01223*dsrt[0];
 		
-        	state.pos[0]=dsx2;//dsx1;
-        	state.pos[1]=dsy2;//dsy1;
+        	if(pos_src==1){
+		  state.pos[0]=dsx2;
+		  state.pos[1]=dsy2;
+		  state.quat[0]=rz2;
+		}else{
+		  state.pos[0]=dsxtf[4]/1000;
+		  state.pos[1]=dsytf[4]/1000;
+		  state.quat[0]=-3*sin(dsrtf[4]/180*3.1416);
+		}
         	state.pos[2]=dsztf[4]/1000;
-        	state.quat[0]=rz2;//rz1
         	state.quat[1]=0;
         	state.quat[2]=0;
         	state.quat[3]=0;
@@ -298,7 +315,7 @@ int main(int argc, char **argv)
                 state.angvel[1]=0;
                 state.angvel[2]=0;
              	/////////////////////////////////
-        	if(print==5){ROS_INFO("dist z(raw): %f, z(filtered): %f, dist x : %f, dist y : %f, rz : %f,z1:%f,z2:%f,z3:%f,z4:%f",dszt[4],dsztf[4]/1000,dsx2,dsy2,rz2,dsz1,dsz2,dsz3,dsz4);
+        	if(print==5){ROS_INFO("dist z(raw): %f, z(filtered): %f, dist x : %f, dist y : %f, rz : %f",dszt[4],dsztf[4]/1000,state.pos[0],state.pos[1],state.quat[0]);
 		print=0;}
 		else {print++;}
 	        Controle_node.publish(state);
