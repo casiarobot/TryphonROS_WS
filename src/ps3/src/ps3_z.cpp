@@ -82,6 +82,7 @@ geometry_msgs::Pose old_go_to;
 
 int ps3_mode=0; // 1 for mcptam pose
 int print=0;
+int new_pose=0; //will stop from publishing unless new command comes in
 double dsx=0;
 double dsy=0;
 double dsz[5]={0,0,0,0,0};
@@ -105,7 +106,7 @@ std_msgs::Bool button_magnet;
 
 int bool_input(float a,float b)
 {
-
+	new_pose=1;
 	if (a && !b)
  		return 1;
 	else if (!a && b)
@@ -114,6 +115,7 @@ int bool_input(float a,float b)
 		return 0;
 	else
 		return 0;
+
 }
 
 
@@ -138,6 +140,7 @@ if (Joy->buttons[PS3_BUTTON_ACTION_SQUARE])
 	
 	if (button_magnet.data==false){button_magnet.data=true;}
 	else if (button_magnet.data==true){button_magnet.data=false;}
+	new_pose=1;
     ros::Duration(.5).sleep();
 }
 
@@ -174,6 +177,7 @@ if (Joy->buttons[PS3_BUTTON_ACTION_CIRCLE])
 	
 	incx=0;
 	incy=0;
+	new_pose=1;
 }
 // auto shut off all values
 if (Joy->buttons[PS3_BUTTON_ACTION_CROSS])
@@ -185,6 +189,7 @@ if (Joy->buttons[PS3_BUTTON_ACTION_CROSS])
 	posx=0;
 	posy=0;
 	posz=0;
+	new_pose=1;
 }
 
 
@@ -204,9 +209,13 @@ go_to.orientation.w=0;
 
 ROS_INFO("posx:%f, posy:%f, posz:%f, e_magnet: %d",go_to.position.x,go_to.position.y,go_to.position.z,button_magnet.data);
   			
-  		
 
+  		
+if (new_pose && ps3_mode==1) 
+	{
 		pose_des.publish(go_to);
+		new_pose=0;
+	}
 
 //ROS_INFO("x:%f, y:%f, z:%f \n", move_to.force.x,move_to.force.y,move_to.force.z);
 
