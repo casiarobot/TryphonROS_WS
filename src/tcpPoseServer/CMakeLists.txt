@@ -47,7 +47,7 @@ add_executable( tcp_pose_server
     src/main.cpp
     src/Server.cpp
 )
-add_dependencies(control sensors_gencpp std_msgs geometry_msgs sensors state)
+add_dependencies(sensors_gencpp std_msgs geometry_msgs sensors state)
 include_directories( ${ZLIB_INCLUDE_DIRS} ${catkin_INCLUDE_DIRS})
 FIND_PACKAGE (ZLIB REQUIRED)
 target_link_libraries(tcp_pose_server

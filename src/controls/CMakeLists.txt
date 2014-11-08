@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 2.8.3)
 project(controls)
 
 ## Find catkin and any catkin packages
-find_package(catkin REQUIRED COMPONENTS geometry_msgs roscpp rospy std_msgs sensors state)
+find_package(catkin REQUIRED COMPONENTS geometry_msgs roscpp rospy std_msgs sensors state dynamic_reconfigure)
 find_package(Eigen REQUIRED)
 
 ## Declare ROS messages, services and actions 
@@ -13,6 +13,10 @@ find_package(Eigen REQUIRED)
 
 ## Generate added messages and services
 #generate_messages(DEPENDENCIES std_msgs geometry_msgs sensor_msgs)
+
+generate_dynamic_reconfigure_options(
+  cfg/control.cfg
+)
 
 ## Declare a catkin package
 catkin_package( INCLUDE_DIRS include
