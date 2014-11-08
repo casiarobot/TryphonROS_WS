@@ -191,14 +191,16 @@ mz=msg->buffer[0].magn[2];
 }
 
 void poseCallback(geometry_msgs::PoseStamped ps){
-  dsx2=ps.pose.position.x;
-  dsy2=ps.pose.position.y;
+  if(ps.pose.position.x==ps.pose.position.x)
+    dsx2=ps.pose.position.x;
+  if(ps.pose.position.y==ps.pose.position.y)
+    dsy2=ps.pose.position.y;
 	    
   //rz2=-sgn(ps.pose.orientation.z)*ps.pose.orientation.w;
   Eigen::Quaterniond quad(ps.pose.orientation.x,ps.pose.orientation.y,ps.pose.orientation.z,ps.pose.orientation.w);
-  rz2 = atan2(quad.toRotationMatrix()(1, 2), quad.toRotationMatrix()(2, 2));
-  if(rz2 != rz2) //Testing if NaN
-    rz2=0;
+  float rz2_tmp = atan2(quad.toRotationMatrix()(1, 2), quad.toRotationMatrix()(2, 2));
+  if(rz2_tmp == rz2_tmp) //Testing if NaN
+    rz2=rz2_tmp;
 /*
   if ((last_rz2-rz2) < -1.6)
 	  rz2_init=rz2_init+3.1416;

@@ -140,6 +140,18 @@ if (sigma>1)
 return sigma;
 }
 
+inline double wrapto2pi( double angle )
+{
+    double twoPi = 2.0 * 3.141592865358979;
+    return angle - twoPi * floor( angle / twoPi );
+}
+
+inline double wraptopi( double angle )
+{
+    double Pi = 3.141592865358979;
+    return  wrapto2pi( angle + Pi ) - Pi;
+}
+
 void fuzzy_control(const state::state state)
 {
 		geometry_msgs::Wrench F;
@@ -156,7 +168,7 @@ void fuzzy_control(const state::state state)
 		E.pos[0]=des_state.pos[0]-state.pos[0];
 		E.pos[1]=des_state.pos[1]-state.pos[1];
 		E.pos[2]=des_state.pos[2]-state.pos[2];
-		E.quat[0]=des_state.quat[0]-state.quat[0];
+		E.quat[0]=wraptopi(des_state.quat[0]-state.quat[0]);
 		
 		/*...Integral of Error.................................................................*/
 
@@ -237,7 +249,6 @@ void subState(const state::state state)
 {
 
 	if(start){
-//    	rz0=rz;
 	init_state=state;des_state=state;
     	start=false;}
 
