@@ -38,17 +38,20 @@ int rzpos=1; // 0 between -360 and 0; 1-> 0-360; 2->360-720
 geometry_msgs::Wrench F;
 double thetaorig=0;
 double theta=0;
+double thetaold[3]={0,0,0};
 double thetadesir=0;
+double thetaderiv=0;
+Eigen::Quaterniond qorig,q,qdif;
 Eigen::Vector4d quatdesir, quatorig, quatglobf;
 Eigen::Vector3d forceglobf, forcecubef, forcecubefold, torqglobf, torqcubef, torqcubefold, posdesir, posorig, posglobf, veldesir, velorig, velglobf, aveldesir, avelorig, avelglobf;
-bool start=true;
+bool start;
 double Gprop,Gderiv;
 
 
 void subState(const state::state state)
 {
   //Starting Pose//
-  if(start){
+  if(start==true){
     posorig(0)=state.pos[0];
     posorig(1)=state.pos[1];
     posorig(2)=state.pos[2];
@@ -63,6 +66,10 @@ void subState(const state::state state)
     avelorig(1)=state.angvel[1];
     avelorig(2)=state.angvel[2];
     thetaorig=atan2(2*(state.quat[0]*state.quat[3]+state.quat[1]*state.quat[2]),1-2*(state.quat[2]*state.quat[2]+state.quat[3]*state.quat[3]));
+    /*qorig.x()=quatorig(1);
+    qorig.y()=quatorig(2);
+    qorig.z()=quatorig(3);
+    qorig.w()=quatorig(0);*/
     start=false;
     ROS_INFO("Init pose done");
   }
@@ -79,27 +86,22 @@ void subState(const state::state state)
   avelglobf(0)=state.angvel[0];
   avelglobf(1)=state.angvel[1];
   avelglobf(2)=state.angvel[2];
-  thetaorig=atan2(2*(state.quat[0]*state.quat[3]+state.quat[1]*state.quat[2]),1-2*(state.quat[2]*state.quat[2]+state.quat[3]*state.quat[3]));
-
-  // State estimation //
-  /*dsx=state.pos[0];
-    dsy=state.pos[1];
-    dsz=state.pos[2];
-    state.vel[0];
-    state.vel[1];
-    rz=state.quat[2];
-    //pose.orientation.w;
-
-	// Zero compass//
-	if(start){
-    	rz0=rz;
-    	start=false;}
-
-    	// Z-Axis //
-	erroro=errorn;
-    errorn=dszwant-dsz;
-    deriv=(errorn-erroro)/0.05;
-    */
+  /*q.x()=quatglobf(1);
+  q.y()=quatglobf(2);
+  q.z()=quatglobf(3);
+  q.w()=quatglobf(0);
+  Eigen::Quaterniond inv=(qorig.inverse());
+  inv.normalize();
+  q.normalize();
+  qdif=q*inv;
+  qdif.normalize();
+  ROS_INFO("qaternion diff : q0: %f, q1: %f, q2: %f, q3: %f",qdif.w(),qdif.x(),qdif.y(),qdif.z());
+  theta=atan2(2*(qdif.w()*qdif.z()+qdif.x()*qdif.y()),1-2*(qdif.y()*qdif.y()+qdif.z()*qdif.z()));*/
+  thetaold[0]=thetaold[1];
+  thetaold[1]=thetaold[2];
+  thetaold[2]=theta;
+  theta=atan2(2*(state.quat[0]*state.quat[3]+state.quat[1]*state.quat[2]),1-2*(state.quat[2]*state.quat[2]+state.quat[3]*state.quat[3]));
+  thetaderiv=10.0*(-11.0/6.0*theta+3.0*thetaold[2]-3.0/2.0*thetaold[1]+1.0/3.0*thetaold[0]);
 }
 
 
@@ -177,6 +179,19 @@ void all_vects_zero()
   vect3_zero(aveldesir);
   vect3_zero(avelorig);
   vect3_zero(avelglobf);
+
+}
+
+double saturation (double value, double limit)
+{
+  if(fabs(value)>limit)
+  {
+    return copysign(limit,value);
+  }
+  else
+  {
+    return value;
+  }
 
 }
 
@@ -272,10 +287,9 @@ int main(int argc, char **argv)
   //ros::Subscriber subA = node.subscribe("/android/imu", 1, poseCallback);
 
   all_vects_zero();
-
-  Eigen::Quaterniond q;
+  start=true;
   double kp[3],kd[3];
-  double gain = exp(-10/2); //gain = exp(-SamplingPeriod/FilterTimeConstant);
+  double gain = exp(-10/1); //gain = exp(-SamplingPeriod/FilterTimeConstant);
   posdesir(2)=1;
   while (ros::ok())
   {
@@ -283,52 +297,7 @@ int main(int argc, char **argv)
     ////////////////////////////////////
     ////       Controller           ////
     ////////////////////////////////////
-    q.x()=quatglobf(0);
-    q.y()=quatglobf(1);
-    q.z()=quatglobf(2);
-    q.w()=quatglobf(3);
 
-    /*if(fabs(posdesir(0)-posglobf(0))<0.4)
-    {
-      kp[0]=0.3;
-      kd[0]=0.8;
-    }
-    else
-    {
-      kp[0]=0.2;
-      kd[0]=0.6;
-    }
-
-    if(fabs(posdesir(1)-posglobf(1))<0.4)
-    {
-      kp[0]=0.3;
-      kd[0]=0.8;
-    }
-    else
-    {
-      kp[0]=0.2;
-      kd[0]=0.6;
-    }
-
-    if(fabs(posdesir(2)-posglobf(2))<0.4)
-    {
-      kp[2]=0.5;
-      kd[2]=1;
-    }
-    else
-    {
-      kp[2]=0.3;
-      kd[2]=0.8;
-    }
-
-
-    PropMatrix << kp[0], 0, 0,
-    0, kp[1], 0,
-    0, 0, kp[2];
-
-    DerivMatrix<< kd[0], 0, 0,
-    0, kd[1], 0,
-    0, 0, kd[2];*/
 
     Rmatrix<<cos(-M_PI*0.5), -sin(-M_PI*0.5), 0,
              sin(-M_PI*0.5), cos(-M_PI*0.5), 0,
@@ -347,12 +316,12 @@ int main(int argc, char **argv)
     F.force.z=IIR(forcecubefold(2),forcecubef(2),gain);//0.0012*(errorn+1.2*deriv);
     F.torque.x=0;
     F.torque.y=0;
-    F.torque.z=-1.2*sin(theta-thetaorig);
+    F.torque.z=-1.2*sin(theta)+2.8*thetaderiv;//-thetaorig);
 
 
     /////////////////////////////////
     ROS_INFO("fx: %f, fy: %f, fz: %f,Tx: %f, Ty: %f, Tz: %f ",F.force.x,F.force.y,F.force.z,F.torque.x,F.torque.y,F.torque.z);
-    ROS_INFO("angle : %f, angle error : %f ",theta,theta-thetaorig);
+    ROS_INFO("angle : %f, angle error : %f , angvel : %f ",theta,theta-thetaorig,thetaderiv);
 
     Controle_node.publish(F);
     ros::spinOnce();

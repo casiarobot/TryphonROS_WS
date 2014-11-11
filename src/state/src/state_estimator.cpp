@@ -109,7 +109,7 @@ void subSonar(const sensors::sonarArray::ConstPtr& msg)
         const sensors::sonar &sonar = msg->sonars[i];
         //ROS_INFO_STREAM("ID: " << sonar.id << " - D0: " << sonar.distance[0] <<
         //	               ", D1: " << sonar.distance[1]);
-        
+
         // Average but not dividing by ten to convert cm into mm
         if (sonar.id == 112){
             for (int j=0;j<10;j++)
@@ -124,25 +124,25 @@ void subSonar(const sensors::sonarArray::ConstPtr& msg)
             {dsz3=dsz3+sonar.distance[j];}
 	    if(dsz3>hmax){dsz3=0;}
 	    else {++okdsz;}}
-        
+
         if (sonar.id == 125){
             for (int j=0;j<10;j++)
             {dsz4=dsz4+sonar.distance[j];}
-            if(dsz4>hmax){dsz4=0;} 
+            if(dsz4>hmax){dsz4=0;}
             else {++okdsz;}}
-        
+
         if (sonar.id == 126){
             for (int j=0;j<10;j++)
             {dsz1=dsz1+sonar.distance[j];}
-            if(dsz1>hmax){dsz1=0;} 
+            if(dsz1>hmax){dsz1=0;}
             else {++okdsz;}}
-        
+
         if (sonar.id == 127){
             for (int j=0;j<10;j++)
             {dsz2=dsz2+sonar.distance[j];}
-            if(dsz2>hmax){dsz2=0;} 
+            if(dsz2>hmax){dsz2=0;}
             else {++okdsz;}}
-        
+
     }
     if(okdsz!=0){dszt[4]=(dsz1+dsz2+dsz3+dsz4)/okdsz;}
     else {dszt[4]=dszt[3];}
@@ -153,13 +153,13 @@ void subComp(const sensors::compass::ConstPtr& msg)
 {
     //ROS_INFO_STREAM("ID: " << msg->id << " - RZ0: " << msg->rz[0] <<
     //                ", RZ1: " << msg->rz[1]);
-	
+
     if (msg->id == 96){
 	rz=(msg->rz[0])-rz0;}
     if (start && rz!=0){rz0=rz;
 	start=false;}
-    
-    //ROS_INFO("rotation: %f",rz); 
+
+    //ROS_INFO("rotation: %f",rz);
 }
 
 void subImu(const sensors::imuros::ConstPtr& imudata)
@@ -207,8 +207,8 @@ void subMCPTAM(const geometry_msgs::PoseArray Aposes)
     q1[4]=pose.orientation.x;
     q2[4]=pose.orientation.y;
     q3[4]=pose.orientation.z;
-    q0[4]=pose.orientation.z;
-    
+    q0[4]=pose.orientation.w;
+
 
 }
 
@@ -246,7 +246,7 @@ int main(int argc, char **argv)
     sprintf(rosname,"state_estimator_%s",get_ip());
     ros::init(argc, argv, rosname);
         ros::NodeHandle node;
-    
+
     if (argc==2)
         {
           ROS_INFO("TARGET IS: %s", argv[1]);
@@ -258,20 +258,20 @@ int main(int argc, char **argv)
         }
     temp_arg = argv[1];
     std::replace(temp_arg.begin(), temp_arg.end(), '.', '_');
-    
+
     sprintf(rosname,"/%s/state",temp_arg.c_str());
         ros::Publisher Controle_node = node.advertise<state::state>(rosname,1);
         ros::Rate loop_rate(10);
         geometry_msgs::Pose pose;
         state::state state;
     int print=0;
-    
+
     //ros::Subscriber subA = node.subscribe("/android/imu", 1, poseCallback);
-    /*sprintf(rosname,"/%s/sonars",temp_arg.c_str());
-    ros::Subscriber subS = node.subscribe(rosname, 1, subSonar);
+    //sprintf(rosname,"/%s/sonars",temp_arg.c_str());
+    //ros::Subscriber subS = node.subscribe(rosname, 1, subSonar);
     sprintf(rosname,"/%s/compass",temp_arg.c_str());
     ros::Subscriber subC = node.subscribe(rosname,1,subComp);
-    sprintf(rosname,"/%s/imbuf",temp_arg.c_str());
+    /*sprintf(rosname,"/%s/imbuf",temp_arg.c_str());
     ros::Subscriber subI = node.subscribe(rosname,1,subImu);*/
     //ros::Subscriber subSick = node.subscribe("/cubeA_pose", 1, poseCallback);
     ros::Subscriber subM = node.subscribe("mcptam/tracker_pose_array",1,subMCPTAM);
@@ -279,7 +279,7 @@ int main(int argc, char **argv)
 
     double temps[5]={0,1.0/10.0,2.0/10.0,3.0/10.0,4.0/10.0};
     double avgt,avgx,avgy,avgz,St,Stx,Sty,Stz;
-    double theta=110.0/180.0*M_PI;
+    double theta=112.0/180.0*M_PI;
     Eigen::Matrix3d Rmatrix;
     ROS_INFO("theta : %f",theta);
     Rmatrix<< 1, 0, 0,
@@ -324,10 +324,10 @@ int main(int argc, char **argv)
 
         ////////////////////////////////////
         ////          Rotation          ////
-        ////////////////////////////////////   
+        ////////////////////////////////////
 
-        poscamf(0)=xf[4]; 
-        poscamf(1)=yf[4];   
+        poscamf(0)=xf[4];
+        poscamf(1)=yf[4];
         poscamf(2)=zf[4];
 
         orientcamf(0)=q1f[4];
@@ -335,7 +335,7 @@ int main(int argc, char **argv)
         orientcamf(2)=q3f[4];
 
         velcamf(0)=Stx/St;
-        velcamf(1)=Sty/St;   
+        velcamf(1)=Sty/St;
         velcamf(2)=Stz/St;
 
         posglobf=Rmatrix*poscamf;
@@ -359,7 +359,7 @@ int main(int argc, char **argv)
         state.angvel[1]=0;
         state.angvel[2]=0;
              	/////////////////////////////////
-        
+
 
         ROS_INFO("x : %f , y: %f, z : %f, q0 : %f, q1 : %f,q2 :%f, q3 :%f",posglobf(0),posglobf(1),posglobf(2),q0[4],state.quat[1],state.quat[2],state.quat[3]);
         ROS_INFO("vx : %f , vy: %f, vz : %f, aq0 : %f, aq1 : %f,aq2 :%f, aq3 :%f",velglobf(0),velglobf(1),velglobf(2),q0f[4],state.quat[1],state.quat[2],state.quat[3]);
