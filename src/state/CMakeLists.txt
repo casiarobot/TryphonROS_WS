@@ -16,7 +16,7 @@ generate_messages(DEPENDENCIES std_msgs geometry_msgs sensor_msgs)
 
 
 ## Declare a catkin package
-catkin_package( INCLUDE_DIRS 
+catkin_package( INCLUDE_DIRS
 # Libraries
 CATKIN_DEPENDS  sensor_msgs geometry_msgs
 DEPENDS eigen)
@@ -34,9 +34,14 @@ include_directories( ${catkin_INCLUDE_DIRS}
 add_executable(state_estimator src/state_estimator.cpp)
 target_link_libraries(state_estimator ${catkin_LIBRARIES})
 add_dependencies(state_estimator sensors_gencpp std_msgs geometry_msgs)
+
 add_executable(state_estimator_SICK src/state_estimator_SICK.cpp)
 target_link_libraries(state_estimator_SICK ${catkin_LIBRARIES})
 add_dependencies(state_estimator_SICK sensors_gencpp std_msgs geometry_msgs)
+
+add_executable(state_sub src/state_sub.cpp)
+target_link_libraries(state_sub ${catkin_LIBRARIES})
+add_dependencies(state_sub sensors_gencpp std_msgs geometry_msgs)
 
 add_executable(desired_state src/desired_state.cpp)
 target_link_libraries(desired_state ${catkin_LIBRARIES})
