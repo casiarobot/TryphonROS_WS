@@ -4,6 +4,8 @@
 #include "sensors/compass.h"
 #include <geometry_msgs/Wrench.h>
 #include "sensors/imuros.h"
+#include "geometry_msgs/Pose.h"
+#include "geometry_msgs/PoseArray.h"
 
 #include <fstream>
 using namespace std;
@@ -87,9 +89,18 @@ void subImu(const sensors::imuros::ConstPtr& imudata)
       //ROS_INFO("mx: %f, my: %f, mz: %f",mx,my,mz);
 }
 
+void subMCPTAM(const geometry_msgs::PoseArray Aposes)
+{
+    geometry_msgs::Pose pose=Aposes.poses[0];
+    double secs = ros::Time::now().toSec();
+    myfile << pose.position.x << ","<< pose.position.y <<","<< pose.position.z <<","<< pose.orientation.x <<","<< pose.orientation.y <<","<< pose.orientation.z << "," << pose.orientation.w << "," <<secs-debut <<endl;
+    
+
+}
+
 int main(int argc, char **argv)
 {
-char link[100]="/home/py/Dropbox/Tryphon_PPY/Experiments_August2014/Matlab/csvfiles/Thrust50/Sonars/";// make sure it is the right path
+/*char link[100]="/home/py/Dropbox/Tryphon_PPY/Experiments_August2014/Matlab/csvfiles/Thrust50/Sonars/";// make sure it is the right path
 char link1[100]="/home/py/Dropbox/Tryphon_PPY/Experiments_August2014/Matlab/csvfiles/Thrust50/Compass/";
 char link2[100]="/home/py/Dropbox/Tryphon_PPY/Experiments_August2014/Matlab/csvfiles/Thrust50/Force/";
 char link3[100]="/home/py/Dropbox/Tryphon_PPY/Experiments_August2014/Matlab/csvfiles/Thrust50/IMU/";
@@ -109,22 +120,32 @@ myfile3.open(link3);// make sure it is the right path
 ROS_INFO(link);
 ROS_INFO(link1);
 ROS_INFO(link2);
-ROS_INFO(link3);
+ROS_INFO(link3);*/
 
-if (myfile3)// && myfile1 && myfile2)
+char link[100]="/home/tryphon/Residencies/MCPTAM_CSV_files/";
+strcat(link,argv[1]);
+strcat(link,".csv");
+
+myfile.open(link);
+ROS_INFO(link);
+if (myfile)// && myfile1 && myfile2)
   {
-  myfile << "Run"<< endl;
+  /*myfile << "Run"<< endl;
   myfile1 << "Run"<< endl << "Z_Angle,time" << endl;
   myfile2 << "Run"<< endl << "Forces,time" << endl  ;
-  myfile3 << "Run"<< endl << "ax,ay,az,gx,gy,gz,mx,my,mz,time" << endl  ;
+  myfile3 << "Run"<< endl << "ax,ay,az,gx,gy,gz,mx,my,mz,time" << endl  ;*/
 
-  ros::init(argc, argv, "sensorsSubscriber");
+
+  myfile << "Run"<< endl << "x,y,z,qx,qy,qz,qw,time" << endl  ;
+  ros::init(argc, argv, "csvmaker");
   ros::NodeHandle n;    
   debut = ros::Time::now().toSec();
   ros::Subscriber subS = n.subscribe("sonars",1, subSonar);
   ros::Subscriber subC = n.subscribe("compass",1,subComp);
   ros::Subscriber subF = n.subscribe("final_forces",1,subForces);
   ros::Subscriber subI = n.subscribe("imu",1,subImu);
+  ros::Subscriber subM = n.subscribe("mcptam/tracker_pose_array",1,subMCPTAM);
+  
   ros::spin();
   }
  
@@ -134,8 +155,8 @@ if (myfile3)// && myfile1 && myfile2)
   }
 
   myfile.close();
-  myfile1.close();
+  /*myfile1.close();
   myfile2.close();
-  myfile3.close();
+  myfile3.close();*/
 }
 

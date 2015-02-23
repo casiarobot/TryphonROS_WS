@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <ctime>
- 
+
 #include <ros/ros.h>
 #include <geometry_msgs/Wrench.h>
 #include <ctime>
@@ -26,7 +26,7 @@ geometry_msgs::Wrench wrenchMsg;
 		wrenchMsg.force.x =-(double)2*percent/100; //determine max thruster force
 		wrenchMsg.force.y = 0;
 		wrenchMsg.force.z = 0;
-		wrenchMsg.torque.x = 0;	
+		wrenchMsg.torque.x = 0;
 		wrenchMsg.torque.y = 0;
 		wrenchMsg.torque.z = 0;
 /*

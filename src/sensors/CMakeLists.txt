@@ -29,11 +29,6 @@ add_dependencies(thruster sensors_gencpp std_msgs geometry_msgs)
 add_executable(sensors_thrusters src/sensors_thrusters.cpp src/robocomm.cpp)
 target_link_libraries(sensors_thrusters ${catkin_LIBRARIES})
 add_dependencies(sensors_thrusters sensors_gencpp std_msgs geometry_msgs)
- 
-add_executable(sensors_pub src/sensors_pub.cpp src/robocomm.cpp)
-target_link_libraries(sensors_pub ${catkin_LIBRARIES})
-add_dependencies(sensors_pub sensors_gencpp)
-
 
 #%EndTag(FULLTEXT)%
 
