@@ -76,13 +76,19 @@
 #include <atomic>
 #include <boost/circular_buffer.hpp>
 #include <boost/thread/mutex.hpp>
+#include <opencv2/core/core.hpp>
 
 class MapPoint;
 class SmallBlurryImage;
 
+namespace cv{
+  class PersistentFREAK;
+}
+
 // Don't change LEVELS without understanding the code! 
 // Lots of things are (unfortunately) hard coded for 4 levels
 #define LEVELS 4  
+#define RELOC_LEVEL 1  // don't put this on level 0, too heavy computationally
 #define MAX_DEPTH 10000
 #define MAX_SIGMA 10000
 #define MIN_FAST_THRESH 5
@@ -101,6 +107,7 @@ struct Measurement
 {  
   inline Measurement()
   : bTransferred(false)
+  , bDeleted(false)
   { }
   
   int nLevel;                 ///< Which image level?
@@ -108,6 +115,10 @@ struct Measurement
   TooN::Vector<2> v2RootPos;  ///< Position of the measurement at level zero
   enum Src {SRC_TRACKER, SRC_REFIND, SRC_ROOT, SRC_TRAIL, SRC_EPIPOLAR} eSource; ///< Where has this measurement come from?
   bool bTransferred;          ///< Has this measurement been transferred over the network? Meaningless in standalone application
+  bool bDeleted;              ///< Used only during map editing
+  
+  // For finding matches after relocalization
+  cv::Mat matDescriptor;
   
   int nID;  ///< Debugging ID
   
@@ -133,6 +144,7 @@ struct Level
   CVD::Image<CVD::byte> mask;              ///< The loaded mask
   CVD::Image<CVD::byte> image;             ///< The pyramid level pixels
   std::vector<CVD::ImageRef> vCorners;     ///< All FAST corners on this level
+  cv::Mat matBoW;                          ///< Bag of words descriptor for each FAST corner (same number of rows as vCorners has elements)
   std::vector<int> vCornerRowLUT;          ///< Row-index into the FAST corners, speeds up access
   std::vector<Candidate> vCandidates;      ///< Potential locations of new map points
   std::vector<std::pair<double, CVD::ImageRef> > vScoresAndMaxCorners;  ///< The best scoring points and their scores, used to generate candidates
@@ -228,10 +240,14 @@ public:
   /// Erase all measurements
   void ClearMeasurements();
   
-  void AddMeasurement(MapPoint* pPoint, Measurement* pMeas);
+  void AddMeasurement(MapPoint* pPoint, Measurement* pMeas, bool bExtractDescriptor);
+  
+  void CreateMeasurementDescriptor(Measurement& meas);
   
   /// Make the small blurry image
   void MakeSBI();
+  
+  void MakeExtractor();
   
   bool NoImage();
   
@@ -250,6 +266,9 @@ public:
   TooN::SE3<> mse3CamFromWorld;  ///< The current pose in the world frame, a product of mse3CamFromBase and the parent's mse3BaseFromWorld
 
   Level maLevels[LEVELS];  ///< Images, corners, etc lives in this array of pyramid levels
+  
+  cv::PersistentFREAK* mpExtractor;
+  
   MeasPtrMap mmpMeasurements;   ///< All the measurements associated with the keyframe as a map of MapPoint pointers to Measurement pointers  
   //MeasPtrMap mmpDeletedMeas;  ///< Queue of deleted measurements' map points, used to send information in client/server mode
   //MeasPtrMap mmpClearedMeas;
@@ -320,6 +339,9 @@ public:
    *  @param other The other MultiKeyFrame 
    *  @return The calculated distance */
   double Distance(MultiKeyFrame &other);
+  
+  /// Update the camera-from-world poses of the KeyFrames, based on the MultiKeyFrame's pose and the fixed relative transforms
+  void UpdateCamsFromWorld();
   
   /// Call ClearMeasurements on all owned KeyFrames
   void ClearMeasurements();

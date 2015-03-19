@@ -44,6 +44,8 @@
 #define __KEYFRAME_VIEWER_H
 
 #include <mcptam/Types.h>
+#include <mcptam/EditAction.h>
+#include <mcptam/KeyFrame.h>
 #include <sstream>
 
 class Map;
@@ -57,35 +59,66 @@ class KeyFrameViewer
 {
 public:
 
-  /** @brief Only parameterized constructor to ensure a valid object
-   *  @param map The Map being used
-   *  @param glw The GL window object to draw to
-   *  @param mDrawOffsets The draw offsets for each camera, determines where in the window each KeyFrame is drawn */
-  KeyFrameViewer(Map &map, GLWindow2 &glw, ImageRefMap mDrawOffsets, ImageRefMap mSizes);
-  
-  /// Draw the current MultiKeyFrame
+  KeyFrameViewer(Map &map, GLWindow2 &glw);
+  void Init();
   void Draw();
-  
-  /// Select the next MultiKeyFrame in the Map
-  void Next();
-  
-  /// Select the previous MultiKeyFrame in the Map
-  void Prev();
-  
-  /// Contains information that should be displayed to the user
-  /** @return The message string */
+  bool GUICommandHandler(std::string command, std::string params, std::shared_ptr<EditAction>& pAction);
   std::string GetMessageForUser();
   
 protected:
 
+  std::vector<MapPoint*> GatherVisiblePoints();
+  std::vector<KeyFrame*> GatherKeyFrames(std::vector<MapPoint*> vpPoints, bool bSource);
+  
+  CVD::Image<CVD::byte> ResizeImageToWindow(CVD::Image<CVD::byte> imOrig, double dWidthFrac, TooN::Matrix<2>& m2Scale);
+  TooN::Vector<2> RescalePoint(TooN::Vector<2> v2RootPos, int nLevel, TooN::Matrix<2> m2Scale);
+  
+  void UnSelectAllPoints();
+  void ToggleSourceSelection(CVD::ImageRef irPixel);
+  void SetSourceSelectionInArea(CVD::ImageRef irBegin, CVD::ImageRef irEnd, bool bSelected);
+  
+  CVD::ImageRef ClampLocToSource(CVD::ImageRef irLoc);
+  void DrawCrosshairs(CVD::ImageRef irPos, TooN::Vector<4> v4Color, float fLineWidth);
+  void DrawRectangle(CVD::ImageRef irBegin, CVD::ImageRef irEnd, TooN::Vector<4> v4Color, float fLineWidth);
+  
+  std::vector<MapPoint*> GatherSourcePoints(bool bOnlySelected);
+  MeasPtrMap GatherSelectedTargetMeasurements();
+
   Map &mMap;   ///< Reference to the Map
   GLWindow2 &mGLWindow;  ///< Reference to the GL window
-  ImageRefMap mmDrawOffsets;  ///< The drawing offsets
-  ImageRefMap mmSizes;  ///< The image offsets
   
-  int nCurrentIdx;         ///< Current MultiKeyFrame's index, do this instead of keeping iterator because iterators can be invalidated by deletion of MultiKeyFrame
+  int mnVerticalDrawOffset;
+  double mdPointSizeFrac;
+  
+  int mnPointVis;
+  
+  int mnSourceIdx;         ///< Current MultiKeyFrame's index, do this instead of keeping iterator because iterators can be invalidated by deletion of MultiKeyFrame
+  int mnTargetIdx;
+  int mnTargetSearchDir;
+  
+  std::vector<KeyFrame*> mvpTargetKeyFrames;
+  std::vector<KeyFrame*> mvpSourceKeyFrames;
 
+  TooN::Matrix<2> mm2SourceScale;
+  TooN::Matrix<2> mm2TargetScale;
+  
   std::ostringstream mMessageForUser;   ///< Message stream for user
+  
+  enum SelectionMode{SINGLE, BOX_SELECT, BOX_UNSELECT} mSelectionMode;
+  enum SelectionStatus{READY, SELECTING} mSelectionStatus;
+  
+  double mdSelectionThresh;
+  CVD::ImageRef mirSelectionBegin;
+  CVD::ImageRef mirSelectionCursor;
+  
+  CVD::Image<CVD::byte> mimSource;
+  CVD::ImageRef mirSourceOffset;
+  
+  double mdPointRadius;
+  
+  KeyFrame* mpKFSource;
+  KeyFrame* mpKFTarget;
+  
 };
 
 #endif

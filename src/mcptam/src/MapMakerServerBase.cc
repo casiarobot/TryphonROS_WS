@@ -457,7 +457,6 @@ void MapMakerServerBase::AddStereoMapPoints(MultiKeyFrame& mkfSrc, int nLevel, i
   {
     KeyFrame &kfSrc = *(it->second);
     Level &level = kfSrc.maLevels[nLevel];
-    ThinCandidates(kfSrc, nLevel);
     
     double dDistThreshUsed = dDistThresh;
     if(dDistThreshUsed < 0) // means we need to compute the thresh on a per-KF basis here
@@ -476,6 +475,10 @@ void MapMakerServerBase::AddStereoMapPoints(MultiKeyFrame& mkfSrc, int nLevel, i
       KeyFrame& kfTarget = *vpTargets[j];
       if(kfTarget.mpParent->mbBad)
         continue;
+        
+      // Thin candidates before processing each target KF, since a point could have been made
+      // for a given candidate with the last target KF
+      ThinCandidates(kfSrc, nLevel);
         
       ROS_DEBUG_STREAM("Target: "<<kfTarget.mCamName<<"  source candidate points: "<<level.vCandidates.size());
       for(unsigned int i = 0; i<level.vCandidates.size(); ++i)
@@ -532,7 +535,7 @@ void MapMakerServerBase::AddInitDepthMapPoints(MultiKeyFrame& mkfSrc, int nLevel
       pMeas->nLevel = nLevel;
       pMeas->eSource = Measurement::SRC_ROOT;
       
-      kfSrc.AddMeasurement(pPointNew, pMeas);
+      kfSrc.AddMeasurement(pPointNew, pMeas, true);
       //kfSrc.mmpMeasurements[pPointNew] = pMeas;
       //pPointNew->mMMData.spMeasurementKFs.insert(&kfSrc);
     }
@@ -890,8 +893,8 @@ bool MapMakerServerBase::AddPointEpipolar(KeyFrame &kfSrc, KeyFrame &kfTarget, i
   pMeasTarget->v2RootPos = v2SubPixPos;
   
   // Record map point and its measurement in the right places
-  kfSrc.AddMeasurement(pPointNew, pMeasSrc);
-  kfTarget.AddMeasurement(pPointNew, pMeasTarget);
+  kfSrc.AddMeasurement(pPointNew, pMeasSrc, true);
+  kfTarget.AddMeasurement(pPointNew, pMeasTarget, true);
   
   //kfSrc.mmpMeasurements[pPointNew] = pMeasSrc;
   //kfTarget.mmpMeasurements[pPointNew] = pMeasTarget;
@@ -986,7 +989,7 @@ bool MapMakerServerBase::ReFind_Common(KeyFrame &kf, MapPoint &point)
   if(kf.mmpMeasurements.count(&point))
     ROS_BREAK(); // This should never happen, we checked for this at the start.
   
-  kf.AddMeasurement(&point, pMeas);
+  kf.AddMeasurement(&point, pMeas, true);
   
   //kf.mmpMeasurements[&point] = pMeas;
   //point.mMMData.spMeasurementKFs.insert(&kf);

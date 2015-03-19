@@ -40,6 +40,7 @@
 #ifndef __OPENGL_INCLUDES_H
 #define __OPENGL_INCLUDES_H
 
+#include <GL/glew.h>
 #include <GL/gl.h>
 #include <GL/glext.h>
 

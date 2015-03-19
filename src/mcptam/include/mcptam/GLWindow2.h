@@ -48,6 +48,29 @@
 
 class GLWindowMenu;
 
+struct MouseUpdate
+{
+  MouseUpdate()
+  {
+    Reset();
+  }
+  
+  void Reset()
+  {
+    //mv2LeftClick = TooN::Zeros; 
+    mv2MiddleClick = TooN::Zeros;
+    mv2ShiftMiddleClick = TooN::Zeros;
+    //mv2RightClick = TooN::Zeros;
+    mdWheel = 0;  
+  }
+  
+  //TooN::Vector<2> mv2LeftClick; 
+  TooN::Vector<2> mv2MiddleClick;
+  TooN::Vector<2> mv2ShiftMiddleClick;
+  //TooN::Vector<2> mv2RightClick;
+  double mdWheel; // + is up, - is down
+};
+
 /** @brief Wraps CVD::GLWindow and provides some basic user-interface functionality
  * 
  *  Implements a gvars-driven clickable menu, and a caption line for text display. 
@@ -70,17 +93,18 @@ public:
   void SetupUnitOrtho();
   void SetupWindowOrtho();
   void SetupVideoRasterPosAndZoom();
+  void SetupWindowRasterPos();
 
   // Text display functions:
   //void PrintString(CVD::ImageRef irPos, std::string s);
   void PrintString(CVD::ImageRef irPos, std::string s, double scale=8, double spacing=1.6, double kerning=0.1);
-  void DrawCaption(std::string s);
+  void DrawCaption(std::string s, TooN::Vector<3> v3TextColor = TooN::makeVector(1,1,0), TooN::Vector<4> v4BackgroundColor = TooN::makeVector(0,0,0,0.4));
   
   CVD::ImageRef GetWindowSize(){ return mirVideoSize; }
   CVD::ImageRef GetRealWindowSize();
   
   // Map viewer mouse interface:
-  std::pair<TooN::Vector<6>, TooN::Vector<6> > GetMousePoseUpdate();
+  MouseUpdate GetMouseUpdate();
   
   CVD::ImageRef GetMousePos(){ return mirLastMousePos; }
   
@@ -96,14 +120,21 @@ protected:
   
   // Event handling routines:
   virtual void on_key_down(GLWindow&, int key);
+  virtual void on_key_up(GLWindow&, int key);
   virtual void on_mouse_move(GLWindow& win, CVD::ImageRef where, int state);
   virtual void on_mouse_down(GLWindow& win, CVD::ImageRef where, int state, int button);
+  virtual void on_mouse_up(GLWindow& win, CVD::ImageRef where, int state, int button);
   virtual void on_event(GLWindow& win, int event);
   CVD::ImageRef mirLastMousePos;
 
   // Storage for map viewer updates:
-  TooN::Vector<6> mvMCPoseUpdate;
-  TooN::Vector<6> mvLeftPoseUpdate;
+  //TooN::Vector<6> mvMCPoseUpdate;
+  //TooN::Vector<6> mvLeftPoseUpdate;
+  
+  MouseUpdate mMouseUpdate;
+  
+  std::string ConvertKey (int key);
+  
 };
 
 

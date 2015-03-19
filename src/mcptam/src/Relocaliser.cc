@@ -100,17 +100,20 @@ void Relocaliser::ScoreKFs(KeyFrame &kfCurrent)
     for(KeyFramePtrMap::iterator jit = mkf.mmpKeyFrames.begin(); jit != mkf.mmpKeyFrames.end(); ++jit)
     {
       KeyFrame& kf = *(jit->second);
+      
+      /*
       if(kfCurrent.mCamName != kf.mCamName)  // only look at same camera
         continue;
+      */
         
       if(!kf.mpSBI)
       {
-        ROS_WARN("KF doesn't have small blurry image! Skipping ...");
+        //ROS_WARN("KF doesn't have small blurry image! Skipping ...");
         continue;
       }
       
       double dSSD = kfCurrent.mpSBI->ZMSSD(*(kf.mpSBI));
-      std::cout<<"ZMSSD for "<<kf.mCamName<<" looking at MKF "<<mkf.mnID<<": "<<dSSD<<std::endl;
+      //std::cout<<"ZMSSD for "<<kf.mCamName<<" looking at MKF "<<mkf.mnID<<": "<<dSSD<<std::endl;
       if(dSSD < mdBestScore)
       {
         mdBestScore = dSSD;

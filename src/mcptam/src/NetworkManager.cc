@@ -731,7 +731,7 @@ void NetworkManager::AddMsg_To_KeyFrame(mcptam::NetworkKeyFrame &kf_msg, KeyFram
       pMeas->nLevel = meas_msg.nLevel;
       pMeas->bSubPix = meas_msg.bSubPix;
       
-      kf.AddMeasurement(pPoint, pMeas);
+      kf.AddMeasurement(pPoint, pMeas, false);
       //kf.mmpMeasurements[pPoint] = pMeas;
       //pPoint->mMMData.spMeasurementKFs.insert(&kf);
     }
@@ -746,7 +746,7 @@ void NetworkManager::AddMsg_To_KeyFrame(mcptam::NetworkKeyFrame &kf_msg, KeyFram
     kf.SetMask(mask);
     
   // Don't do deep copy of image since we just created it and nobody else will use it
-  // Also don't do glare masking since this would have been done on client side
+  // Also don't do glare masking since this would have been done on client side and saved into the mask
   if(image.totalsize() > 0)
     kf.MakeKeyFrame_Lite(image, false, false);
 }
@@ -802,7 +802,7 @@ void NetworkManager::KeyFrame_To_AddMsg(KeyFrame &kf, mcptam::NetworkKeyFrame &k
   }
   
   util::ImageToMsg(kf.maLevels[0].image, 90, kf_msg.image);
-  util::ImageToMsg(kf.maLevels[0].mask, 90, kf_msg.mask);
+  util::ImageToMsg(kf.maLevels[0].lastMask, 90, kf_msg.mask);
 }
 
 // Converts a KeyFrame to an UPDATE message, encodes, poses, scene depth and measurements to add/delete
@@ -974,7 +974,7 @@ void NetworkManager::UpdateMsg_ApplyTo_KeyFrame(mcptam::NetworkKeyFrame &kf_msg)
       pMeas->nLevel = meas_msg.nLevel;
       pMeas->bSubPix = meas_msg.bSubPix;
       
-      kf.AddMeasurement(pPoint, pMeas);
+      kf.AddMeasurement(pPoint, pMeas, true);
       //kf.mmpMeasurements[pPoint] = pMeas;
       //pPoint->mMMData.spMeasurementKFs.insert(&kf);
     }

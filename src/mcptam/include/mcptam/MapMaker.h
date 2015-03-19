@@ -79,7 +79,7 @@ public:
    *  @param map The Map being worked on
    *  @param cameras The camera models
    *  @param bundleAdjuster Some derived class of BundleAdjusterBase that will be used to optimize the map */
-  MapMaker(Map &map, TaylorCameraMap &cameras, BundleAdjusterBase &bundleAdjuster);
+  MapMaker(Map &map, RelocaliserFabMap &reloc, TaylorCameraMap &cameras, BundleAdjusterBase &bundleAdjuster);
   
   /// Destructor
   virtual ~MapMaker();
@@ -136,6 +136,10 @@ protected:
   
   //testing 
   bool mbStopInit;  ///< End of initialization phase requested
+  
+  ros::Publisher mCreationTimingPub;
+  ros::Publisher mLocalTimingPub;
+  ros::Publisher mGlobalTimingPub;
   
 };
 

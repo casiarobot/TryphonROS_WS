@@ -49,8 +49,9 @@ double MapMakerClientBase::sdOutlierMultiplier = 1.0;
 double MapMakerClientBase::sdMaxScaledMKFDist = 0.1; //0.3;
 double MapMakerClientBase::sdMaxScaledKFDist = 0.1; //0.3;
 
-MapMakerClientBase::MapMakerClientBase(Map& map)
+MapMakerClientBase::MapMakerClientBase(Map& map, RelocaliserFabMap &reloc)
   : MapMakerBase(map, true)  // This will be skipped since inheritance is virtual!
+  , mRelocFabMap(reloc)
 {
   Reset();
 };
@@ -66,6 +67,17 @@ void MapMakerClientBase::Reset()
   {
     delete mqpMultiKeyFramesFromTracker.front();
     mqpMultiKeyFramesFromTracker.pop_front();
+  }
+  
+  mRelocFabMap.Reset();
+  
+  if(mMap.mbGood)  // load up FabMap with existing map
+  {
+    for(MultiKeyFramePtrList::iterator mkf_it = mMap.mlpMultiKeyFrames.begin(); mkf_it != mMap.mlpMultiKeyFrames.end(); ++mkf_it)
+    {
+      MultiKeyFrame& mkf = *(*mkf_it);
+      mRelocFabMap.Add(mkf);
+    }
   }
 }
 
@@ -228,20 +240,20 @@ bool MapMakerClientBase::IsDistanceToNearestKeyFrameExcessive(KeyFrame &kf)
 // Child KeyFrames that don't have the mbActive flag set are deleted
 void MapMakerClientBase::ProcessIncomingKeyFrames(MultiKeyFrame &mkf)
 {
-  for(KeyFramePtrMap::iterator it = mkf.mmpKeyFrames.begin(); it != mkf.mmpKeyFrames.end() ; )
+  for(KeyFramePtrMap::iterator kf_it = mkf.mmpKeyFrames.begin(); kf_it != mkf.mmpKeyFrames.end() ; )
   {
-    KeyFrame* pKF = it->second;
+    KeyFrame* pKF = kf_it->second;
     
     if(!pKF->mbActive)
     {
       pKF->EraseBackLinksFromPoints();  // Just a precaution
       delete pKF;
-      mkf.mmpKeyFrames.erase(it++);
+      mkf.mmpKeyFrames.erase(kf_it++);
     }
     else
     {
       pKF->maLevels[0].image.make_unique();  // In case they didn't have deep copies
-      it++;
+      kf_it++;
     }
   }
 }

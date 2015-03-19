@@ -52,9 +52,11 @@ double thetaderiv=0;
 Eigen::Vector3d force, forceOld1, forceOld2, forceGlobF, forceGfOld1, forceGfOld2, torque, torqueOld1, torqueOld2;
 Eigen::Vector3d posdesir, pos, dPos, dPosOld1, dPosOld2, angledesir, angle, dAngle, dAngleOld1, dAngleOld2;
 Eigen::Vector3d vel, avel;
-Eigen::Vector3d CIMUpos(1,0,-1.125); // vector postion from Center of mass to IMU in tryphon frame
-Eigen::Matrix3d Rmatrix, CPmatrix, RIMUmatrix;
+Eigen::Vector3d CMCpos(0,0,0.18);
+Eigen::Vector3d CMIMUpos(1,0,-1.125); // vector postion from Center of mass to IMU in tryphon frame
+Eigen::Matrix3d Rmatrix, CPCMIMUmatrix, RIMUmatrix,CPCMCmatrix;
 Eigen::Quaterniond quatIMU(0.99255, 0,0.12187, 0); // quat of the rotation matrix between the tryphon frame and the IMU frame
+Eigen::Quaterniond quatIMU2(0.99255, 0,-0.12187, 0);
 
 
 
@@ -63,8 +65,17 @@ double Gprop,Gderiv;
 double gain = exp(-0.1/1); //gain = exp(-SamplingPeriod/FilterTimeConstant);
 double fbuoyCoeff=1;       // gazebo parameter
 int pathNb=0;              // Path nb wanted
+int ctrlNb=0;              // Ctrl nb wanted
 
+Eigen::Matrix3d CPM(Eigen::Vector3d vect) // return cross product matrix
+{
+	Eigen::Matrix3d CPM;
+	CPM<<       0,  -vect(2),   vect(1),
+		  vect(2),         0,  -vect(0),
+		  -vect(1),  vect(0),         0;
 
+	return CPM;
+}
 
 
 void subState(const state::state state)
@@ -113,9 +124,8 @@ void subPose(const geometry_msgs::PoseStamped PoseS)
   if(start)
   {
     RIMUmatrix=quatIMU.toRotationMatrix(); // need to be computed only once
-    CPmatrix<< 0, -CIMUpos(2), CIMUpos(1),
-    CIMUpos(2), 0, -CIMUpos(0),
-    -CIMUpos(1), CIMUpos(0), 0;
+    CPCMIMUmatrix=CPM(CMIMUpos);
+    CPCMCmatrix=CPM(CMCpos);
     start=false;
   }
 
@@ -123,15 +133,17 @@ void subPose(const geometry_msgs::PoseStamped PoseS)
   pos(1)=Pose.position.y;
   pos(2)=Pose.position.z;
   Eigen::Quaterniond quat(Pose.orientation.w,Pose.orientation.x,Pose.orientation.y,Pose.orientation.z);
-  quat=quatIMU.inverse()*quat; // compute the quaternion between the vision world and the tryphon frame
-
+  Eigen::Quaterniond quat1(Pose.orientation.w,Pose.orientation.x,Pose.orientation.y,Pose.orientation.z);
+  Eigen::Quaterniond quat2(Pose.orientation.w,Pose.orientation.x,Pose.orientation.y,Pose.orientation.z);
+  Eigen::Quaterniond quat3(Pose.orientation.w,Pose.orientation.x,Pose.orientation.y,Pose.orientation.z);
+  quat=quat*quatIMU.inverse();  // compute the quaternion between the vision world and the tryphon frame
 
   angle(0)=atan2(2*(quat.w()*quat.x()+quat.y()*quat.z()),1-2*(quat.x()*quat.x()+quat.y()*quat.y()));
   angle(1)=asin(2*(quat.w()*quat.y()-quat.z()*quat.x()));
   angle(2)=atan2(2*(quat.w()*quat.z()+quat.x()*quat.y()),1-2*(quat.z()*quat.z()+quat.y()*quat.y()));
   Rmatrix=quat.toRotationMatrix();
 
-  pos=pos-Rmatrix*CIMUpos;  // offset due to the fact that the pose is the one of the IMU
+  pos=pos-Rmatrix*CMIMUpos;  // offset due to the fact that the pose is the one of the IMU
 
 
 }
@@ -150,7 +162,7 @@ void subVel(const geometry_msgs::TwistStamped VelS)
     avel(2)=Vel.angular.z;
     avel=RIMUmatrix*avel;  // defined in body frame
 
-    vel=vel+Rmatrix*CPmatrix*avel; // compute the vel of the center of mass
+    vel=vel+Rmatrix*CPCMIMUmatrix*avel; // compute the vel of the center of mass
 
   }
 }
@@ -196,6 +208,7 @@ void callback(controls::controlConfig &config, uint32_t level) {
   fbuoyCoeff=config.fbuoy;
   path=config.path;
   pathNb=config.pathNb-1;
+  ctrlNb=config.ctrlNb;
   Gprop=config.prop;
   Gderiv=config.deriv;
 
@@ -275,13 +288,30 @@ double smooth (double u1, double u2, double e, double e1, double e2)
 
 }
 
+double modulo(double f) // not a modulo but dealing with the discontinuity around pi and -pi
+{
+  if(f>M_PI*(1+0.05)) // +0.05 to create an hysteresis
+  {
+   f=f-2*M_PI;
+  }
+  else
+  {
+    if(f<-M_PI*(1+0.05))
+    {
+      f=f+2*M_PI;
+    }
+  }
+  return f;
+}
+
 
 ros::Publisher Controle_node;
 ros::Publisher Desired_pose_node;
 ros::Publisher Pose_node;
 ros::Publisher Vel_node;
 ros::Publisher Fbuoy_node;
-ros::Publisher Controle_notfiltered_node;
+ros::Publisher Path_node;
+//ros::Publisher Controle_notfiltered_node;
 
 
 void mySigintHandler(int sig)
@@ -293,22 +323,6 @@ void mySigintHandler(int sig)
   ROS_INFO("fx: %f, fy: %f, fz: %f,Tx: %f, Ty: %f, Tz: %f",F.force.x, F.force.y, F.force.z, F.torque.x, F.torque.y, F.torque.z);
   // All the default sigint handler does is call shutdown()
   ros::shutdown();
-}
-
-double modulo(double f)
-{
-  if(f>M_PI)
-  {
-   f=f-2*M_PI;
-  }
-  else
-  {
-    if(f<-M_PI)
-    {
-      f=f+2*M_PI;
-    }
-  }
-  return f;
 }
 
 
@@ -364,14 +378,16 @@ int main(int argc, char **argv)
   // Publishers //
   sprintf(rosname,"/%s/command_control",temp_arg.c_str());
   Controle_node = node.advertise<geometry_msgs::Wrench>(rosname,1);
-  sprintf(rosname,"/%s/command_control_filtered",temp_arg.c_str());
-  Controle_notfiltered_node = node.advertise<geometry_msgs::Wrench>(rosname,1);
+  //sprintf(rosname,"/%s/command_control_filtered",temp_arg.c_str());
+  //Controle_notfiltered_node = node.advertise<geometry_msgs::Wrench>(rosname,1);
   sprintf(rosname,"/%s/desired_pose",temp_arg.c_str());
   Desired_pose_node = node.advertise<geometry_msgs::Pose>(rosname,1);
   sprintf(rosname,"/%s/pose",temp_arg.c_str());
   Pose_node = node.advertise<geometry_msgs::Pose>(rosname,1);
   sprintf(rosname,"/%s/velocity",temp_arg.c_str());
   Vel_node = node.advertise<geometry_msgs::Pose>(rosname,1);
+  sprintf(rosname,"/%s/path_info",temp_arg.c_str());
+  Path_node = node.advertise<geometry_msgs::Pose2D>(rosname,1);
 
 
 
@@ -402,14 +418,31 @@ int main(int argc, char **argv)
   // LQR Gain Matrices //
   Eigen::Matrix3d PropMatrixforce, DerivMatrixforce, PropMatrixtorque, DerivMatrixtorque;
   Eigen::Vector3d vecZ;
+/*
+  PropMatrixforce << 2.000, 0, 0,
+  0, 2.000, 0,
+  0, 0, 2.0692;
 
-  PropMatrixforce << 2.6458, 0, 0,
-  0, 2.6458, 0,
-  0, 0, 2.7259;
+  DerivMatrixforce << 9.798, 0, 0,
+  0, 9.798, 0,
+  0, 0, 9.9591;
 
-  DerivMatrixforce << 11.3448, 0, 0,
-  0, 11.3448, 0,
-  0, 0, 11.506;
+  PropMatrixtorque << 0.1716, 0, 0,
+  0, 0.1716, 0,
+  0, 0, 2.6458;
+
+  DerivMatrixtorque << 3.5052, 0, 0,
+  0, 3.5150, 0,
+  0, 0, 9.5741;
+*/
+
+  PropMatrixforce << 2.000, 0, 0,
+  0, 2.000, 0,
+  0, 0, 2.0692;
+
+  DerivMatrixforce << 13.1149, 0, 0,
+  0, 13.1149, 0,
+  0, 0, 13.1248;
 
   PropMatrixtorque << 0.1716, 0, 0,
   0, 0.1716, 0,
@@ -420,12 +453,44 @@ int main(int argc, char **argv)
   0, 0, 9.5741;
 
 
-
   vecZ(0)=0;
   vecZ(1)=0;
-  vecZ(2)=0.0187;
+  vecZ(2)=0.0141;
 
+  // Computed Torque Matrices and scalar//
+  Eigen::Vector3d DragForce, DragTorque;
+  Eigen::Matrix3d Identity3,  MassM, InertiaM, KpF, KpT, KvF, KvT;
+  // define Inertia and Mass matrix
+  double massTotal=23*0.7;
+
+  Identity3<< 1,  0,  0,
+  0,  1,  0,
+  0,   0, 1;
+
+  MassM=massTotal*Identity3;
+
+  InertiaM<< 15.4,  0,  0,
+  0,  15.6,  0,
+  0,   0, 16;
+
+  // Drag coeffs //
+
+  double DragCoeffF=1.7*0.5*2.15*2.15*1.205*0.7;
+  double DragCoeffT=3.45987*0.7;
+
+
+  //[0.06*x;0.09*varphi]+[0.42*v;0.44*w]
+  KpF=0.06*Identity3;
+  KpT=0.09*Identity3;
+
+  KvF=0.42*Identity3;
+  KvT=0.44*Identity3;
+
+  //// PATHS ////
   // Defining paths //
+
+  bool path_debut=true;
+  double path_debut_time=0;
 
   std::vector<Eigen::Vector4d> pathLine;
   Eigen::Vector4d p1(-4.5,0,0,0);
@@ -466,10 +531,16 @@ int main(int argc, char **argv)
   paths.push_back(pathSquare);
   //paths.push_back(pathSquare2);
 
+  // rotation parameters //
+  double omega=0.0333333333333333333333333333333;
+  double r=3;
+  double t=0;
+
 
   //////////////////////
 
-  //ros::Subscriber subA = node.subscribe("/android/imu", 1, poseCallback);
+  // ros::Subscriber subA = node.subscribe("/android/imu", 1, poseCallback);
+
   // Initializing vectors and defining parameters//
 
   all_vects_zero();
@@ -481,10 +552,13 @@ int main(int argc, char **argv)
   start=true;
   path=false;
 
+  ctrlNb=1;
+
   int step=0;
   double intZ = 0;
   geometry_msgs::Wrench FUnfiltered;
   Eigen::Vector4d range(0.10,0.10,0.10,0.1);
+  Eigen::Vector4d rangeV(0.05,0.05,0.05,0.05);
 
   double maxFxy=1.24;
   double minFxy=-0.64;
@@ -493,6 +567,12 @@ int main(int argc, char **argv)
   double maxT=0.64;
   double minT=-0.64;
 
+  Eigen::Vector3d dVel, dAvel;
+
+  Eigen::Vector3d veldesir(0,0,0);
+  Eigen::Vector3d aveldesir(0,0,0);
+  Eigen::Vector3d acceldesir(0,0,0);
+  Eigen::Vector3d angleAcceldesir(0,0,0);
 
   /////////////////////////
 
@@ -501,25 +581,8 @@ int main(int argc, char **argv)
   while (ros::ok())
   {
     ros::spinOnce();
-
     if(!start)
     {
-      // Path //
-      if(path)
-      {
-        if(fabs(pos(0)-posdesir(0))<range(0) && fabs(pos(1)-posdesir(1))<range(1) && fabs(pos(2)-posdesir(2))<range(2) && fabs(angle(2)-angledesir(2))<range(3))
-        {
-          if(step<paths[pathNb].size()-1){step++;}
-          else{step=0;}
-
-        }
-        posdesir(0)=paths[pathNb][step](0);
-        posdesir(1)=paths[pathNb][step](1);
-        posdesir(2)=paths[pathNb][step](2);
-        angledesir(2)=paths[pathNb][step](3);
-      }
-      else{step=0;}
-
     // Integral term //
       if(fabs(force(2))<1.2) // increasing only if the command is not saturating //
      {
@@ -528,64 +591,145 @@ int main(int argc, char **argv)
 
       }
 
-
-
       // avoiding the discontunity due to the angle around pi and -pi //
       dAngle(0)=modulo(angle(0)-angledesir(0));
       dAngle(1)=modulo(angle(1)-angledesir(1));
       dAngle(2)=modulo(angle(2)-angledesir(2));
       dPos=pos-posdesir;
+      dVel=vel-veldesir;
+      dAvel=avel-aveldesir;
+
+      // Path //
+      if(path)
+      {
+        if(path_debut)
+        {
+          path_debut_time=ros::Time::now().toSec();
+          path_debut=false;
+        }
+        if(pathNb<3)
+        {
+          if(fabs(pos(0)-posdesir(0))<range(0) && fabs(pos(1)-posdesir(1))<range(1) && fabs(pos(2)-posdesir(2))<range(2) && fabs(dAngle(2))<range(3) && fabs(vel(0))<rangeV(0) && fabs(vel(1))<rangeV(1) && fabs(vel(2))<rangeV(2) && fabs(avel(2))<rangeV(3))
+          {
+            if(step<paths[pathNb].size()-1){step++;}
+            else{step=0;}
+
+          }
+          posdesir(0)=paths[pathNb][step](0);
+          posdesir(1)=paths[pathNb][step](1);
+          posdesir(2)=paths[pathNb][step](2);
+          angledesir(2)=paths[pathNb][step](3);
+        }
+        if(pathNb>2)
+        {
+          t= ros::Time::now().toSec() - path_debut_time;
+          ROS_INFO("t= %f; omega= %f; sin= %f", t, omega,r*sin(omega*t) );
+
+
+          posdesir(0)=r*sin(omega*t);
+          posdesir(1)=r*cos(omega*t);
+          posdesir(2)=0;
+
+          veldesir(0)=omega*r*cos(omega*t);
+          veldesir(1)=-omega*r*sin(omega*t);
+          veldesir(2)=0;
+
+          acceldesir(0)=-omega*omega*r*sin(omega*t);
+          acceldesir(1)=-omega*omega*r*cos(omega*t);
+          acceldesir(2)=0;
+        }
+      }
+      else
+      {
+        step=0;
+        path_debut=true;
+        vect3_zero(acceldesir);
+        vect3_zero(angleAcceldesir);
+      }
 
       ////////////////////////////////////
       ////       Controller           ////
       ////////////////////////////////////
+      switch (ctrlNb)
+      {
+        case 1 :
+              // LQR //
+              forceGlobF=-( PropMatrixforce*(dPos) + DerivMatrixforce*(dVel) + intZ*vecZ);
+              torque=-(PropMatrixtorque*(dAngle)+DerivMatrixtorque*(dAvel));
+              break;
 
-      // LQR //
-      forceGlobF=-( PropMatrixforce*(dPos) + DerivMatrixforce*(vel) + intZ*vecZ);
-      torque=-(PropMatrixtorque*(dAngle)+DerivMatrixtorque*(avel));
+        case 2 :
+              // PID //
 
-      // PID //
+               forceGlobF(0)=0.1304*forceGfOld1(0)                        +184.0696*-dPos(0)  -181.2870*-dPosOld1(0);
+               forceGlobF(1)=0.1304*forceGfOld1(1)                        +184.0696*-dPos(1)  -181.2870*-dPosOld1(1);
+               forceGlobF(2)=1.1304*forceGfOld1(2) -0.1304*forceGfOld2(2) +184.0749*-dPos(2)  -365.3519*-dPosOld1(2)  +181.2863*-dPosOld2(2);
 
-//       forceGlobF(0)=0.2397*forceGfOld1(0)                        +262.6*-dPos(0)  -260.6*-dPosOld1(0);
-//       forceGlobF(1)=0.2397*forceGfOld1(1)                        +262.6*-dPos(1)  -260.6*-dPosOld1(1);
-//       forceGlobF(2)=1.2400*forceGfOld1(2) -0.2397*forceGfOld2(2) +262.6*-dPos(2)  -523.2*-dPosOld1(2)  +260.6*-dPosOld2(2);
+               torque(0)=10.2*-dAngle(0) -10.0*-dAngleOld1(0);
+               torque(1)=10.2*-dAngle(1) -10.0*-dAngleOld1(1);
+               torque(2)=153.0*-dAngle(2)  -150.0*-dAngleOld1(2);
+               break;
 
-//       torque(0)=0.2397*torqueOld1(0)  +20.2*-dAngle(0) -20.05*-dAngleOld1(0);
-//       torque(1)=0.2397*torqueOld1(1)  +20.2*-dAngle(1) -20.05*-dAngleOld1(1);
-//       torque(2)=0.1353*torqueOld1(2)  +202*-dAngle(2)  -200.3*-dAngleOld1(2);
+        case 3 :
+              // Computed Torque //
+              DragForce(0)=DragCoeffF*vel(0)*vel(0);
+              DragForce(1)=DragCoeffF*vel(1)*vel(1);
+              DragForce(2)=DragCoeffF*vel(2)*vel(2);
+
+              DragTorque(0)=DragCoeffT*avel(0)*avel(0);
+              DragTorque(1)=DragCoeffT*avel(1)*avel(1);
+              DragTorque(2)=DragCoeffT*avel(2)*avel(2);
+
+              DragTorque=DragTorque+CPCMCmatrix*Rmatrix.inverse()*DragForce;			  //CPM_CM may be already defined (Cross Product Matrix Center of mass)
+
+              forceGlobF=MassM*(acceldesir-KpF*dPos-KvF*dVel)+DragForce;             // BE CAREFULL of the sign before Kp and Kv because of the definition of Dpos Dvel , etc
+              torque=InertiaM*(angleAcceldesir-KpT*dAngle-KvT*dAvel)+DragTorque+CPM(avel)*InertiaM*avel;
+
+              // Addition of the g(q) reduced to the difference of buoyancy
+
+              force(2) = force(2) + 0.01*intZ;
+              break;
+
+
+        default :
+
+               vect3_zero(forceGlobF);
+               vect3_zero(torque);
+               break;
+      }
 
 
       ////////////////////////////////////
 
       // Saturation //
-      forceGlobF(0)=saturation(forceGlobF(0),maxFxy,-maxFxy);
+      /*forceGlobF(0)=saturation(forceGlobF(0),maxFxy,-maxFxy);
       forceGlobF(1)=saturation(forceGlobF(1),maxFxy,-maxFxy);
-      forceGlobF(2)=saturation(forceGlobF(2),maxFz,-maxFz);
+      forceGlobF(2)=saturation(forceGlobF(2),maxFz,-maxFz);*/
 
 
       // Rotate Force into body-frame //
       force=Rmatrix.inverse()*forceGlobF;
 
 
-      // Saturation //
-      force(0)=saturation(force(0),maxFxy,minFxy);
+      // Saturation //y
+      /*force(0)=saturation(force(0),maxFxy,minFxy);
       force(1)=saturation(force(1),maxFxy,minFxy);
       force(2)=saturation(force(2),maxFz,minFz);
       torque(0)=saturation(torque(0),maxT,minT);
       torque(1)=saturation(torque(1),maxT,minT);
-      torque(2)=saturation(torque(2),maxT,minT);
+      torque(2)=saturation(torque(2),maxT,minT);*/
 
 
       //The first saturation is there to avoid the issue arising when the saturation function is applied the second time.
 
 
       // Command //
-      F.force.x=smooth(FOld1.force.x,FOld2.force.x,force(0),forceOld1(0),forceOld2(0));
-      F.force.y=smooth(FOld1.force.y,FOld2.force.y,force(1),forceOld1(1),forceOld2(1));
-      F.force.z=smooth(FOld1.force.z,FOld2.force.z,force(2),forceOld1(2),forceOld2(2));
-      F.torque.x=smooth(FOld1.torque.x,FOld2.torque.x,torque(0),torqueOld1(0),torqueOld2(0));
-      F.torque.y=smooth(FOld1.torque.y,FOld2.torque.y,torque(1),torqueOld1(1),torqueOld2(1));
-      F.torque.z=smooth(FOld1.torque.z,FOld2.torque.z,torque(2),torqueOld1(2),torqueOld2(2));
+      F.force.x=force(0);      //smooth(FOld1.force.x,FOld2.force.x,force(0),forceOld1(0),forceOld2(0));
+      F.force.y=force(1);     //smooth(FOld1.force.y,FOld2.force.y,force(1),forceOld1(1),forceOld2(1));
+      F.force.z=force(2);     //smooth(FOld1.force.z,FOld2.force.z,force(2),forceOld1(2),forceOld2(2));
+      F.torque.x=torque(0);   //smooth(FOld1.torque.x,FOld2.torque.x,torque(0),torqueOld1(0),torqueOld2(0));
+      F.torque.y=torque(1);   //smooth(FOld1.torque.y,FOld2.torque.y,torque(1),torqueOld1(1),torqueOld2(1));
+      F.torque.z=torque(2);   //smooth(FOld1.torque.z,FOld2.torque.z,torque(2),torqueOld1(2),torqueOld2(2));
 
 
       // Update //
@@ -643,21 +787,40 @@ int main(int argc, char **argv)
       Desired_pose_node.publish(desirPose);
       Vel_node.publish(fVel);
 
-      FUnfiltered.force.x=force(0);
+      /*FUnfiltered.force.x=force(0);
       FUnfiltered.force.y=force(1);
       FUnfiltered.force.z=force(2);
       FUnfiltered.torque.x=torque(0);
       FUnfiltered.torque.y=torque(1);
       FUnfiltered.torque.z=torque(2);
-      Controle_notfiltered_node.publish(FUnfiltered);
+      Controle_notfiltered_node.publish(FUnfiltered);*/
     }
 
     geometry_msgs::Wrench info;
     info.force.x=fbuoyCoeff;
     Fbuoy_node.publish(info);
 
+    geometry_msgs::Pose2D path_info;
+    path_info.x=pathNb;
+    path_info.y=step;
+    path_info.theta=path;
+    Path_node.publish(path_info);
+
+
     loop_rate.sleep();
   }
+
+
+  vect3_zero(force);
+  vect3_zero(torque);
+  F.force.x=force(0);
+  F.force.y=force(1);
+  F.force.z=force(2);
+  F.torque.x=torque(0);
+  F.torque.y=torque(1);
+  F.torque.z=torque(2);
+  Controle_node.publish(F);
+
   return 0;
 }
 

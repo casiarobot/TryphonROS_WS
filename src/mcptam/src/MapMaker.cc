@@ -43,12 +43,17 @@
 #include <mcptam/SmallBlurryImage.h>
 #include <mcptam/Map.h>
 #include <mcptam/BundleAdjusterBase.h>
+#include <mcptam/MapMakerTiming.h>
 
-MapMaker::MapMaker(Map &map, TaylorCameraMap &cameras, BundleAdjusterBase &bundleAdjuster)
+MapMaker::MapMaker(Map &map, RelocaliserFabMap &reloc, TaylorCameraMap &cameras, BundleAdjusterBase &bundleAdjuster)
 : MapMakerBase(map, true)
-, MapMakerClientBase(map)
+, MapMakerClientBase(map, reloc)
 , MapMakerServerBase(map, cameras, bundleAdjuster)
 {
+  mCreationTimingPub = mNodeHandlePriv.advertise<mcptam::MapMakerTiming>("timing_mkf_creation", 1, true);
+  mLocalTimingPub = mNodeHandlePriv.advertise<mcptam::MapMakerTiming>("timing_local_ba", 1,true);
+  mGlobalTimingPub = mNodeHandlePriv.advertise<mcptam::MapMakerTiming>("timing_global_ba", 1,true);
+  
   Reset();
   start();
 }
@@ -107,19 +112,12 @@ void MapMaker::Reset()
 {
   ROS_DEBUG("MapMaker: Reset");
   
-  MapMakerClientBase::Reset();
-  MapMakerServerBase::Reset();
-  
   std::cout<<"Calling MapMakerBase::Reset()"<<std::endl;
   MapMakerBase::Reset();  // reset the actual map
   std::cout<<"Done MapMakerBase::Reset()"<<std::endl;
   
-  /*
-  if(mMap.mbGood)
-  {
-    ApplyGlobalTransformationToMap(CalcPlaneAligner()); 
-  }
-  */
+  MapMakerClientBase::Reset();  // call this after base reset so that FabMap can load if map exists
+  MapMakerServerBase::Reset();
   
   //debug
   mbRescale = false;
@@ -203,8 +201,18 @@ void MapMaker::run()
       mBundleAdjuster.UseTukey((mState == MM_RUNNING && mMap.mlpMultiKeyFrames.size() > 2));
       mBundleAdjuster.UseTwoStep((mState == MM_RUNNING && mMap.mlpMultiKeyFrames.size() > 2));
       
+      mcptam::MapMakerTiming timingMsg;
+      timingMsg.map_num_mkfs = mMap.mlpMultiKeyFrames.size();
+      timingMsg.map_num_points = mMap.mlpPoints.size();
+      
+      ros::Time start = ros::Time::now();
+      
       int nAccepted = mBundleAdjuster.BundleAdjustRecent(vOutliers);
       //mdMaxCov = mBundleAdjuster.GetMaxCov();
+      
+      ros::Time nowTime = ros::Time::now();
+      timingMsg.elapsed = (nowTime - start).toSec();
+      timingMsg.header.stamp = nowTime;
       
       ROS_DEBUG_STREAM("Accepted iterations: "<<nAccepted);
       ROS_DEBUG_STREAM("Number of outliers: "<<vOutliers.size());
@@ -224,6 +232,9 @@ void MapMaker::run()
         mnNumConsecutiveFailedBA = 0;
         HandleOutliers(vOutliers);
         PublishMapVisualization();
+        
+        timingMsg.elapsed /= nAccepted;
+        mLocalTimingPub.publish(timingMsg);
       }
     }
     
@@ -247,7 +258,18 @@ void MapMaker::run()
       mBundleAdjuster.UseTukey(mState == MM_RUNNING && mMap.mlpMultiKeyFrames.size() > 2);
       mBundleAdjuster.UseTwoStep((mState == MM_RUNNING && mMap.mlpMultiKeyFrames.size() > 2));
       
+      mcptam::MapMakerTiming timingMsg;
+      timingMsg.map_num_mkfs = mMap.mlpMultiKeyFrames.size();
+      timingMsg.map_num_points = mMap.mlpPoints.size();
+      
+      ros::Time start = ros::Time::now();
+      
       int nAccepted = mBundleAdjuster.BundleAdjustAll(vOutliers);
+      
+      ros::Time nowTime = ros::Time::now();
+      timingMsg.elapsed = (nowTime - start).toSec();
+      timingMsg.header.stamp = nowTime;
+      
       mdMaxCov = mBundleAdjuster.GetMaxCov();
       
       ROS_DEBUG_STREAM("Accepted iterations: "<<nAccepted);
@@ -268,6 +290,9 @@ void MapMaker::run()
         mnNumConsecutiveFailedBA = 0;
         HandleOutliers(vOutliers);
         PublishMapVisualization();
+        
+        timingMsg.elapsed /= nAccepted;
+        mGlobalTimingPub.publish(timingMsg);
         
         if(mState == MM_INITIALIZING && (mdMaxCov < MapMakerServerBase::sdInitCovThresh || mbStopInit)) 
         {
@@ -365,6 +390,8 @@ bool MapMaker::Init(MultiKeyFrame*& pMKF_Incoming, bool bPutPlaneAtOrigin)
       kf.mpSBI = NULL;
     }
   }
+  
+  mRelocFabMap.Add(*pMKF);
     
   return InitFromMultiKeyFrame(pMKF, bPutPlaneAtOrigin);  // from MapMakerServerBase
 }
@@ -402,7 +429,9 @@ void MapMaker::AddMultiKeyFrameFromTopOfQueue()
     }
     
     if(!kf.NoImage())
+    {
       kf.MakeSBI();  // only needed for relocalizer
+    }
   }
   
 /*
@@ -414,6 +443,12 @@ void MapMaker::AddMultiKeyFrameFromTopOfQueue()
     std::cout<<">>>>>> Marked furthest MKF as bad!"<<std::endl;
   }
 */
+  
+  mcptam::MapMakerTiming timingMsg;
+  timingMsg.map_num_mkfs = mMap.mlpMultiKeyFrames.size();
+  timingMsg.map_num_points = mMap.mlpPoints.size();
+  
+  ros::Time start = ros::Time::now();
   
   if(mState == MM_RUNNING)
   {
@@ -432,6 +467,10 @@ void MapMaker::AddMultiKeyFrameFromTopOfQueue()
         pMKF->EraseBackLinksFromPoints();
         delete pMKF;
       }
+      else
+      {
+        mRelocFabMap.Add(*pMKF);
+      }
     }
   }
   else  // INITIALIZING
@@ -440,6 +479,11 @@ void MapMaker::AddMultiKeyFrameFromTopOfQueue()
     AddMultiKeyFrameAndMarkLastDeleted(pMKF, false);
     mMap.MoveDeletedMultiKeyFramesToTrash();
   }
+  
+  ros::Time nowTime = ros::Time::now();
+  timingMsg.elapsed = (nowTime - start).toSec();
+  timingMsg.header.stamp = nowTime;
+  mCreationTimingPub.publish(timingMsg);
   
   lock.lock();
   mqpMultiKeyFramesFromTracker.pop_front(); 

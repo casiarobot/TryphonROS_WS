@@ -99,10 +99,10 @@ SystemClient::SystemClient()
   }
   
   mpMapMakerClient = new MapMakerClient(*mpMap);
-  mpTracker = new Tracker(*mpMap, *mpMapMakerClient, mmCameraModels, mmPoses, mmDrawOffsets, mpGLWindow);
+  mpTracker = new Tracker(*mpMap, *mpRelocFabMap, *mpMapMakerClient, mmCameraModels, mmPoses, mmDrawOffsets, mpGLWindow);
   
-  ImageBWMap masksMap = LoadMasks(); 
-  mpTracker->SetMasks(masksMap);
+  LoadLiveMasks(); 
+  mpTracker->SetMasks(mmMasksLive);
   
   mbDone = false;
 }

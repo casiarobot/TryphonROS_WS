@@ -46,8 +46,8 @@ GLWindow2::GLWindow2(CVD::ImageRef irSize, std::string sTitle)
   mirVideoSize = irSize;
   GUI.RegisterCommand("GLWindow.AddMenu", GUICommandCallBack, this);
   CVD::glSetFont("sans");
-  mvMCPoseUpdate=Zeros;
-  mvLeftPoseUpdate=Zeros;
+  
+  //std::cout<< get_glx_version() <<std::endl;
 };
 
 
@@ -103,7 +103,7 @@ void GLWindow2::DrawMenus()
   SetupWindowOrtho();
   glLineWidth(1);
   
-  int nTop = 30;
+  int nTop = 5;
   int nHeight = 30;
   for(std::vector<GLWindowMenu*>::iterator i = mvpGLWindowMenus.begin(); i!= mvpGLWindowMenus.end(); i++)
   {
@@ -143,6 +143,11 @@ void GLWindow2::SetupVideoRasterPosAndZoom()
   glPixelZoom(adZoom[0], -adZoom[1]);
 }
 
+void GLWindow2::SetupWindowRasterPos()
+{
+  glRasterPos2d(-0.5,-0.5);
+}
+
 void GLWindow2::SetupViewport()
 {
   glViewport(0, 0, size()[0], size()[1]);
@@ -158,7 +163,7 @@ void GLWindow2::PrintString(CVD::ImageRef irPos, std::string s, double scale, do
   glPopMatrix();
 }
 
-void GLWindow2::DrawCaption(std::string s)
+void GLWindow2::DrawCaption(std::string s, TooN::Vector<3> v3TextColor, TooN::Vector<4> v4BackgroundColor)
 {
   if(s.length() == 0)
     return;
@@ -181,10 +186,11 @@ void GLWindow2::DrawCaption(std::string s)
     }
   }
   
-  int nTopOfBox = size().y - nLines * 16;
+  int nTopOfBox = size().y - nLines * 14;
   
   // Draw a grey background box for the text
-  glColor4f(0,0,0,0.4);
+  //glColor4f(0,0,0,0.4);
+  CVD::glColor(v4BackgroundColor);
   glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
   glBegin(GL_QUADS);
@@ -195,7 +201,8 @@ void GLWindow2::DrawCaption(std::string s)
   glEnd();
   
   // Draw the caption text in yellow
-  glColor3f(1,1,0);      
+  //glColor3f(1,1,0);  
+  CVD::glColor(v3TextColor);    
   PrintString(CVD::ImageRef(10,nTopOfBox + 13), s);
 }
 
@@ -210,23 +217,30 @@ void GLWindow2::on_mouse_move(GLWindow& win, CVD::ImageRef where, int state)
   CVD::ImageRef irMotion = where - mirLastMousePos;
   mirLastMousePos = where;
   
-  double dSensitivity = 0.01;
-  if(state & BUTTON_LEFT && ! (state & BUTTON_RIGHT))
+  bool bHandled = false;
+  
+  if(state & BUTTON_MIDDLE)
   {
-    mvMCPoseUpdate[3] -= irMotion[1] * dSensitivity;
-    mvMCPoseUpdate[4] += irMotion[0] * dSensitivity;
-  }
-  else if(!(state & BUTTON_LEFT) && state & BUTTON_RIGHT)
-  {
-    mvLeftPoseUpdate[4] -= irMotion[0] * dSensitivity;
-    mvLeftPoseUpdate[3] += irMotion[1] * dSensitivity;
-  }
-  else if(state & BUTTON_MIDDLE  || (state & BUTTON_LEFT && state & BUTTON_RIGHT))
-  {
-    mvLeftPoseUpdate[5] -= irMotion[0] * dSensitivity;
-    mvLeftPoseUpdate[2] += irMotion[1] * dSensitivity;
+    bHandled = true;
+    
+    if(state & BUTTON_MOD_SHIFT)
+    {
+      mMouseUpdate.mv2ShiftMiddleClick[0] += irMotion[0];
+      mMouseUpdate.mv2ShiftMiddleClick[1] += irMotion[1];
+    }
+    else
+    {
+      mMouseUpdate.mv2MiddleClick[0] += irMotion[0];
+      mMouseUpdate.mv2MiddleClick[1] += irMotion[1];
+    }
   }
   
+  if(!bHandled) 
+  {
+    std::stringstream ss;
+    ss<<state<<" "<<where.x<<" "<<where.y;
+    GUI.ParseLine("try MouseMove "+ss.str());
+  }
 }
 
 void GLWindow2::on_mouse_down(GLWindow& win, CVD::ImageRef where, int state, int button)
@@ -234,6 +248,17 @@ void GLWindow2::on_mouse_down(GLWindow& win, CVD::ImageRef where, int state, int
   bool bHandled = false;
   for(unsigned int i=0; !bHandled && i<mvpGLWindowMenus.size(); i++)
     bHandled = mvpGLWindowMenus[i]->HandleClick(button, state, where.x, where.y);
+    
+  if(button & BUTTON_WHEEL_UP)
+  {
+    mMouseUpdate.mdWheel += 1.0;
+    bHandled = true;
+  }
+  else if(button & BUTTON_WHEEL_DOWN)
+  {
+    mMouseUpdate.mdWheel -= 1.0;
+    bHandled = true;
+  }
     
   if(!bHandled)  // button press wasn't over any menu item
   {
@@ -243,25 +268,32 @@ void GLWindow2::on_mouse_down(GLWindow& win, CVD::ImageRef where, int state, int
   }
 }
 
+void GLWindow2::on_mouse_up(GLWindow& win, CVD::ImageRef where, int state, int button)
+{
+  std::stringstream ss;
+  ss<<button<<" "<<state<<" "<<where.x<<" "<<where.y;
+  GUI.ParseLine("try MouseUp "+ss.str());
+}
+
 void GLWindow2::on_event(GLWindow& win, int event)
 {
   if(event==EVENT_CLOSE)
     GUI.ParseLine("quit");
 }
 
-std::pair<Vector<6>, Vector<6> > GLWindow2::GetMousePoseUpdate()
+MouseUpdate GLWindow2::GetMouseUpdate()
 {
-  std::pair<Vector<6>, Vector<6> > result = std::make_pair(mvLeftPoseUpdate, mvMCPoseUpdate);
-  mvLeftPoseUpdate = Zeros;
-  mvMCPoseUpdate = Zeros;
-  return result;
+  MouseUpdate ret = mMouseUpdate;
+  mMouseUpdate.Reset();
+  
+  return ret;
 }
 
 #include <X11/keysym.h>
-void GLWindow2::on_key_down(GLWindow&, int k)
+std::string GLWindow2::ConvertKey (int key)
 {
   std::string s;
-  switch(k)
+  switch(key)
   {
     case XK_a:   case XK_A:  s="a"; break;
     case XK_b:   case XK_B:  s="b"; break;
@@ -305,9 +337,28 @@ void GLWindow2::on_key_down(GLWindow&, int k)
     case XK_space:  s="Space"; break;
     case XK_BackSpace:  s="BackSpace"; break;
     case XK_Escape:  s="Escape"; break;
-    default: ;
+    case XK_Delete:  s="Delete"; break;
+    case XK_Undo: s="Undo"; break;
+    case XK_Control_L: s="Ctrl"; break;
+    case XK_Control_R: s="Ctrl"; break;
+    default: std::cout << "Got unkown keysym: " << std::hex << key << std::dec << std::endl;
   }
 
+  return s;
+}
+
+void GLWindow2::on_key_down(GLWindow&, int k)
+{
+  std::string s = ConvertKey(k);
+  
   if(s!="")
-    GUI.ParseLine("try KeyPress "+s);
+    GUI.ParseLine("try KeyPress " + s);
+}
+
+void GLWindow2::on_key_up(GLWindow&, int k)
+{
+  std::string s = ConvertKey(k);
+  
+  if(s!="")
+    GUI.ParseLine("try KeyRelease " + s);
 }
