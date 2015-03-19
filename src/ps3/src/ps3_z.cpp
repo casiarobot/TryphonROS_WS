@@ -106,7 +106,6 @@ std_msgs::Bool button_magnet;
 
 int bool_input(float a,float b)
 {
-	new_pose=1;
 	if (a && !b)
  		return 1;
 	else if (!a && b)
@@ -140,7 +139,6 @@ if (Joy->buttons[PS3_BUTTON_ACTION_SQUARE])
 	
 	if (button_magnet.data==false){button_magnet.data=true;}
 	else if (button_magnet.data==true){button_magnet.data=false;}
-	new_pose=1;
     ros::Duration(.5).sleep();
 }
 
@@ -148,9 +146,9 @@ if (ps3_mode==1)
 {
 	
     //increment x with max and min for pose
-	if((posx<500 && button_x>0)||(posx>-500 && button_x<0)){posx=posx+button_x;} //500*max_d (.01) is max
+	if((posx<500 && button_x>0)||(posx>-500 && button_x<0)){posx=posx+button_x;new_pose=1;} //500*max_d (.01) is max
 	//increment y with max and min for pose
-	if((posy<500 && button_y>0)||(posy>-500 && button_y<0)){posy=posy+button_y;}
+	if((posy<500 && button_y>0)||(posy>-500 && button_y<0)){posy=posy+button_y;new_pose=1;} /////	quick fix here on new_pose 1 for compilation could cause problem in future
     //increment z with max and min for pose
 	if((posz<1.2 && button_z>0)||(posz>-0.8 && button_z<0)){posz=posz+0.01*button_z;}
 			
