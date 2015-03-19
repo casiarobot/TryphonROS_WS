@@ -351,8 +351,10 @@ void CameraCalibrator::GUICommandHandler(std::string command, std::string params
     
     bool bSuccess = mVideoSource.SaveParams(v9Params);
     
-    //if(bSuccess)
-    //  mbDone = true;
+    if(!bSuccess)
+    {
+      ROS_ERROR("Couldn't save params to camera!!");
+    }
   
     return;
   }

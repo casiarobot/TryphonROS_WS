@@ -40,6 +40,7 @@
 #include <mcptam/KeyFrame.h>
 #include <mcptam/ShiTomasi.h>
 #include <mcptam/SmallBlurryImage.h>
+#include <mcptam/PersistentFREAK.h>
 #include <mcptam/MapPoint.h>
 #include <mcptam/MEstimator.h>
 #include <mcptam/LevelHelpers.h>
@@ -75,12 +76,13 @@ KeyFrame::KeyFrame(MultiKeyFrame* pMKF, std::string name)
   , mpParent(pMKF)
 {
   mpSBI = NULL;
+  mpExtractor = NULL;
   mbActive = false;
   mdSceneDepthMean = MAX_DEPTH;
   mdSceneDepthSigma = MAX_SIGMA;
 }
 
-void KeyFrame::AddMeasurement(MapPoint* pPoint, Measurement* pMeas)
+void KeyFrame::AddMeasurement(MapPoint* pPoint, Measurement* pMeas, bool bExtractDescriptor)
 {
   ROS_ASSERT(!mmpMeasurements.count(pPoint));
   
@@ -88,6 +90,31 @@ void KeyFrame::AddMeasurement(MapPoint* pPoint, Measurement* pMeas)
   
   mmpMeasurements[pPoint] = pMeas;
   pPoint->mMMData.spMeasurementKFs.insert(this);
+  
+  if(bExtractDescriptor)
+  {
+    CreateMeasurementDescriptor(*pMeas);
+  }
+}
+
+void KeyFrame::CreateMeasurementDescriptor(Measurement& meas)
+{
+  if(meas.nLevel == RELOC_LEVEL)
+  {
+    ROS_ASSERT(mpExtractor);
+    ROS_ASSERT(meas.matDescriptor.empty());
+    
+    TooN::Vector<2> v2LevelPos = LevelNPos(meas.v2RootPos, meas.nLevel);
+    std::vector<cv::KeyPoint> vKeyPoints(1);
+    vKeyPoints[0].pt.x = v2LevelPos[0];
+    vKeyPoints[0].pt.y = v2LevelPos[1];
+    vKeyPoints[0].size = 7.f;  // got this from OpenCV's implementation of FAST
+    
+    mpExtractor->compute(vKeyPoints, meas.matDescriptor);
+    
+    // if pMeas->matDescriptor is empty, it means the measurement point was too close
+    // to the border and the extractor couldn't create a descriptor for it
+  }
 }
 
 // Erase all measurements
@@ -107,6 +134,9 @@ KeyFrame::~KeyFrame()
 {
   if(mpSBI)
     delete mpSBI;
+    
+  if(mpExtractor)
+    delete mpExtractor;
     
   ClearMeasurements();
     
@@ -188,6 +218,7 @@ std::tuple<double,double,double> KeyFrame::MakeKeyFrame_Lite(CVD::Image<CVD::byt
       // .. make a half-size image from the previous level..
       lev.image.resize(maLevels[i-1].image.size() / 2);
       CVD::halfSample(maLevels[i-1].image, lev.image);
+      CVD::convolveGaussian(lev.image, 1.0, 1.0);
       
       dDownsampleTime += (ros::WallTime::now()-startTime).toSec();
     }
@@ -534,7 +565,17 @@ void KeyFrame::MakeKeyFrame_Rest()
   
   // Also, make a SmallBlurryImage of the keyframe: The relocaliser uses these.
   MakeSBI();
+  
+  MakeExtractor();
+  
+  // Make sure that every measurement has a descriptor at this point
+  for(MeasPtrMap::iterator meas_it = mmpMeasurements.begin(); meas_it != mmpMeasurements.end(); meas_it++)
+  {
+    Measurement& meas = *(meas_it->second);
+    CreateMeasurementDescriptor(meas);
+  }
 }
+      
 
 void KeyFrame::MakeSBI()
 {
@@ -542,6 +583,16 @@ void KeyFrame::MakeSBI()
     mpSBI = new SmallBlurryImage(*this);  
   // Relocaliser also wants the jacobians..
   mpSBI->MakeJacs();
+}
+
+void KeyFrame::MakeExtractor()
+{
+  if(mpExtractor)
+    delete mpExtractor;
+    
+  Level& level = maLevels[RELOC_LEVEL];
+  cv::Mat imageWrapped(level.image.size().y, level.image.size().x, CV_8U, level.image.data(), level.image.row_stride());
+  mpExtractor = new cv::PersistentFREAK(imageWrapped, true, true);
 }
 
 // Calculates the distance of map points visible in a keyframe and their weights
@@ -925,6 +976,14 @@ double MultiKeyFrame::Distance(MultiKeyFrame &other)
   }
   
   return dMinDist;
+}
+
+void MultiKeyFrame::UpdateCamsFromWorld()
+{
+  for(KeyFramePtrMap::iterator kf_it = mmpKeyFrames.begin(); kf_it != mmpKeyFrames.end(); ++kf_it)
+  {
+    kf_it->second->mse3CamFromWorld = kf_it->second->mse3CamFromBase * mse3BaseFromWorld; // CHECK!! GOOD
+  }
 }
 
 // ------------------------------------------- Other stuff -------------------------------------------------------------

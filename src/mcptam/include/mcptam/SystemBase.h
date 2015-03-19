@@ -54,6 +54,7 @@
 #include <ros/callback_queue.h>
 
 class Map;
+class RelocaliserFabMap;
 class VideoSourceMulti;
 
 /** @brief Base class for other System(...) classes, sets up commonly used objects and provides
@@ -105,12 +106,12 @@ protected:
   /// Creates a new VideoSourceMulti object
   VideoSourceMulti* InitVideoSource();
   
-  /// Load a map of masks specified by the 'masks' and 'masks_dir' params
-  ImageBWMap LoadMasks();
-  
   void SaveCamerasToFolder(std::string folder);
   
   void LoadCamerasFromFolder(std::string folder);
+  
+  /// Load a map of masks specified by the 'masks' and 'masks_dir' params
+  void LoadLiveMasks();
   
   
   ros::NodeHandle mNodeHandle;      ///< ROS global node handle
@@ -120,6 +121,7 @@ protected:
   GLWindow2* mpGLWindow;  ///< The GL window
   
   Map *mpMap;   ///< Pointer to the Map
+  RelocaliserFabMap* mpRelocFabMap;
   
   ImageRefMap mmDrawOffsets;        ///< %Map of drawing offset coordinates
   TaylorCameraMap mmCameraModelsLive;   ///< The TaylorCamera models loaded from live cameras
@@ -130,6 +132,8 @@ protected:
   
   TaylorCameraMap mmCameraModels;   ///< The TaylorCamera models
   SE3Map mmPoses;                   ///< %Map of fixed relative camera poses
+  
+  ImageBWMap mmMasksLive;
   
   std::string mSaveFolder;
   

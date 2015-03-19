@@ -36,7 +36,7 @@
 
 #include <mcptam/PoseCalibrator.h>
 #include <mcptam/VideoSourceMulti.h>
-#include <mcptam/KeyFrameViewer.h>
+#include <mcptam/KeyFrameVisualizer.h>
 #include <mcptam/BundleAdjusterSingle.h>
 #include <mcptam/MapMakerCalib.h>
 #include <mcptam/TrackerCalib.h>
@@ -148,17 +148,17 @@ PoseCalibrator::PoseCalibrator()
   mResetSystemServer = mNodeHandlePriv.advertiseService("reset", &PoseCalibrator::ResetSystemCallback, this);
   
   mpBundleAdjuster = new BundleAdjusterSingle(*mpMap, mmCameraModels);
-  mpMapMaker = new MapMakerCalib(*mpMap, mmCameraModels, *mpBundleAdjuster);
-  mpKeyFrameViewer = new KeyFrameViewer(*mpMap, *mpGLWindow, mmDrawOffsets, mpVideoSourceMulti->GetSizes());
+  mpMapMaker = new MapMakerCalib(*mpMap, *mpRelocFabMap, mmCameraModels, *mpBundleAdjuster);
+  mpKeyFrameVisualizer = new KeyFrameVisualizer(*mpMap, *mpGLWindow, mmDrawOffsets, mpVideoSourceMulti->GetSizes());
   
-  ImageBWMap masksMap = LoadMasks(); 
+  LoadLiveMasks(); 
   
   // Create the CalibratorTrackers, one for each camera
   for(TaylorCameraMap::iterator it = mmCameraModels.begin(); it != mmCameraModels.end(); it++)
   {
     std::string camName = it->first;
     mmTrackers[camName] = new TrackerCalib(*mpMap, *mpMapMaker, mmCameraModels, camName, mmDrawOffsets[camName], mirPatternSize, mdSquareSize, mpGLWindow);
-    mmTrackers[camName]->SetMasks(masksMap);
+    mmTrackers[camName]->SetMasks(mmMasksLive);
   }
   
   mnLastNumInit = 0;
@@ -170,7 +170,7 @@ PoseCalibrator::~PoseCalibrator()
 {
   delete mpBundleAdjuster;
   delete mpMapMaker;
-  delete mpKeyFrameViewer;
+  delete mpKeyFrameVisualizer;
   
   for(TrackerCalibPtrMap::iterator it = mmTrackers.begin(); it != mmTrackers.end(); it++)
   {
@@ -379,8 +379,8 @@ std::string PoseCalibrator::Track()
     glClear(GL_COLOR_BUFFER_BIT);
       
     // Show the View menu
-    mpKeyFrameViewer->Draw();
-    captionStream << mpKeyFrameViewer->GetMessageForUser();
+    mpKeyFrameVisualizer->Draw();
+    captionStream << mpKeyFrameVisualizer->GetMessageForUser();
   }
   else
   {
@@ -509,13 +509,13 @@ void PoseCalibrator::GUICommandHandler(std::string command, std::string params)
   
   if(command=="ShowNextKeyFrame")
   {
-    mpKeyFrameViewer->Next();
+    mpKeyFrameVisualizer->Next();
     return;
   }
   
   if(command=="ShowPrevKeyFrame")
   {
-    mpKeyFrameViewer->Prev();
+    mpKeyFrameVisualizer->Prev();
     return;
   }
   

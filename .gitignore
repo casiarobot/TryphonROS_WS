@@ -1,3 +1,7 @@
 devel
 build
 src/cameras
+src/mcptam/saved
+src/mcptam/saved_level0
+src/mcptam/saved_level1
+src/mcptam/saved_level1_renamed

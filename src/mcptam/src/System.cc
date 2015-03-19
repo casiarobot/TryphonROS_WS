@@ -43,7 +43,7 @@
  ****************************************************************************************/
 
 #include <mcptam/System.h>
-#include <mcptam/KeyFrameViewer.h>
+#include <mcptam/KeyFrameVisualizer.h>
 #include <mcptam/OpenGL.h>
 #include <mcptam/MapMaker.h>
 #include <mcptam/Tracker.h>
@@ -125,6 +125,8 @@ System::System()
     GUI.ParseLine("AddingMKFs=1");
     GUI.ParseLine("UpdatingPoints=1");
     GUI.ParseLine("CrossCamera=1");
+    GUI.ParseLine("DrawReloc=0");
+    GUI.ParseLine("RelocFabMap=0");
     
     static gvar3<int> gvnLevelZeroPoints("LevelZeroPoints", 0, HIDDEN|SILENT);
     *gvnLevelZeroPoints = SystemBase::sbLevelZeroPoints;
@@ -135,6 +137,7 @@ System::System()
     // If we loaded a map, disable adding MKFs and updating points by default
     if(mpMap->mbGood)
     {
+      std::cout<<"Map is GOOD, disabling adding and updating"<<std::endl;
       *gvnAddingMKFs = 0;
       *gvnUpdatingPoints = 0;
     }
@@ -152,6 +155,8 @@ System::System()
     // Debug Menu
     GUI.ParseLine("Menu.AddMenuButton Debug \"< Back\" \"\" Root");
     GUI.ParseLine("Menu.AddMenuToggle Debug \"CrossCam\" CrossCamera Debug");
+    GUI.ParseLine("Menu.AddMenuToggle Debug \"Draw Reloc\" DrawReloc Debug");
+    GUI.ParseLine("Menu.AddMenuToggle Debug \"RelocFabMap\" RelocFabMap Debug");
     GUI.ParseLine("Menu.AddMenuButton Debug \"Save Map\" SaveMap Debug");
     GUI.ParseLine("Menu.AddMenuButton Debug \"Scale Down\" ScaleMapDown Debug");
     GUI.ParseLine("Menu.AddMenuButton Debug \"Scale Up\" ScaleMapUp Debug");
@@ -181,21 +186,21 @@ System::System()
   std::cout<<"Creating Bundle adjuster"<<std::endl;
   mpBundleAdjuster = new BundleAdjusterMulti(*mpMap, mmCameraModels, true, false);
   std::cout<<"Creating MapMaker"<<std::endl;
-  mpMapMaker = new MapMaker(*mpMap, mmCameraModels, *mpBundleAdjuster);
+  mpMapMaker = new MapMaker(*mpMap, *mpRelocFabMap, mmCameraModels, *mpBundleAdjuster);
   std::cout<<"Creating Tracker"<<std::endl;
-  mpTracker = new Tracker(*mpMap, *mpMapMaker, mmCameraModels, mmPosesLive, mmDrawOffsets, mpGLWindow);
+  mpTracker = new Tracker(*mpMap, *mpRelocFabMap, *mpMapMaker, mmCameraModels, mmPosesLive, mmDrawOffsets, mpGLWindow);
    std::cout<<"Creating keyframe viewer"<<std::endl;
-  mpKeyFrameViewer = new KeyFrameViewer(*mpMap, *mpGLWindow, mmDrawOffsets, mpVideoSourceMulti->GetSizes());
+  mpKeyFrameVisualizer = new KeyFrameVisualizer(*mpMap, *mpGLWindow, mmDrawOffsets, mpVideoSourceMulti->GetSizes());
   
-  ImageBWMap masksMap = LoadMasks(); 
-  mpTracker->SetMasks(masksMap);
+  LoadLiveMasks(); 
+  mpTracker->SetMasks(mmMasksLive);
     
   mbDone = false;
 }
 
 System::~System()
 {
-  delete mpKeyFrameViewer;
+  delete mpKeyFrameVisualizer;
   delete mpTracker;
   delete mpMapMaker;
   delete mpBundleAdjuster;
@@ -283,7 +288,7 @@ void System::Run()
       glClearColor(0,0,0,0);
       glClear(GL_COLOR_BUFFER_BIT);
         
-      mpKeyFrameViewer->Draw();
+      mpKeyFrameVisualizer->Draw();
     }
     else
     {
@@ -293,7 +298,7 @@ void System::Run()
     // Update the GUI with the caption info
     std::stringstream captionStream;
     if(bDrawKeyFrames)
-      captionStream << mpKeyFrameViewer->GetMessageForUser();
+      captionStream << mpKeyFrameVisualizer->GetMessageForUser();
     else
       captionStream << mpTracker->GetMessageForUser();
       
@@ -328,13 +333,13 @@ void System::GUICommandHandler(std::string command, std::string params)
   
   if(command=="ShowNextKeyFrame")
   {
-    mpKeyFrameViewer->Next();
+    mpKeyFrameVisualizer->Next();
     return;
   }
   
   if(command=="ShowPrevKeyFrame")
   {
-    mpKeyFrameViewer->Prev();
+    mpKeyFrameVisualizer->Prev();
     return;
   }
   
@@ -353,23 +358,9 @@ void System::GUICommandHandler(std::string command, std::string params)
   if(command=="SaveMap")
   {
     ROS_ASSERT(!mSaveFolder.empty());
-    
-    ROS_INFO_STREAM("> Requesting save to "<<mSaveFolder);
-    
-    std::string execString = "exec rm -r " + mSaveFolder + "/*"; 
-    int nRet = std::system(execString.c_str());
-    
-    if(nRet < 0)
-    {
-      ROS_ERROR("=======================================================================");
-      ROS_ERROR("COULD NOT ERASE EXISTING CONTENTS OF SAVE FOLDER, NOT WRITING MAP DATA!");
-      ROS_ERROR("=======================================================================");
-    }
-    else
-    {
-      mpMapMaker->RequestMapSave(mSaveFolder);
-      SaveCamerasToFolder(mSaveFolder);
-    }
+  
+    mpMapMaker->RequestMapSave(mSaveFolder);
+    SaveCamerasToFolder(mSaveFolder);
     
     return;
   }
@@ -416,7 +407,20 @@ void System::GUICommandHandler(std::string command, std::string params)
     }
     else if(params == "a")
     {
-      mpTracker->AddNext();
+      if(mpMapMaker->Initializing())
+      {
+        ROS_INFO_STREAM("> Forcing end of initialization");
+        mpMapMaker->RequestStopInit();
+      }
+      else
+      {
+        ROS_INFO_STREAM("> Forcing adding of next MKF");
+        mpTracker->AddNext();
+      }
+    }
+    else if(params == "f")
+    {
+      mpTracker->ForceRecovery();
     }
     
     return;
