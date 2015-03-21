@@ -23,7 +23,8 @@
 
 ros::Publisher posed_chaser;
 ros::Publisher posed_target;
-ros::Publisher veld_chaser;
+ros::Publisher magnet;
+
 
 geometry_msgs::Pose p_chaser,p_target,p_rel, pdes_chaser, pdes_target, p_target_initial,veldes_chaser;
 double t=0;
@@ -33,7 +34,7 @@ bool x_init_count=true; //ensures x init is set once
 bool  start_target=false; //this will confirm when target pose has been acquired at least once 
 bool start_chaser=false; //same for chaser
 bool count_targ1=true;//this will ensure the orinal position of target is maintained for all info
-
+bool magnet_on=false;
 
 
 void subPose_target(const geometry_msgs::PoseStamped PoseS1) //only need this for inital positions once facing each other
@@ -124,6 +125,7 @@ ros::Rate loop_rate(10);
 temp_arg = argv[1];
   std::replace(temp_arg.begin(), temp_arg.end(), '.', '_');
 */
+magnet = node.advertise<std_msgs::Bool>("/magnet_on",1);
 
 sprintf(rosname,"/%s/chaser_dpos",rosnameC);
 posed_chaser = node.advertise<geometry_msgs::Pose>(rosname,1);
@@ -202,7 +204,7 @@ while (ros::ok())
 		
 			if (path_debut) // sets up the inital conditions of glideslope
 				{
-			
+				
     			path_debut_time=ros::Time::now().toSec();
    
 				double x_initial=sqrt(pow(p_rel.position.x,2.0)+pow(p_rel.position.y,2.0)); //norm of the relative velocity vector
@@ -210,7 +212,7 @@ while (ros::ok())
 				double v_init=a*x_initial+v_max; 
 				double period=1/a*log(v_max/v_init); //The glideslope algorithm has a period (TBD)
 				ROS_INFO("Period=%f", period); //this must be possible with force of thrusters
-			
+				magnet_on=true;
 				path_debut=false;
 				}
 		
@@ -242,6 +244,8 @@ while (ros::ok())
 	posed_target.publish(pdes_target); //what is sent has orientation in euler z=yaw
 	posed_chaser.publish(pdes_chaser); //what is sent has orientation in euler z=yaw
 	veld_chaser.publish(veldes_chaser);
+	magnet.publish(magnet_on);
+
 
 	loop_rate.sleep();
 	}	
