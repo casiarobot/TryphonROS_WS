@@ -41,6 +41,9 @@ add_dependencies(control sensors_gencpp std_msgs geometry_msgs sensors state)
 add_executable(ctr_fuzzy src/ctr_fuzzy.cpp)
 target_link_libraries(ctr_fuzzy ${catkin_LIBRARIES})
 add_dependencies(ctr_fuzzy sensors_gencpp std_msgs geometry_msgs sensors state)
+add_executable(glideslope src/glideslope.cpp)
+target_link_libraries(glideslope ${catkin_LIBRARIES})
+add_dependencies(glideslope sensors_gencpp std_msgs geometry_msgs sensors)
 
 
 add_executable(force_distribution src/force_distribution.cpp)
