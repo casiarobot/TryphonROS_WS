@@ -10,6 +10,8 @@
 std::vector<sensor_msgs::Imu> vImu;
 double deltaT=0.01;
 bool needPublish=false;
+double linCov[9]={0.01,0,0,0,0.01,0,0,0,0.01};
+double aLinCov[9]={0.1,0,0,0,0.1,0,0,0,0.1};
 
 void subImu(const links::imubuff Imus)
 {
@@ -25,9 +27,15 @@ void subImu(const links::imubuff Imus)
     Imu.linear_acceleration.y = -Imus.buffer[i].accel[1]; // modifying the frame as such as the x-direction is given by the usb dongle and the z-direction is pointing upward
     Imu.linear_acceleration.z = -Imus.buffer[i].accel[2];
 
-    Imu.angular_velocity.x = Imus.buffer[i].gyro[0]; // modifying the frame as such as the x-direction is given by the usb dongle and the z-direction is pointing upward
-    Imu.angular_velocity.y = -Imus.buffer[i].gyro[1];
-    Imu.angular_velocity.z = -Imus.buffer[i].gyro[2];
+    Imu.angular_velocity.x = (Imus.buffer[i].gyro[0])*0.017453; // modifying the frame as such as the x-direction is given by the usb dongle and the z-direction is pointing upward
+    Imu.angular_velocity.y = (-Imus.buffer[i].gyro[1])*0.017453;
+    Imu.angular_velocity.z = (-Imus.buffer[i].gyro[2])*0.017453;
+
+    for(int i=0; i<9;i++)
+    {
+      Imu.linear_acceleration_covariance[i]=linCov[i];
+      Imu.angular_velocity_covariance[i]=aLinCov[i];
+    }
 
     vImu.push_back(Imu);
 
@@ -54,14 +62,14 @@ int main(int argc, char **argv)
   temp_arg = argv[1];
   std::replace(temp_arg.begin(), temp_arg.end(), '.', '_');
   sprintf(rosname,"link_Imu_%s",temp_arg.c_str());
-  
+
 
   ros::init(argc, argv, rosname);
   ros::NodeHandle node;
- 
+
   // Publishers //
   sprintf(rosname,"/%s/raw_imu",temp_arg.c_str());
-  imu_node = node.advertise<sensor_msgs::Imu>(rosname,1);
+  imu_node = node.advertise<sensor_msgs::Imu>("/raw_imu",1);
 
   // Subscribers //
   sprintf(rosname,"/%s/imubuff",temp_arg.c_str());
@@ -89,7 +97,7 @@ int main(int argc, char **argv)
       }
       needPublish=false;
     }
-    
+
     loop_rate.sleep();
   }
 

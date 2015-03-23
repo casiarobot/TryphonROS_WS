@@ -59,6 +59,10 @@ add_executable(test_motors src/test_motors.cpp)
 target_link_libraries(test_motors ${catkin_LIBRARIES})
 add_dependencies(test_motors sensors_gencpp)
 
+add_executable(test_command src/test_command.cpp)
+target_link_libraries(test_command ${catkin_LIBRARIES})
+add_dependencies(test_command sensors_gencpp)
+
 #add_executable(minicube src/minicube.cpp ../sensors/src/robocomm.cpp)
 #target_link_libraries(minicube ${catkin_LIBRARIES})
 #add_dependencies(minicube sensors_gencpp)
