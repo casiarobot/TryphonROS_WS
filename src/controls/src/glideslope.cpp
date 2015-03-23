@@ -27,8 +27,13 @@ ros::Publisher magnet;
 
 
 geometry_msgs::Pose p_chaser,p_target,p_rel, pdes_chaser, pdes_target, p_target_initial,veldes_chaser;
-Eigen::Matrix3d RMatrix,CPCMIMUmatrix, RIMUmatrix,CPCMCmatrix;
-Eigen::Vector3d pos_chaser;
+Eigen::Matrix3d RMatrix_chaser,CPCMIMUmatrix_chaser, RIMUmatrix_chaser,CPCMCmatrix_chaser,RMatrix_target,CPCMIMUmatrix_target, RIMUmatrix_target,CPCMCmatrix_target;
+Eigen::Vector3d pos_chaser,pos_target;
+Eigen::Vector3d CMCpos(0,0,0.18);
+Eigen::Vector3d CMIMUpos(1,0,-1.125);
+Eigen::Quaterniond quatIMU(0.99255, 0,0.12187, 0); // quat of the rotation matrix between the tryphon frame and the IMU frame
+Eigen::Quaterniond quatIMU2(0.99255, 0,-0.12187, 0);
+
 
 double t=0;
 double path_debut_time=0;
@@ -42,7 +47,35 @@ bool start=true;
 
 void subPose_target(const geometry_msgs::PoseStamped PoseS1) //only need this for inital positions once facing each other
 {
-p_target=PoseS1.pose;
+
+geometry_msgs::Pose Pose=PoseS1.pose;
+  
+  if(start)
+  {
+    RIMUmatrix_target=quatIMU.toRotationMatrix(); // need to be computed only once
+    CPCMIMUmatrix_target=CPM(CMIMUpos);
+    CPCMCmatrix_target=CPM(CMCpos);
+    start=false;
+  }
+
+  pos_target(0)=Pose.position.x; // defined in global frame
+  pos_target(1)=Pose.position.y;
+  pos_target(2)=Pose.position.z;
+  Eigen::Quaterniond quat(PoseS2.orientation.w,PoseS2.orientation.x,PoseS2.orientation.y,PoseS2.orientation.z);
+ 
+  quat=quat*quatIMU.inverse();  // compute the quaternion between the vision world and the tryphon frame
+
+  angle_target(0)=atan2(2*(quat.w()*quat.x()+quat.y()*quat.z()),1-2*(quat.x()*quat.x()+quat.y()*quat.y()));
+  angle_target(1)=asin(2*(quat.w()*quat.y()-quat.z()*quat.x()));
+  angle_target(2)=atan2(2*(quat.w()*quat.z()+quat.x()*quat.y()),1-2*(quat.z()*quat.z()+quat.y()*quat.y()));
+  Rmatrix_target=quat_target.toRotationMatrix();
+
+  pos_target=pos_target-Rmatrix_target*CMIMUpos;  // offset due to the fact that the pose is the one of the IMU
+
+
+p_target.position.x=pos(0);
+p_target.position.y=pos(1);
+p_target.position.z=pos(2);
 start_target=true;
 }
 
@@ -53,9 +86,9 @@ geometry_msgs::Pose Pose=PoseS2.pose;
   
   if(start)
   {
-    RIMUmatrix=quatIMU.toRotationMatrix(); // need to be computed only once
-    CPCMIMUmatrix=CPM(CMIMUpos);
-    CPCMCmatrix=CPM(CMCpos);
+    RIMUmatrix_chaser=quatIMU.toRotationMatrix(); // need to be computed only once
+    CPCMIMUmatrix_chaser=CPM(CMIMUpos);
+    CPCMCmatrix_chaser=CPM(CMCpos);
     start=false;
   }
 
@@ -66,12 +99,12 @@ geometry_msgs::Pose Pose=PoseS2.pose;
  
   quat=quat*quatIMU.inverse();  // compute the quaternion between the vision world and the tryphon frame
 
-  angle(0)=atan2(2*(quat.w()*quat.x()+quat.y()*quat.z()),1-2*(quat.x()*quat.x()+quat.y()*quat.y()));
-  angle(1)=asin(2*(quat.w()*quat.y()-quat.z()*quat.x()));
-  angle(2)=atan2(2*(quat.w()*quat.z()+quat.x()*quat.y()),1-2*(quat.z()*quat.z()+quat.y()*quat.y()));
-  Rmatrix=quat.toRotationMatrix();
+  angle_chaser(0)=atan2(2*(quat.w()*quat.x()+quat.y()*quat.z()),1-2*(quat.x()*quat.x()+quat.y()*quat.y()));
+  angle_chaser(1)=asin(2*(quat.w()*quat.y()-quat.z()*quat.x()));
+  angle_chaser(2)=atan2(2*(quat.w()*quat.z()+quat.x()*quat.y()),1-2*(quat.z()*quat.z()+quat.y()*quat.y()));
+  Rmatrix_chaser=quat_chaser.toRotationMatrix();
 
-  pos_chaser=pos_chaser-Rmatrix*CMIMUpos;  // offset due to the fact that the pose is the one of the IMU
+  pos_chaser=pos_chaser-Rmatrix_chaser*CMIMUpos;  // offset due to the fact that the pose is the one of the IMU
 
 
 p_chaser.position.x=pos(0);
@@ -97,11 +130,11 @@ bool facing_error(const geometry_msgs::Pose Pose, double yaw)
 {
 
 double yaw_error_allowed=0.05; //set yaw range
-double angle_y;
+double angle_chaser_y;
 Eigen::Quaterniond quat(Pose.orientation.w,Pose.orientation.x,Pose.orientation.y,Pose.orientation.z);
-angle_y=atan2(2*(quat.w()*quat.z()+quat.x()*quat.y()),1-2*(quat.z()*quat.z()+quat.y()*quat.y()));
+angle_chaser_y=atan2(2*(quat.w()*quat.z()+quat.x()*quat.y()),1-2*(quat.z()*quat.z()+quat.y()*quat.y()));
 
-if (abs(angle_y-yaw)<=yaw_error_allowed)
+if (abs(angle_chaser_y-yaw)<=yaw_error_allowed)
 	{
 	return true;
 	}
@@ -227,7 +260,7 @@ while (ros::ok())
 
 		if (facing_error(p_target,yawd_target) && facing_error(p_chaser,yawd_chaser)) //this determines whether the two tryphons are close to facing each other
 			{
-			facing_each_other=true;//compare quaternion of the angles and makesure within a certain range of facing each other
+			facing_each_other=true;//compare quaternion of the angle_chasers and makesure within a certain range of facing each other
 			} 
 
 		if (facing_each_other) //glideslope loop for which begins once tryphons are facing each other
