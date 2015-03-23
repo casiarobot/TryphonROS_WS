@@ -13,6 +13,7 @@
 #include "sensors/imuros.h"
 #include "geometry_msgs/Pose.h"
 #include "geometry_msgs/PoseArray.h"
+#include "tests/props_command.h"
 
 #include <fstream>
 
@@ -34,6 +35,7 @@ std::ofstream filePCtrl;
 std::ofstream filePD;
 std::ofstream fileI;
 std::ofstream filePath;
+std::ofstream fileCP;
 
 void subPoseEkf(const geometry_msgs::PoseStamped PoseS)
 {
@@ -97,6 +99,15 @@ void subPath(const geometry_msgs::Pose2D Pose)
 	fileI <<secs << "," << Pose.x << ","<< Pose.y <<","<< Pose.theta  <<endl;
 }
 
+void subCommandProps(const tests::props_command props)
+{
+  double commands[8]={0,0,0,0,0,0,0,0};
+  for(int i=0;i<props.commands.size();i++){commands[i]=props.commands[i];}
+	double secs = ros::Time::now().toSec()-debut;
+	fileCP <<secs << "," << commands[0] << ","<< commands[1] <<","<< commands[2] <<","<< commands[3];
+	fileCP <<","<< commands[4] <<","<< commands[5] <<","<< commands[6] <<","<< commands[7] <<endl;
+}
+
 int main(int argc, char **argv)
 {
    if (argc>1)
@@ -141,6 +152,9 @@ int main(int argc, char **argv)
   ros::Subscriber subI = node.subscribe(rosname, 100, subImu);
   sprintf(rosname,"/%s/path_info",temp_arg.c_str());
   ros::Subscriber subP = node.subscribe(rosname, 100, subPath);
+  sprintf(rosname,"/%s/command_props",temp_arg.c_str());
+  ros::Subscriber subCP = node.subscribe(rosname, 100, subCommandProps);
+
 
   ros::Rate loop_rate(100);
 
@@ -172,6 +186,9 @@ int main(int argc, char **argv)
   sprintf(buffer,"%s/%s_Path.csv",link,temp_arg.c_str());
   filePath.open(buffer);
   ROS_INFO(buffer);
+  sprintf(buffer,"%s/%s_CP.csv",link,temp_arg.c_str());
+  fileCP.open(buffer);
+  ROS_INFO(buffer);
 
   filePEKF   << "time,x,y,z,qx,qy,qz,qw" << endl  ;
   fileVEKF   << "time,vx,vy,vz,wx,wy,wz" << endl  ;
@@ -181,6 +198,7 @@ int main(int argc, char **argv)
   filePD     << "time,x,y,z,qx,qy,qz,qw" << endl  ;
   fileI      << "time,ax,ay,az,gx,gy,gz" << endl  ;
   filePath   << "time,pathNb,step,path"  << endl  ;
+  fileCP     << "time,p0,p1,p2,p3,p4,p5,p6,p7" << endl  ;
 
 
 

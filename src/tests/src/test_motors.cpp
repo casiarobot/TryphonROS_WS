@@ -13,7 +13,7 @@
 int main(int argc, char **argv)
 {
   int count=0;
-  ros::init(argc,argv,"command");
+  ros::init(argc,argv,"test_motors");
   ros::NodeHandle n;
 
   ros::Publisher wrench_publisher = n.advertise<tests::props_command>("manual_control",1);

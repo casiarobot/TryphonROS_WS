@@ -56,8 +56,8 @@
 #define DISTANCE_INTERACTION_BAS		20		// cm Distance qui va declanger l'interaction sur des capteurs en bas. Doit �tre > DISTANCE_SECURITE  >TEMP 5cm pour eviter contact
 
 // luminosite
-#define	LUMINOSITE_MAX				255		// 
-#define	LUMINOSITE_STABILISATION		180		// 
+#define	LUMINOSITE_MAX				255		//
+#define	LUMINOSITE_STABILISATION		180		//
 #define	LUMINOSITE_OBJET			50		// unites
 #define LUMINOSITE_INTERACTION			0 //80		//0 Pas dinteraction, negatif attire, positif effraye
 #define LUMINOSITE_DISTANCE			150		//DISTANCE = LUMINOSITE/LUMINOSITE_DISTANCE
@@ -73,5 +73,16 @@
 #define MIN_Y					-5	//m
 #define MAX_Z					3	//m
 #define MIN_Z					0	//m
+
+#define MAX_AX        0.1
+#define MAX_AY        0.1
+#define MAX_AZ        3
+
+#define MIN_AX        -0.1
+#define MIN_AY        -0.1
+#define MIN_AZ        -3
+
+
+
 #define MAX_TZ					3.14	//rad
 #define MIN_TZ					0	//rad
