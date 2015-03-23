@@ -27,6 +27,9 @@ ros::Publisher magnet;
 
 
 geometry_msgs::Pose p_chaser,p_target,p_rel, pdes_chaser, pdes_target, p_target_initial,veldes_chaser;
+Eigen::Matrix3d RMatrix,CPCMIMUmatrix, RIMUmatrix,CPCMCmatrix;
+Eigen::Vector3d pos_chaser;
+
 double t=0;
 double path_debut_time=0;
 bool facing_each_other=false; //evaluates to true when line of sight guidance can begin for x_inital to be determined
@@ -35,7 +38,7 @@ bool  start_target=false; //this will confirm when target pose has been acquired
 bool start_chaser=false; //same for chaser
 bool count_targ1=true;//this will ensure the orinal position of target is maintained for all info
 bool magnet_on=false;
-
+bool start=true;
 
 void subPose_target(const geometry_msgs::PoseStamped PoseS1) //only need this for inital positions once facing each other
 {
@@ -45,7 +48,35 @@ start_target=true;
 
 void subPose_chaser(const geometry_msgs::PoseStamped PoseS2) //only need this for inital positions once facing each other
 {
-p_chaser=PoseS2.pose;
+
+geometry_msgs::Pose Pose=PoseS2.pose;
+  
+  if(start)
+  {
+    RIMUmatrix=quatIMU.toRotationMatrix(); // need to be computed only once
+    CPCMIMUmatrix=CPM(CMIMUpos);
+    CPCMCmatrix=CPM(CMCpos);
+    start=false;
+  }
+
+  pos_chaser(0)=Pose.position.x; // defined in global frame
+  pos_chaser(1)=Pose.position.y;
+  pos_chaser(2)=Pose.position.z;
+  Eigen::Quaterniond quat(Pose.orientation.w,Pose.orientation.x,Pose.orientation.y,Pose.orientation.z);
+ 
+  quat=quat*quatIMU.inverse();  // compute the quaternion between the vision world and the tryphon frame
+
+  angle(0)=atan2(2*(quat.w()*quat.x()+quat.y()*quat.z()),1-2*(quat.x()*quat.x()+quat.y()*quat.y()));
+  angle(1)=asin(2*(quat.w()*quat.y()-quat.z()*quat.x()));
+  angle(2)=atan2(2*(quat.w()*quat.z()+quat.x()*quat.y()),1-2*(quat.z()*quat.z()+quat.y()*quat.y()));
+  Rmatrix=quat.toRotationMatrix();
+
+  pos_chaser=pos_chaser-Rmatrix*CMIMUpos;  // offset due to the fact that the pose is the one of the IMU
+
+
+p_chaser.position.x=pos(0);
+p_chaser.position.y=pos(1);
+p_chaser.position.z=pos(2);
 start_target=true;
 }
 
