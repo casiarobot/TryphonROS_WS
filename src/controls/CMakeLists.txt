@@ -21,7 +21,7 @@ generate_dynamic_reconfigure_options(
 ## Declare a catkin package
 catkin_package( INCLUDE_DIRS include
 # Libraries
-CATKIN_DEPENDS  sensor_msgs geometry_msgs sensors state message_runtime
+CATKIN_DEPENDS  sensor_msgs std_msgs geometry_msgs sensors state message_runtime
 DEPENDS eigen)
 
 ##Specify additional locations of header files
@@ -41,6 +41,7 @@ add_dependencies(control sensors_gencpp std_msgs geometry_msgs sensors state)
 add_executable(ctr_fuzzy src/ctr_fuzzy.cpp)
 target_link_libraries(ctr_fuzzy ${catkin_LIBRARIES})
 add_dependencies(ctr_fuzzy sensors_gencpp std_msgs geometry_msgs sensors state)
+
 add_executable(glideslope src/glideslope.cpp)
 target_link_libraries(glideslope ${catkin_LIBRARIES})
 add_dependencies(glideslope sensors_gencpp std_msgs geometry_msgs sensors)
