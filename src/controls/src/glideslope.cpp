@@ -60,6 +60,7 @@ Eigen::Matrix3d CPM(Eigen::Vector3d vect) // return cross product matrix
 	return CPM;
 }
 
+
 void subPose_target(const geometry_msgs::PoseStamped PoseS1) //only need this for inital positions once facing each other
 {
 
