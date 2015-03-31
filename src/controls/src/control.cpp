@@ -6,7 +6,7 @@ BOOLEAN;
 typedef unsigned char BYTE;
 #define INTERACTION     0
 */
-
+#include "controls/State.h"
 
 #include <vector>
 #include <cmath>
@@ -27,7 +27,9 @@ typedef unsigned char BYTE;
 #include <controls/controlConfig.h>
 
 
-#include "controls/webCommands.h"
+#include "controls/Commands.h"
+
+#include "vects2geoMsgs.cpp"
 
 double dsz=0;
 double dsx=0;
@@ -44,14 +46,6 @@ int rzpos=1; // 0 between -360 and 0; 1-> 0-360; 2->360-720
 geometry_msgs::Wrench F, FOld1, FOld2;
 geometry_msgs::Pose fPose, desirPose, fVel;
 
-
-double thetaorig=0;
-double theta=0;
-double thetaold[3]={0,0,0};
-double thetadesir=0;
-double thetaderiv=0;
-
-
 Eigen::Vector3d force, forceOld1, forceOld2, forceGlobF, forceGfOld1, forceGfOld2, torque, torqueOld1, torqueOld2;
 Eigen::Vector3d posdesir, pos, dPos, dPosOld1, dPosOld2, angledesir, angle, dAngle, dAngleOld1, dAngleOld2;
 Eigen::Vector3d posOrig, angleOrig;
@@ -62,17 +56,27 @@ Eigen::Matrix3d Rmatrix, CPCMIMUmatrix, RIMUmatrix,CPCMCmatrix;
 Eigen::Quaterniond quatIMU(0.99255, 0,0.12187, 0); // quat of the rotation matrix between the tryphon frame and the IMU frame
 Eigen::Quaterniond quatIMU2(0.99255, 0,-0.12187, 0);
 
+Eigen::Vector3d veldesir(0,0,0);
+Eigen::Vector3d aveldesir(0,0,0);
+Eigen::Vector3d acceldesir(0,0,0);
+Eigen::Vector3d angleAcceldesir(0,0,0);
 
 
-bool start,path;
-double Gprop,Gderiv;
+
+bool start,On,path;
+double GainCP, Cd;
+double massTotal;
 double gain = exp(-0.1/1); //gain = exp(-SamplingPeriod/FilterTimeConstant);
 double fbuoyCoeff=1;       // gazebo parameter
 int pathNb=0;              // Path nb wanted
+int pathNbOld=0;              // Path nb wanted
 int ctrlNb=0;              // Ctrl nb wanted
 
-bool webCommand=false;     // getting the command from the website
+bool Command=false;     // getting the command from the website
 bool startWeb=true;
+bool noInt=false;          // increase integral term
+std_msgs::Float64 maxPrctThrust;
+
 
 Eigen::Matrix3d CPM(Eigen::Vector3d vect) // return cross product matrix
 {
@@ -84,6 +88,25 @@ Eigen::Matrix3d CPM(Eigen::Vector3d vect) // return cross product matrix
 	return CPM;
 }
 
+
+void subStateT(const controls::State state)
+{
+  if(path)
+  {
+    posdesir=pose2vect_pos(state.pose);
+    angledesir=pose2vect_angle(state.pose);
+    veldesir=twist2vect_linear(state.vel);
+    aveldesir=twist2vect_angular(state.vel);
+    acceldesir=twist2vect_linear(state.accel);
+    angleAcceldesir=twist2vect_angular(state.accel);
+
+    maxPrctThrust.data=state.maxThrust;
+    GainCP=state.GainCP;
+    noInt=state.noInt;
+
+  }
+
+}
 
 void subState(const state::state state)
 {
@@ -155,10 +178,10 @@ void subPose(const geometry_msgs::PoseStamped PoseS)
 
 }
 
-void subVel(const geometry_msgs::TwistStamped VelS)
+void subVel(const geometry_msgs::TwistStamped Velocities)
 {
 
-  geometry_msgs::Twist Vel=VelS.twist;
+  geometry_msgs::Twist Vel=Velocities.twist;
   if(!start)
   {
     vel(0)=Vel.linear.x; // defined in global frame
@@ -175,22 +198,22 @@ void subVel(const geometry_msgs::TwistStamped VelS)
 }
 
 
-void subdP(const controls::webCommands commands)
+void subdP(const controls::Commands commands)
 {
 
-  webCommand=commands.onOff;
+  Command=commands.commandOnOff;
+  On=commands.onOff;
 
   // Defining the origin pose //
-  if(webCommand && startWeb)
+  if(Command && startWeb)
   {
-    posOrig=pos;
     angleOrig=angle;
     startWeb=false;
   }
-  if(!webCommand && !startWeb){startWeb=true;}
+  if(!Command && !startWeb){startWeb=true;}
 
   // Update commands //
-  if(webCommand)
+  if(Command)
   {
     ctrlNb=commands.ctrlNb;
     path=commands.path;
@@ -201,78 +224,63 @@ void subdP(const controls::webCommands commands)
   // Updating the desir pose if not doing a trajectory //
   geometry_msgs::Pose dPose=commands.deltaPose;
 
-  if(webCommand && !path)
-  {
+  if(Command && !path)
+  {  Eigen::Vector3d veldesir(0,0,0);
+  Eigen::Vector3d aveldesir(0,0,0);
+  Eigen::Vector3d acceldesir(0,0,0);
+  Eigen::Vector3d angleAcceldesir(0,0,0);
 
-    if(dPose.position.x+posOrig(0)<=MAX_X && dPose.position.x+posOrig(0)>=MIN_X)
-    {posdesir(0)=posOrig(0)+dPose.position.x;}
 
-    if(dPose.position.y+posOrig(1)<=MAX_Y && dPose.position.y+posOrig(1)>=MIN_Y)
-    {posdesir(1)=posOrig(1)+dPose.position.y;}
+    if(dPose.position.x<=MAX_X && dPose.position.x>=MIN_X)
+    {posdesir(0)=dPose.position.x;}
 
-    if(dPose.position.z+posOrig(2)<=MAX_Z && dPose.position.z+posOrig(2)>=MIN_Z)
-    {posdesir(2)=posOrig(2)+dPose.position.z;}
+    if(dPose.position.y<=MAX_Y && dPose.position.y>=MIN_Y)
+    {posdesir(1)=dPose.position.y;}
 
-    if(dPose.orientation.x+angleOrig(0)<=MAX_AX && dPose.orientation.x+angleOrig(0)>=MIN_AX)
-    {angledesir(0)=posOrig(0)+dPose.orientation.x;}
+    if(dPose.position.z<=MAX_Z && dPose.position.z>=MIN_Z)
+    {posdesir(2)=dPose.position.z;}
 
-    if(dPose.orientation.y+angleOrig(1)<=MAX_AY && dPose.orientation.y+angleOrig(1)>=MIN_AY)
-    {angledesir(1)=posOrig(1)+dPose.orientation.y;}
+    if(dPose.orientation.x<=MAX_AX && dPose.orientation.x>=MIN_AX)
+    {angledesir(0)=dPose.orientation.x;}
 
-    if(dPose.orientation.z+angleOrig(2)<=MAX_AZ && dPose.orientation.z+angleOrig(2)>=MIN_AZ)
-    {angledesir(2)=posOrig(2)+dPose.orientation.z;}
+    if(dPose.orientation.y<=MAX_AY && dPose.orientation.y>=MIN_AY)
+    {angledesir(1)=dPose.orientation.y;}
 
+    if(dPose.orientation.z<=MAX_AZ && dPose.orientation.z>=MIN_AZ)
+    {angledesir(2)=dPose.orientation.z;}
+
+    noInt=commands.noInt;
+    maxPrctThrust.data=commands.maxThrust;
+    GainCP=commands.GainCP;
   }
 
 
-  //ROS_INFO("Dx: %f, Dy: %f, Dz: %f,DTx: %f, DTy: %f, DTz: %f",des_state.pos[0], des_state.pos[1], des_state.pos[2], des_state.quat[1], des_state.quat[2], des_state.quat[0]);
+  //ROS_INFO("Dx: %f, Dy: %maxPrctThrustf, Dz: %f,DTx: %f, DTy: %f, DTz: %f",des_state.pos[0], des_state.pos[1], des_state.pos[2], des_state.quat[1], des_state.quat[2], des_state.quat[0]);
 }
 
 void callback(controls::controlConfig &config, uint32_t level) {
-  if(!webCommand)
+  if(!Command)
   {
-  ROS_INFO("Reconfigure Request: x: %f, y: %f, z: %f, yaw: %f  ",
-           config.x,
-           config.y,
-           config.z,
-           config.yaw);
-  posdesir(0)=config.x,
-  posdesir(1)=config.y;
-  posdesir(2)=config.z;
-  angledesir(2)=config.yaw;
-  fbuoyCoeff=config.fbuoy;
-  path=config.path;
-  pathNb=config.pathNb-1;
-  ctrlNb=config.ctrlNb;
-  Gprop=config.prop;
-  Gderiv=config.deriv;
+    ROS_INFO("Reconfigure Request: x: %f, y: %f, z: %f, yaw: %f  ",
+             config.x,
+             config.y,
+             config.z,
+             config.yaw);
+    posdesir(0)=config.x,
+    posdesir(1)=config.y;
+    posdesir(2)=config.z;
+    angledesir(2)=config.yaw;
+    fbuoyCoeff=config.fbuoy;
+    path=config.path;
+    pathNb=config.pathNb-1;
+    ctrlNb=config.ctrlNb;
+    GainCP=config.gaincp;
+    Cd=config.cd;
+    massTotal=config.massTotal;
+    On=config.onOff;
+    maxPrctThrust.data=config.maxThrust;
+    noInt=config.noInt;
   }
-}
-
-
-void wrench_zero(geometry_msgs::Wrench &w)
-{
-  w.force.x=0;
-  w.force.y=0;
-  w.force.z=0;
-  w.torque.x=0;
-  w.torque.y=0;
-  w.torque.z=0;
-}
-
-void vect3_zero(Eigen::Vector3d &vect)
-{
-  vect(0)=0;
-  vect(1)=0;
-  vect(2)=0;
-}
-
-void vect4_zero(Eigen::Vector4d &vect)
-{vect3_zero(posdesir);
-  vect(0)=1;
-  vect(1)=0;
-  vect(2)=0;
-  vect(3)=0;
 }
 
 void all_vects_zero()
@@ -289,7 +297,7 @@ void all_vects_zero()
   vect3_zero(dPos);
   vect3_zero(dPosOld1);
   vect3_zero(dPosOld2);
-  vect3_zero(posdesir);
+  //vect3_zero(posdesir);  // to allow reconfigue to fix the desired pose
   vect3_zero(vel);
   vect3_zero(angle);
   vect3_zero(dAngle);
@@ -305,10 +313,13 @@ double saturation (double value, double up, double down)
   if(value>up)
   {return value=up;}
   if(value<down)
-  {return value=down;}
+  {return value=down;}  // Computed Torque Matrices and scalar//
   return value;
 
 }
+
+
+
 
 inline float IIR(float old, float in, float gain)
 {
@@ -317,9 +328,9 @@ inline float IIR(float old, float in, float gain)
 
 
 double smooth (double u1, double u2, double e, double e1, double e2)
-{
+{  // Computed Torque Matrices and scalar//
   return 1.16826*u1-0.42411820*u2+0.0639643*e+0.127929*e1+0.0639643*e2; // fc=1hz
-  //return 1.56450*u1-0.6436623*u2+0.0197896*e+0.03957916533*e1+0.0197896*e2; // fc=0.5hz
+  //return 1.56450*u1-0.6436623*  u2+0.0197896*e+0.03957916533*e1+0.0197896*e2; // fc=0.5hz
 
 }
 
@@ -347,7 +358,9 @@ ros::Publisher Vel_node;
 ros::Publisher Fbuoy_node;
 ros::Publisher Path_node;
 ros::Publisher Forcez_node;
+ros::Publisher MaxPrct_node;
 //ros::Publisher Controle_notfiltered_node;
+
 
 
 void mySigintHandler(int sig)
@@ -356,6 +369,7 @@ void mySigintHandler(int sig)
   // For example, publish a stop message to some other nodes.
   F.force.x=0;F.force.y=0;F.force.z=0;F.torque.x=0;F.torque.y=0;F.torque.z=0;
   Controle_node.publish(F);
+  Forcez_node.publish(F);
   ROS_INFO("fx: %f, fy: %f, fz: %f,Tx: %f, Ty: %f, Tz: %f",F.force.x, F.force.y, F.force.z, F.torque.x, F.torque.y, F.torque.z);
   // All the default sigint handler does is call shutdown()
   ros::shutdown();
@@ -424,9 +438,10 @@ int main(int argc, char **argv)
   Pose_node = node.advertise<geometry_msgs::Pose>(rosname,1);
   sprintf(rosname,"/%s/velocity",temp_arg.c_str());
   Vel_node = node.advertise<geometry_msgs::Pose>(rosname,1);
-  sprintf(rosname,"/%s/path_info",temp_arg.c_str());
+  sprintf(rosname,"/%s/path_command",temp_arg.c_str());
   Path_node = node.advertise<geometry_msgs::Pose2D>(rosname,1);
-
+  sprintf(rosname,"/%s/max_thrust",temp_arg.c_str());
+  MaxPrct_node = node.advertise<std_msgs::Float64>(rosname,1);
 
 
   Fbuoy_node = node.advertise<geometry_msgs::Wrench>("/fbuoy",1);
@@ -436,6 +451,8 @@ int main(int argc, char **argv)
   // Subscribers //
   sprintf(rosname,"/%s/state",temp_arg.c_str());
   ros::Subscriber subS = node.subscribe(rosname, 1, subState);
+  sprintf(rosname,"/%s/state_trajectory",temp_arg.c_str());
+  ros::Subscriber subSt = node.subscribe(rosname, 1, subStateT);
   //ros::Subscriber subdP = node.subscribe("/desired_deltapose", 1, subdP);
   ros::Subscriber subP = node.subscribe("/ekf_node/pose", 1, subPose);
   ros::Subscriber subV = node.subscribe("/ekf_node/velocity", 1, subVel);
@@ -450,7 +467,10 @@ int main(int argc, char **argv)
   // Loop rate //
   ros::Rate loop_rate(10);
 
+  // Max percentage thrust //
 
+
+  maxPrctThrust.data=100;
 
 
   // LQR Gain Matrices //
@@ -492,17 +512,33 @@ int main(int argc, char **argv)
 
 
   vecZ(0)=0;
-  vecZ(1)=0;
+  vecZ(1)=0;  Eigen::Vector3d veldesir(0,0,0);
+  Eigen::Vector3d aveldesir(0,0,0);
+  Eigen::Vector3d acceldesir(0,0,0);
+  Eigen::Vector3d angleAcceldesir(0,0,0);
+
   vecZ(2)=0.0141;
+
+
 
   // Computed Torque Matrices and scalar//
   Eigen::Vector3d DragForce, DragTorque;
-  Eigen::Matrix3d Identity3,  MassM, InertiaM, KpF, KpT, KvF, KvT;
+  Eigen::Matrix3d Identity3,  MassM, InertiaM, KpF, KpT, KvF, KvT, K, kpT, kvT;
   // define Inertia and Mass matrix
-  double massTotal=23;
+
+  double DragCoeffF=Cd*0.5*2.15*2.15*1.205;
+  double DragCoeffT=3.45987;
 
   Identity3<< 1,  0,  0,
   0,  1,  0,
+  0,   0, 1;
+
+  kpT<< 0.3,  0,  0,
+  0,  0.3,  0,
+  0,   0, 1;
+
+  kvT<< 0.4,  0,  0,
+  0,  0.4,  0,
   0,   0, 1;
 
   MassM=massTotal*Identity3;
@@ -511,105 +547,21 @@ int main(int argc, char **argv)
   0,  15.6,  0,
   0,   0, 16;
 
+
+
+  KpF=(0.1*Identity3)*GainCP;
+  KpT=(0.06*kpT)*GainCP;
+
+  KvF=(0.55*Identity3)*GainCP;
+  KvT=(0.49*kvT)*GainCP;
+
   // Drag coeffs //
 
-  double DragCoeffF=1.7*0.5*2.15*2.15*1.205;
-  double DragCoeffT=3.45987;
 
+  double GainCPOld=GainCP;
+  double CdOld=Cd;
+  double massTotalOld=massTotal;
 
-  //[0.06*x;0.09*varphi]+[0.42*v;0.44*w]
-  KpF=0.06*Identity3;
-  KpT=0.06*Identity3;
-
-  KvF=0.42*Identity3;
-  KvT=0.49*Identity3;
-
-  //// PATHS ////
-  // Defining paths //
-
-  bool path_debut=true;
-  double path_debut_time=0;
-
-  /*
-  std::vector<Eigen::Vector4d> pathLine; // Gazebo paths
-  Eigen::Vector4d p1(-4.5,0,0,0);
-  Eigen::Vector4d p2(4.5,0,0,0);
-  pathLine.push_back( p1);
-  pathLine.push_back( p2);
-
-  std::vector<Eigen::Vector4d> pathLine2;
-
-  Eigen::Vector4d p12(4.5,0,0,M_PI);
-  Eigen::Vector4d p22(-4.5,0,0,M_PI);
-
-  pathLine2.push_back(p1);
-  pathLine2.push_back(p2);
-  pathLine2.push_back(p12);
-  pathLine2.push_back(p22);
-
-  std::vector<Eigen::Vector4d> pathSquare;
-  Eigen::Vector4d pS(-3.5,-3.5,0,0);
-  pathSquare.push_back(pS);
-
-  pS(0)=3.5;
-  pathSquare.push_back(pS);
-
-  pS(1)=3.5;
-  pathSquare.push_back(pS);
-
-  pS(0)=-3.5;
-  pathSquare.push_back(pS);*/
-
-  std::vector<Eigen::Vector4d> pathLine;
-  Eigen::Vector4d p1(-1.5,-1.5,2.5,M_PI/4);
-  Eigen::Vector4d p2(1.5,1.5,2.5,M_PI/4);
-  pathLine.push_back( p1);
-  pathLine.push_back( p2);
-
-  std::vector<Eigen::Vector4d> pathLine2;
-
-  Eigen::Vector4d p12(1.5,1.5,2.5,-M_PI*3/4);
-  Eigen::Vector4d p22(-1.5,-1.5,2.5,-M_PI*3/4);
-
-  pathLine2.push_back(p1);
-  pathLine2.push_back(p2);
-  pathLine2.push_back(p12);
-  pathLine2.push_back(p22);
-
-  std::vector<Eigen::Vector4d> pathSquare;
-  Eigen::Vector4d pS(-2.5,-2.5,2.5,0);
-  pathSquare.push_back(pS);
-
-  pS(0)=2.5;
-  pathSquare.push_back(pS);
-
-  pS(1)=2.5;
-  pathSquare.push_back(pS);
-
-  pS(0)=-2.5;
-  pathSquare.push_back(pS);
-
-  std::vector<Eigen::Vector4d> pathSquare2;
-
-
-  std::vector< std::vector<Eigen::Vector4d> > paths;
-
-  paths.push_back(pathLine);
-  paths.push_back(pathLine2);
-  paths.push_back(pathSquare);
-  //paths.push_back(pathSquare2);
-
-  // Rotation parameters //
-  double omega=0.0333333333333333333333333333333;
-  double r=2.5;
-  double r1=2;
-  double r2=0.5;
-  double t=0;
-
-
-  //////////////////////
-
-  // ros::Subscriber subA = node.subscribe("/android/imu", 1, poseCallback);
 
   // Initializing vectors and defining parameters//
 
@@ -620,15 +572,11 @@ int main(int argc, char **argv)
 
 
   start=true;
-  path=false;
 
   ctrlNb=1;
 
-  int step=0;
   double intZ = 0;
   geometry_msgs::Wrench FUnfiltered;
-  Eigen::Vector4d range(0.15,0.15,0.20,0.1);
-  Eigen::Vector4d rangeV(0.2,0.2,0.2,0.2);
 
   double maxFxy=1.24;
   double minFxy=-0.64;
@@ -639,11 +587,6 @@ int main(int argc, char **argv)
 
   Eigen::Vector3d dVel, dAvel;
 
-  Eigen::Vector3d veldesir(0,0,0);
-  Eigen::Vector3d aveldesir(0,0,0);
-  Eigen::Vector3d acceldesir(0,0,0);
-  Eigen::Vector3d angleAcceldesir(0,0,0);
-
   /////////////////////////
 
 
@@ -653,18 +596,24 @@ int main(int argc, char **argv)
   geometry_msgs::Wrench Fz;
 
 
+  //////////////////////////
+
   while (ros::ok())
   {
     ros::spinOnce();
+    if(On)
+    {
     if(!start)
     {
-    // Integral term //
-      if(fabs(force(2))<1.2) // increasing only if the command is not saturating //
+      // Integral term //
+      if(fabs(force(2))<1.2 && fabs(force(1))<0.6 && fabs(force(0))<0.6 && !noInt) // increasing only if the command is not saturating //
      {
-        intZ+= pos(2)-posdesir(2);
-        if(fabs(intZ*vecZ(2))>0.64){intZ=copysign(3.2,intZ);}
+        intZ+= (pos(2)-posdesir(2))/10;
+        if(fabs(intZ*vecZ(2))>0.6){intZ=copysign(0.6/vecZ(2),intZ);}
 
       }
+
+      /// Computing the errors ///
 
       // avoiding the discontunity due to the angle around pi and -pi //
       dAngle(0)=modulo(angle(0)-angledesir(0));
@@ -674,74 +623,26 @@ int main(int argc, char **argv)
       dVel=vel-veldesir;
       dAvel=avel-aveldesir;
 
-      // Path //
-      if(path)
+      ////////////////////////////
+
+      /// Updating the gain of the Computed torque ///
+      if(GainCPOld!=GainCP || CdOld!=Cd || massTotalOld!=massTotal)
       {
-        if(path_debut)
-        {
-          path_debut_time=ros::Time::now().toSec();
-          path_debut=false;
-        }
-        if(pathNb<3)
-        {
-          if(fabs(pos(0)-posdesir(0))<range(0) && fabs(pos(1)-posdesir(1))<range(1) && fabs(pos(2)-posdesir(2))<range(2) && fabs(dAngle(2))<range(3) && fabs(vel(0))<rangeV(0) && fabs(vel(1))<rangeV(1) && fabs(vel(2))<rangeV(2) && fabs(avel(2))<rangeV(3))
-          {
-            if(step<paths[pathNb].size()-1){step++;}
-            else{step=0;}
+        DragCoeffF=Cd*0.5*2.15*2.15*1.205;
 
-          }
-          posdesir(0)=paths[pathNb][step](0);
-          posdesir(1)=paths[pathNb][step](1);
-          posdesir(2)=paths[pathNb][step](2);
-          angledesir(2)=paths[pathNb][step](3);
-        }
-        if(pathNb==3)
-        {
-          t= ros::Time::now().toSec() - path_debut_time;
-          ROS_INFO("t= %f; omega= %f; sin= %f", t, omega,r*sin(omega*t) );
+        MassM=massTotal*Identity3;
 
+        KpF=(0.09*Identity3)*GainCP;
+        KpT=(0.06*kpT)*GainCP;
 
-          posdesir(0)=r*sin(omega*t);
-          posdesir(1)=r*cos(omega*t);
-          posdesir(2)=2.5;
+        KvF=(0.55*Identity3)*GainCP;
+        KvT=(0.49*kvT)*GainCP;
 
-          veldesir(0)=omega*r*cos(omega*t);
-          veldesir(1)=-omega*r*sin(omega*t);
-          veldesir(2)=0;
-
-          acceldesir(0)=-omega*omega*r*sin(omega*t);
-          acceldesir(1)=-omega*omega*r*cos(omega*t);
-          acceldesir(2)=0;
-        }
-        if(pathNb==4)
-        {
-          t= ros::Time::now().toSec() - path_debut_time;
-          ROS_INFO("t= %f; omega= %f; sin= %f", t, omega,r*sin(omega*t) );
-
-
-          posdesir(0)=r*sin(omega*t);
-          posdesir(1)=r*cos(omega*t);
-          posdesir(2)=2.5+r2*sin(omega*t);
-
-          veldesir(0)=omega*r*cos(omega*t);
-          veldesir(1)=-omega*r*sin(omega*t);
-          veldesir(2)=0;
-
-          acceldesir(0)=-omega*omega*r*sin(omega*t);
-          acceldesir(1)=-omega*omega*r*cos(omega*t);
-          acceldesir(2)=0;
-        }
+        GainCPOld=GainCP;
+        CdOld=Cd;
+        massTotalOld=massTotal;
       }
-      else
-      {
-        step=0;
-        path_debut=true;
-        vect3_zero(acceldesir);
-        vect3_zero(angleAcceldesir);
-        vect3_zero(veldesir);
-        vect3_zero(aveldesir);
 
-      }
 
       ////////////////////////////////////
       ////       Controller           ////
@@ -750,9 +651,9 @@ int main(int argc, char **argv)
       {
         case 1 :
               // LQR //
-              forceGlobF=-( PropMatrixforce*(dPos) + DerivMatrixforce*(dVel) + intZ*vecZ);
+              forceGlobF=-( PropMatrixforce*(dPos) + DerivMatrixforce*(dVel)); // + intZ*vecZ); // put into the intFz vector
               torque=-(PropMatrixtorque*(dAngle)+DerivMatrixtorque*(dAvel));
-
+              vect3_zero(intFzGlbf);
               intFzGlbf=-intZ*vecZ;
               break;
 
@@ -785,9 +686,9 @@ int main(int argc, char **argv)
               forceGlobF=MassM*(acceldesir-KpF*dPos-KvF*dVel)+DragForce;             // BE CAREFULL of the sign before Kp and Kv because of the definition of Dpos Dvel , etc
               torque=InertiaM*(angleAcceldesir-KpT*dAngle-KvT*dAvel)+DragTorque+CPM(avel)*InertiaM*avel;
 
-              // Addition of the g(q) reduced to the difference of buoyancy
+              // Addition of the g(q) reduced to the difference of buoyancy and gravity
 
-              forceGlobF(2) = forceGlobF(2) - 0.0141*intZ;
+              forceGlobF(2) = forceGlobF(2);// - 0.0141*intZ;  // put into the intFz vector
               vect3_zero(intFzGlbf);
               intFzGlbf(2)=-0.0141*intZ;
               break;
@@ -803,42 +704,25 @@ int main(int argc, char **argv)
 
       ////////////////////////////////////
 
-      // Saturation //
-      /*forceGlobF(0)=saturation(forceGlobF(0),maxFxy,-maxFxy);
-      forceGlobF(1)=saturation(forceGlobF(1),maxFxy,-maxFxy);
-      forceGlobF(2)=saturation(forceGlobF(2),maxFz,-maxFz);*/
-
 
       // Rotate Force into body-frame //
       force=Rmatrix.inverse()*forceGlobF;
       intFz=Rmatrix.inverse()*intFzGlbf;
 
 
-      // Saturation //y
-      /*force(0)=saturation(force(0),maxFxy,minFxy);
-      force(1)=saturation(force(1),maxFxy,minFxy);
-      force(2)=saturation(force(2),maxFz,minFz);
-      torque(0)=saturation(torque(0),maxT,minT);
-      torque(1)=saturation(torque(1),maxT,minT);
-      torque(2)=saturation(torque(2),maxT,minT);*/
-
-
-      //The first saturation is there to avoid the issue arising when the saturation function is applied the second time.
-
-
       // Command //
-      F.force.x=force(0);  // -intFz(0);                               //smooth(FOld1.force.x,FOld2.force.x,force(0),forceOld1(0),forceOld2(0));
-      F.force.y=force(1);  // -intFz(1);                               //smooth(FOld1.force.y,FOld2.force.y,force(1),forceOld1(1),forceOld2(1));
-      F.force.z=force(2);  // -intFz(2);                               //smooth(FOld1.force.z,FOld2.force.z,force(2),forceOld1(2),forceOld2(2));
-      F.torque.x=torque(0);                               //smooth(FOld1.torque.x,FOld2.torque.x,torque(0),torqueOld1(0),torqueOld2(0));
-      F.torque.y=torque(1);                               //smooth(FOld1.torque.y,FOld2.torque.y,torque(1),torqueOld1(1),torqueOld2(1));
-      F.torque.z=torque(2);                               //smooth(FOld1.torque.z,FOld2.torque.z,torque(2),torqueOld1(2),torqueOld2(2));
+      F.force.x=force(0);
+      F.force.y=force(1);
+      F.force.z=force(2);
+      F.torque.x=torque(0);
+      F.torque.y=torque(1);
+      F.torque.z=torque(2);
 
       // Integral fz term //
 
-      Fz.force.x=0;            //intFz(0);
-      Fz.force.y=0;            //intFz(1);
-      Fz.force.z=0;            //intFz(2);
+      Fz.force.x=intFz(0);
+      Fz.force.y=intFz(1);
+      Fz.force.z=intFz(2);
       Fz.torque.x=0;
       Fz.torque.y=0;
       Fz.torque.z=0;
@@ -887,40 +771,43 @@ int main(int argc, char **argv)
 
 
       /////////////////////////////////
-      //ROS_INFO("fx: %f, fy: %f, fz: %f,Tx: %f, Ty: %f, Tz: %f ",F.force.x,F.force.y,F.force.z,F.torque.x,F.torque.y,F.torque.z);
-      //ROS_INFO("x: %f, y: %f, z: %f,vx: %f, vy: %f, vz: %f ",pos(0),pos(1),pos(2),vel(0),vel(1),vel(2));
-      //ROS_INFO("x: %f, y: %f, z: %f",posdesir(0),posdesir(1),posdesir(2));
-      //ROS_INFO("ax: %f, ay: %f, az: %f,avx: %f, avy: %f, avz: %f ",angle(0),angle(1),angle(2),avel(0),avel(1),avel(2));
-
 
       Controle_node.publish(F);
       Forcez_node.publish(Fz);
       Pose_node.publish(fPose);
       Desired_pose_node.publish(desirPose);
       Vel_node.publish(fVel);
-
-      /*FUnfiltered.force.x=force(0);
-      FUnfiltered.force.y=force(1);
-      FUnfiltered.force.z=force(2);
-      FUnfiltered.torque.x=torque(0);
-      FUnfiltered.torque.y=torque(1);
-      FUnfiltered.torque.z=torque(2);
-      Controle_notfiltered_node.publish(FUnfiltered);*/
     }
 
-    geometry_msgs::Wrench info;
-    info.force.x=fbuoyCoeff;
-    Fbuoy_node.publish(info);
+      geometry_msgs::Wrench info;
+      info.force.x=fbuoyCoeff;
+      Fbuoy_node.publish(info);
 
-    geometry_msgs::Pose2D path_info;
-    path_info.x=pathNb;
-    path_info.y=step;
-    path_info.theta=path;
-    Path_node.publish(path_info);
+      geometry_msgs::Pose2D path_command;
+      path_command.x=pathNb;
+      path_command.theta=path;
+      Path_node.publish(path_command);
+      MaxPrct_node.publish(maxPrctThrust);
 
 
-    loop_rate.sleep();
+      loop_rate.sleep();
+    }
+    else
+    {
+      vect3_zero(force);
+      vect3_zero(torque);
+      F.force.x=force(0);
+      F.force.y=force(1);
+      F.force.z=force(2);
+      F.torque.x=torque(0);
+      F.torque.y=torque(1);
+      F.torque.z=torque(2);
+      Controle_node.publish(F);
+      Forcez_node.publish(F);
+      loop_rate.sleep();
+    }
   }
+
 
 
   vect3_zero(force);
@@ -932,6 +819,7 @@ int main(int argc, char **argv)
   F.torque.y=torque(1);
   F.torque.z=torque(2);
   Controle_node.publish(F);
+  Forcez_node.publish(F);
 
   return 0;
 }

@@ -24,6 +24,11 @@
 #include <Eigen/Geometry>
 #include <Eigen/Dense>
 
+#include <dynamic_reconfigure/server.h>
+#include <controls/fdistributionConfig.h>
+
+#include "std_msgs/Float64.h"
+
 bool start=true;
 geometry_msgs::Wrench input, fz;
 tests::props_command props;
@@ -34,6 +39,22 @@ double maxForce=0.63;
 double minForce=-0.32;
 double L=1.115;
 double Cm=0.17;
+double maxPrct;
+
+
+void callback(controls::fdistributionConfig &config, uint32_t level) {
+  {
+  ROS_INFO("Reconfigure Request: Max props percentage: %f",
+           config.maxPrct);
+
+  maxPrct=(config.maxPrct)/100;
+  }
+}
+
+void subMax(const std_msgs::Float64 inputMsg)
+{
+  maxPrct=(inputMsg.data)/100;
+}
 
 void subForces(const geometry_msgs::Wrench inputMsg)
 {
@@ -151,6 +172,15 @@ void Smooth(double (&vP)[8][3],double (&vPraw)[8][3])
   }
 }
 
+double Saturation(double command)
+{
+  if(command>255.0*maxPrct){command=255.0*maxPrct;}
+  if(command<-255.0*maxPrct){command=-255.0*maxPrct;}
+  return command;
+
+}
+
+
 void UpdateProps(double (&vP)[8][3])
 {
   for(int i=0; i<8;i++)
@@ -230,12 +260,20 @@ int main(int argc, char **argv)
   temp_arg = argv[1];
   std::replace(temp_arg.begin(), temp_arg.end(), '.', '_');
 
+  dynamic_reconfigure::Server<controls::fdistributionConfig> server;
+  dynamic_reconfigure::Server<controls::fdistributionConfig>::CallbackType f;
+
+  f = boost::bind(&callback, _1, _2);
+  server.setCallback(f);
+
   // Publishers //
   sprintf(rosname,"/%s/command_props",temp_arg.c_str());
   props_node = node.advertise<tests::props_command>(rosname,1);
 
 
   // Subscribers //
+  sprintf(rosname,"/%s/max_thrust",temp_arg.c_str());
+  ros::Subscriber subM = node.subscribe(rosname, 1, subMax);
   sprintf(rosname,"/%s/command_control",temp_arg.c_str());
   ros::Subscriber subF = node.subscribe(rosname, 1, subForces);
   sprintf(rosname,"/%s/intFz_control",temp_arg.c_str());
@@ -308,7 +346,7 @@ int main(int argc, char **argv)
 
       for(int i=0; i<8;i++)
       {
-        props.commands[i]=Nocrash(force2command(RealForce(commands[i][2])),props.commands[i]);
+        props.commands[i]=Saturation(Nocrash(force2command(RealForce(commands[i][2])),props.commands[i]));
       }
       props.header.stamp=ros::Time::now();
 

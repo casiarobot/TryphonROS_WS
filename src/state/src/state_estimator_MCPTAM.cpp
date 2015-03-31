@@ -225,8 +225,12 @@ int main(int argc, char **argv)
   //ros::Subscriber subSick = node.subscribe("/cubeA_pose", 1, poseCallback);
   ros::Subscriber subM = node.subscribe("mcptam/tracker_pose_array",1,subMCPTAM);
 
+  Eigen::Vector3d xState,yState,zState;
+  Egen::Vector quatState; // quaternion and angular velocity
 
-  double temps[5]={0,1.0/10.0,2.0/10.0,3.0/10.0,4.0/10.0};
+
+
+
 
   while (ros::ok())
   {
@@ -234,55 +238,39 @@ int main(int argc, char **argv)
     ////       State estimator      ////
     ////////////////////////////////////
 
+    // Predict //
+    if(imu || mcp)
+    {
 
-    avgx=(xf[4]+xf[3]+xf[2]+xf[1]+xf[0])/5.0;
-    avgy=(yf[4]+yf[3]+yf[2]+yf[1]+yf[0])/5.0;
-    avgz=(zf[4]+zf[3]+zf[2]+zf[1]+zf[0])/5.0;
-    avgphi=(xf[4]+xf[3]+xf[2]+xf[1]+xf[0])/5.0;
-    avgtheta=(yf[4]+yf[3]+yf[2]+yf[1]+yf[0])/5.0;
-    avgpsi=(zf[4]+zf[3]+zf[2]+zf[1]+zf[0])/5.0;
+    }
+    else
+    {
 
-    avgt=(temps[4]+temps[3]+temps[2]+temps[1]+temps[0])/(5.0);
-    Stx=0;
-    Sty=0;
-    Stz=0;
-    Stphi=0;
-    Sttheta=0;
-    Stpsi=0;
-    St=0;
-    for(int i=0;i<5;i++){
-      Stx+=(temps[i]-avgt)*(xf[i]-avgx);
-      Sty+=(temps[i]-avgt)*(yf[i]-avgy);
-      Stz+=(temps[i]-avgt)*(zf[i]-avgz);
-      Stphi+=(temps[i]-avgt)*(phif[i]-avgphi);
-      Sttheta+=(temps[i]-avgt)*(thetaf[i]-avgtheta);
-      Stpsi+=(temps[i]-avgt)*(psif[i]-avgpsi);
-      St+=(temps[i]-avgt)*(temps[i]-avgt);
     }
 
 
-    /////////////////////////////////////
+
+    if(imu && mcp)
+    {
+
+    }
+    if(!imu && mcp)
+    {
+
+    }
+    if(imu && !mcp)
+    {
+
+    }
+    if(!imu && !mcp)
+    {
+
+    }
 
 
-    state.pos[0]=xf[4];
-    state.pos[1]=yf[4];
-    state.pos[2]=zf[4];
-    state.quat[0]=q0f[4];
-    state.quat[1]=q1f[4];
-    state.quat[2]=q2f[4];
-    state.quat[3]=q3f[4];
-    state.vel[0]=Stx/St;
-    state.vel[1]=Sty/St;
-    state.vel[2]=Stz/St;
-    state.angvel[0]=Stphi/St;
-    state.angvel[1]=Sttheta/St;
-    state.angvel[2]=Stpsi/St;
-    /////////////////////////////////
-    //if(print==0){ROS_INFO("dist z(raw): %f, z(filtered): %f, dist x : %f, dist y : %f, rz : %f,z1:%f,z2:%f,z3:%f,z4:%f",dszt[4],dsztf[4],dsx1,dsy1,rz,dsz1,dsz2,dsz3,dsz4);
-    //    print=0;}
-    //else {++print;}
-    pose_node.publish(pose);
-    vel_node.publish(angVelVel)
+
+
+
     ros::spinOnce();
     loop_rate.sleep();
   }

@@ -96,7 +96,7 @@ void subImu(const sensor_msgs::Imu ImuValue)
 void subPath(const geometry_msgs::Pose2D Pose)
 {
 	double secs = ros::Time::now().toSec()-debut;
-	fileI <<secs << "," << Pose.x << ","<< Pose.y <<","<< Pose.theta  <<endl;
+	filePath <<secs << "," << Pose.x << ","<< Pose.y <<","<< Pose.theta  <<endl;
 }
 
 void subCommandProps(const tests::props_command props)
@@ -148,7 +148,7 @@ int main(int argc, char **argv)
   ros::Subscriber subPC = node.subscribe(rosname, 100, subPoseControl);
   sprintf(rosname,"/%s/desired_pose",temp_arg.c_str());
   ros::Subscriber subPD = node.subscribe(rosname, 100, subPoseDesir);
-  sprintf(rosname,"/%s/raw_imu",temp_arg.c_str());
+  sprintf(rosname,"/raw_imu",temp_arg.c_str());
   ros::Subscriber subI = node.subscribe(rosname, 100, subImu);
   sprintf(rosname,"/%s/path_info",temp_arg.c_str());
   ros::Subscriber subP = node.subscribe(rosname, 100, subPath);
@@ -160,7 +160,7 @@ int main(int argc, char **argv)
 
   temp_arg = argv[2];
   char buffer[100];
-  char link[100]="/home/tryphon/Rosbags/Gazebo_09_03_15";
+  char link[100]="/home/tryphon/Dropbox/Tryphon PPY/Residency_March2015/CsvFiles";
 
   sprintf(buffer,"%s/%s_PEKF.csv",link,temp_arg.c_str());
   filePEKF.open(buffer);
