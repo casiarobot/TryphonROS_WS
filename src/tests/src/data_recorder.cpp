@@ -9,6 +9,7 @@
 #include <geometry_msgs/Twist.h>
 #include <geometry_msgs/TwistStamped.h>
 #include <geometry_msgs/Pose2D.h>
+
 #include <sensor_msgs/Imu.h>
 #include "sensors/imuros.h"
 #include "geometry_msgs/Pose.h"
@@ -36,6 +37,8 @@ std::ofstream filePD;
 std::ofstream fileI;
 std::ofstream filePath;
 std::ofstream fileCP;
+std::ofstream fileSICKA;
+std::ofstream fileSICKB;
 
 void subPoseEkf(const geometry_msgs::PoseStamped PoseS)
 {
@@ -108,6 +111,22 @@ void subCommandProps(const tests::props_command props)
 	fileCP <<","<< commands[4] <<","<< commands[5] <<","<< commands[6] <<","<< commands[7] <<endl;
 }
 
+void subSICKA(const geometry_msgs::PoseStamped PoseS)
+{
+	PoseEKF=PoseS.pose;
+	double secs = ros::Time::now().toSec()-debut;
+	fileSICKA <<secs << "," << PoseEKF.position.x << ","<< PoseEKF.position.y <<","<< PoseEKF.position.z <<","<< PoseEKF.orientation.x;
+	fileSICKA <<","<< PoseEKF.orientation.y <<","<< PoseEKF.orientation.z << "," << PoseEKF.orientation.w <<endl;
+}
+
+void subSICKB(const geometry_msgs::PoseStamped  PoseS)
+{
+	PoseEKF=PoseS.pose;
+	double secs = ros::Time::now().toSec()-debut;
+	fileSICKB <<secs << "," << PoseEKF.position.x << ","<< PoseEKF.position.y <<","<< PoseEKF.position.z <<","<< PoseEKF.orientation.x;
+	fileSICKB <<","<< PoseEKF.orientation.y <<","<< PoseEKF.orientation.z << "," << PoseEKF.orientation.w <<endl;
+}
+
 int main(int argc, char **argv)
 {
    if (argc>1)
@@ -154,6 +173,11 @@ int main(int argc, char **argv)
   ros::Subscriber subP = node.subscribe(rosname, 100, subPath);
   sprintf(rosname,"/%s/command_props",temp_arg.c_str());
   ros::Subscriber subCP = node.subscribe(rosname, 100, subCommandProps);
+  sprintf(rosname,"/cubeA_pose",temp_arg.c_str());
+  ros::Subscriber subSA = node.subscribe(rosname, 100, subSICKA);
+  sprintf(rosname,"/cubeB_pose",temp_arg.c_str());
+  ros::Subscriber subSB = node.subscribe(rosname, 100, subSICKB);
+
 
 
   ros::Rate loop_rate(100);
@@ -189,6 +213,12 @@ int main(int argc, char **argv)
   sprintf(buffer,"%s/%s_CP.csv",link,temp_arg.c_str());
   fileCP.open(buffer);
   ROS_INFO(buffer);
+  sprintf(buffer,"%s/%s_SICKA.csv",link,temp_arg.c_str());
+  fileSICKA.open(buffer);
+  ROS_INFO(buffer);
+  sprintf(buffer,"%s/%s_SICKB.csv",link,temp_arg.c_str());
+  fileSICKB.open(buffer);
+  ROS_INFO(buffer);
 
   filePEKF   << "time,x,y,z,qx,qy,qz,qw" << endl  ;
   fileVEKF   << "time,vx,vy,vz,wx,wy,wz" << endl  ;
@@ -199,6 +229,9 @@ int main(int argc, char **argv)
   fileI      << "time,ax,ay,az,gx,gy,gz" << endl  ;
   filePath   << "time,pathNb,step,path"  << endl  ;
   fileCP     << "time,p0,p1,p2,p3,p4,p5,p6,p7" << endl  ;
+  fileSICKA   << "time,x,y,z,qx,qy,qz,qw" << endl  ;
+  fileSICKB   << "time,x,y,z,qx,qy,qz,qw" << endl  ;
+
 
 
 

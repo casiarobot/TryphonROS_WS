@@ -198,7 +198,7 @@ void subVel(const geometry_msgs::TwistStamped Velocities)
 }
 
 
-void subdP(const controls::Commands commands)
+void subCommands(const controls::Commands commands)
 {
 
   Command=commands.commandOnOff;
@@ -453,7 +453,8 @@ int main(int argc, char **argv)
   ros::Subscriber subS = node.subscribe(rosname, 1, subState);
   sprintf(rosname,"/%s/state_trajectory",temp_arg.c_str());
   ros::Subscriber subSt = node.subscribe(rosname, 1, subStateT);
-  //ros::Subscriber subdP = node.subscribe("/desired_deltapose", 1, subdP);
+  sprintf(rosname,"/%s/commands",temp_arg.c_str());
+  ros::Subscriber subC = node.subscribe(rosname, 1, subCommands);
   ros::Subscriber subP = node.subscribe("/ekf_node/pose", 1, subPose);
   ros::Subscriber subV = node.subscribe("/ekf_node/velocity", 1, subVel);
 
