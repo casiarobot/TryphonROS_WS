@@ -5,7 +5,7 @@ cmake_minimum_required(VERSION 2.8.3)
 project(state)
 
 ## Find catkin and any catkin packages
-find_package(catkin REQUIRED COMPONENTS geometry_msgs sensor_msgs roscpp rospy std_msgs genmsg sensors)
+find_package(catkin REQUIRED COMPONENTS geometry_msgs sensor_msgs roscpp rospy std_msgs genmsg sensors tf)
 find_package(Eigen REQUIRED)
 
 ## Declare ROS messages, services and actions
@@ -13,13 +13,13 @@ add_message_files(DIRECTORY msg FILES state.msg)
 #add_service_files(FILES AddTwoInts.srv)
 
 ## Generate added messages and services
-generate_messages(DEPENDENCIES std_msgs geometry_msgs sensor_msgs)
+generate_messages(DEPENDENCIES std_msgs geometry_msgs sensor_msgs tf)
 
 
 ## Declare a catkin package
 catkin_package( INCLUDE_DIRS
 # Libraries
-CATKIN_DEPENDS  sensor_msgs geometry_msgs
+CATKIN_DEPENDS  sensor_msgs geometry_msgs tf
 DEPENDS eigen)
 
 ##Specify additional locations of header files
@@ -33,7 +33,7 @@ include_directories( ${catkin_INCLUDE_DIRS}
 
 
 add_executable(state_estimator src/state_estimator.cpp)
-target_link_libraries(state_estimator ${catkin_LIBRARIES})
+target_link_libraries(state_estimator ${catkin_LIBRARIES} yaml-cpp)
 add_dependencies(state_estimator sensors_gencpp std_msgs geometry_msgs)
 
 add_executable(state_estimator_SICK src/state_estimator_SICK.cpp)

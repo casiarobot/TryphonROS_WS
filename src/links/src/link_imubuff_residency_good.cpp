@@ -43,35 +43,37 @@ void subImu(const links::imubuff Imus)
   needPublish=true;
 }
 
-
+ros::Publisher imu_node;
 
 
 int main(int argc, char **argv)
 {
-  ros::init(argc, argv, "links_imubuff");
-  ros::NodeHandle nh("~");
-
-
-  // Getting the parameters //
-  std::string ip;
-  if (nh.getParam("ip", ip))
+   if (argc==2)
   {
-    ROS_INFO("links_imubuff started with address: %s", ip.c_str());
+    ROS_INFO("TARGET IS: %s", argv[1]);
   }
   else
   {
-    ROS_FATAL("Failed to get the ip");
-    ros::shutdown();
+    ROS_ERROR("Failed to get param 'target'");
+    return 0;
   }
+  char rosname[100],ip[100];
+  std::string s, temp_arg ;
+  temp_arg = argv[1];
+  std::replace(temp_arg.begin(), temp_arg.end(), '.', '_');
+  sprintf(rosname,"link_Imu_%s",temp_arg.c_str());
 
-  char rosname[100];
+
+  ros::init(argc, argv, rosname);
+  ros::NodeHandle node;
+
   // Publishers //
-  sprintf(rosname,"/%s/raw_imu",ip.c_str());
-  ros::Publisher imu_node = nh.advertise<sensor_msgs::Imu>(rosname,1);
+  sprintf(rosname,"/%s/raw_imu",temp_arg.c_str());
+  imu_node = node.advertise<sensor_msgs::Imu>("/raw_imu",1);
 
   // Subscribers //
-  sprintf(rosname,"/%s/imubuff",ip.c_str());
-  ros::Subscriber subI = nh.subscribe(rosname, 1, subImu);
+  sprintf(rosname,"/%s/imubuff",temp_arg.c_str());
+  ros::Subscriber subI = node.subscribe(rosname, 1, subImu);
 
   ros::Rate loop_rate(200);
   ros::Duration dodo(0.005);
@@ -84,7 +86,7 @@ int main(int argc, char **argv)
     size=vImu.size();
     sensor_msgs::Imu Imu;
 
-    if(needPublish) // we don't want to republish twice the same data
+    if(needPublish)
     {
       //ROS_INFO("size of vImu: %i",size);
       for(int i=0; i<size; i++)

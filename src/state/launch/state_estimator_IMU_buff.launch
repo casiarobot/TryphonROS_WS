@@ -20,6 +20,10 @@
 
 
     </node>
+    <node pkg="links" type="link_imubuff" name="link_imubuff_192_168_10_244" output="screen">
+      <!-- set a private parameter for the node -->
+      <param name="ip" value="192_168_10_244" />
+    </node>
 </launch>
 
 

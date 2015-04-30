@@ -13,6 +13,10 @@
 #include <net/if.h>
 #include <arpa/inet.h>
 
+// YAML file
+#include <YAMLParser.h>
+
+
 
 //library for ros
 #include <ros/ros.h>
@@ -243,13 +247,6 @@ int main(int argc, char **argv)
     {
 
     }
-    else
-    {
-
-    }
-
-
-
     if(imu && mcp)
     {
 
