@@ -8,6 +8,7 @@
 #include <ctime>
 
 #include "tests/props_command.h"
+#include "sensors/motorArray.h"
 
 #include <vector>
 #include <cmath>
@@ -40,6 +41,7 @@ double minForce=-0.32;
 double L=1.115;
 double Cm=0.17;
 double maxPrct;
+double nbMotor=0;
 
 
 void callback(controls::fdistributionConfig &config, uint32_t level) {
@@ -77,7 +79,16 @@ void subForcez(const geometry_msgs::Wrench inputMsg)
   fz.torque.z = inputMsg.torque.z;
 }
 
-double Nocrash(double f1,double f0) //  TO TEST !!!!!!!!!!!!!!! //
+void subMotor(const sensors::motorArray mArray)
+{
+  nbMotor=mArray.motors.size();
+  for(int i=0; i<nbMotor; ++i)
+  {
+    if(mArray.motors[i].volt<6.0){ROS_WARN("Motor %02X has low battery",mArray.motors[i].id*2);}
+  }
+}
+
+double Nocrash(double f1,double f0)
 {
   double f;
   if(fabs(f1-f0)>30)
@@ -141,14 +152,14 @@ double force2command(double f)
 }
 
 
-void Scale(double (&vP)[8][3])
+void Scale(double (&vP)[12][3])
 {
    //assume that there is at least one propeller
   double best,ratio;
   if(vP[0][2]>0){best=vP[0][2]/maxForce;}
   else{best=vP[0][2]/minForce;}
 
-  for(int k=1; k<8;k++) // looking for the biggest ratio among the propellers
+  for(int k=1; k<12;k++) // looking for the biggest ratio among the propellers
   {
     if(vP[k][2]>0){ratio=vP[k][2]/maxForce;}
     else{ratio=vP[k][2]/minForce;}
@@ -157,14 +168,14 @@ void Scale(double (&vP)[8][3])
 
   if(best>1)
   {
-    for(int k=0; k<8;k++) // looking for the biggest ratio among the propellers
+    for(int k=0; k<12;k++) // applying the scaling
     {
       vP[k][2]=vP[k][2]/best;
     }
   }
 }
 
-void Smooth(double (&vP)[8][3],double (&vPraw)[8][3])
+void Smooth(double (&vP)[12][3],double (&vPraw)[12][3])
 {
   for(int i=0;i<8;i++)
   {
@@ -181,7 +192,7 @@ double Saturation(double command)
 }
 
 
-void UpdateProps(double (&vP)[8][3])
+void UpdateProps(double (&vP)[12][3])
 {
   for(int i=0; i<8;i++)
   {
@@ -279,10 +290,13 @@ int main(int argc, char **argv)
   sprintf(rosname,"/%s/intFz_control",temp_arg.c_str());
   ros::Subscriber subFz = node.subscribe(rosname, 1, subForcez);
 
-  // Variables //
-  double vP[8][3], vPraw[8][3], vPz[8][3], vPzraw[8][3], commands[8][3];  // only the last row of commands will be used but it is made so the function scale can be used.
+  sprintf(rosname,"/%s/motors_info",temp_arg.c_str());
+  ros::Subscriber subMI = node.subscribe(rosname, 1, subMotor);
 
-  for(int i=0; i<8;i++)
+  // Variables //
+  double vP[12][3], vPraw[12][3], vPz[12][3], vPzraw[12][3], commands[12][3];  // only the last row of commands will be used but it is made so the function scale can be used.
+
+  for(int i=0; i<12;i++)
   {
     for(int k=0; k<3;k++)
     {
@@ -295,7 +309,7 @@ int main(int argc, char **argv)
   }
 
 
-  for(int i=0; i<8; i++)
+  for(int i=0; i<12; i++)
   {
     props.commands.push_back(0);
   }
@@ -308,24 +322,62 @@ int main(int argc, char **argv)
 
     if(!start)
     {
+      if(nbMotor<9)
+      {
+        vPraw[0][2]=((double)(input.force.x/2.000000-input.torque.z/(4.000000*L)));  // x right
+        vPraw[1][2]=((double)(input.force.x/2.000000+input.torque.z/(4.000000*L)));  // x left
+        vPraw[2][2]=((double)(input.force.y/2.000000-input.torque.z/(4.000000*L)));  // y front
+        vPraw[3][2]=((double)(input.force.y/2.000000+input.torque.z/(4.000000*L)));  // y back
+        vPraw[4][2]=((double)(input.force.z/4.000000+(-input.torque.x-input.torque.y-(L-Cm)*((input.force.x)-(input.force.y)))/(4.000000*L)));   // z front left
+        vPraw[5][2]=((double)(input.force.z/4.000000+(-input.torque.x+input.torque.y-(L-Cm)*(-(input.force.x)-(input.force.y)))/(4.000000*L)));  // z front right
+        vPraw[6][2]=((double)(input.force.z/4.000000+(input.torque.x+input.torque.y-(L-Cm)*(-(input.force.x)+(input.force.y)))/(4.000000*L)));   // z back left
+        vPraw[7][2]=((double)(input.force.z/4.000000+(input.torque.x-input.torque.y-(L-Cm)*((input.force.x)+(input.force.y)))/(4.000000*L)));  // z back right
+        vPraw[8][2]=0;  // x top right
+        vPraw[9][2]=0;  // x top left
+        vPraw[10][2]=0;  // y top front
+        vPraw[11][2]=0;  // y top back
 
-      vPraw[0][2]=((double)(input.force.x/2.000000-input.torque.z/(4.000000*L)));  // x right
-      vPraw[1][2]=((double)(input.force.x/2.000000+input.torque.z/(4.000000*L)));  // x left
-      vPraw[2][2]=((double)(-input.force.y/2.000000+input.torque.z/(4.000000*L)));  // y front
-      vPraw[3][2]=((double)(-input.force.y/2.000000-input.torque.z/(4.000000*L)));  // y back
-      vPraw[4][2]=((double)(input.force.z/4.000000+(-input.torque.x-input.torque.y-(L-Cm)*((input.force.x)-(input.force.y)))/(4.000000*L)));   // z front left
-      vPraw[5][2]=((double)(input.force.z/4.000000+(-input.torque.x+input.torque.y-(L-Cm)*(-(input.force.x)-(input.force.y)))/(4.000000*L)));  // z front right
-      vPraw[6][2]=((double)(input.force.z/4.000000+(input.torque.x+input.torque.y-(L-Cm)*(-(input.force.x)+(input.force.y)))/(4.000000*L)));   // z back left
-      vPraw[7][2]=((double)(input.force.z/4.000000+(input.torque.x-input.torque.y-(L-Cm)*((input.force.x)+(input.force.y)))/(4.000000*L)));  // z back right
+        vPzraw[0][2]=((double)(fz.force.x/2.000000-fz.torque.z/(4.000000*L)));  // x right
+        vPzraw[1][2]=((double)(fz.force.x/2.000000+fz.torque.z/(4.000000*L)));  // x left
+        vPzraw[2][2]=((double)(fz.force.y/2.000000-fz.torque.z/(4.000000*L)));  // y front
+        vPzraw[3][2]=((double)(fz.force.y/2.000000+fz.torque.z/(4.000000*L)));  // y back
+        vPzraw[4][2]=((double)(fz.force.z/4.000000+(-fz.torque.x-fz.torque.y-(L-Cm)*((fz.force.x)-(fz.force.y)))/(4.000000*L)));   // z front left
+        vPzraw[5][2]=((double)(fz.force.z/4.000000+(-fz.torque.x+fz.torque.y-(L-Cm)*(-(fz.force.x)-(fz.force.y)))/(4.000000*L)));  // z front right
+        vPzraw[6][2]=((double)(fz.force.z/4.000000+(fz.torque.x+fz.torque.y-(L-Cm)*(-(fz.force.x)+(fz.force.y)))/(4.000000*L)));   // z back left
+        vPzraw[7][2]=((double)(fz.force.z/4.000000+(fz.torque.x-fz.torque.y-(L-Cm)*((fz.force.x)+(fz.force.y)))/(4.000000*L)));  // z back right
+        vPzraw[8][2]=0;  // x top right
+        vPzraw[9][2]=0;  // x top left
+        vPzraw[10][2]=0;  // y top front
+        vPzraw[11][2]=0;  // y top back
+      }
+      else
+      {
+        vPraw[0][2]=((double)(input.force.x/4.000000-input.torque.z/(8.000000*L)));  // x right
+        vPraw[1][2]=((double)(input.force.x/4.000000+input.torque.z/(8.000000*L)));  // x left
+        vPraw[2][2]=((double)(input.force.y/4.000000-input.torque.z/(8.000000*L)));  // y front
+        vPraw[3][2]=((double)(input.force.y/4.000000+input.torque.z/(8.000000*L)));  // y back
+        vPraw[4][2]=((double)(input.force.z/4.000000+(-input.torque.x-input.torque.y)/(8.000000*L)));   // z front left
+        vPraw[5][2]=((double)(input.force.z/4.000000+(-input.torque.x+input.torque.y)/(8.000000*L)));  // z front right
+        vPraw[6][2]=((double)(input.force.z/4.000000+(input.torque.x+input.torque.y)/(8.000000*L)));   // z back left
+        vPraw[7][2]=((double)(input.force.z/4.000000+(input.torque.x-input.torque.y)/(8.000000*L)));  // z back right
+        vPraw[8][2]=0;  // x top right
+        vPraw[9][2]=0;  // x top left
+        vPraw[10][2]=0;  // y top front
+        vPraw[11][2]=0;  // y top back
 
-      vPzraw[0][2]=((double)(fz.force.x/2.000000-fz.torque.z/(4.000000*L)));  // x right
-      vPzraw[1][2]=((double)(fz.force.x/2.000000+fz.torque.z/(4.000000*L)));  // x left
-      vPzraw[2][2]=((double)(-fz.force.y/2.000000+fz.torque.z/(4.000000*L)));  // y front
-      vPzraw[3][2]=((double)(-fz.force.y/2.000000-fz.torque.z/(4.000000*L)));  // y back
-      vPzraw[4][2]=((double)(fz.force.z/4.000000+(-fz.torque.x-fz.torque.y-(L-Cm)*((fz.force.x)-(fz.force.y)))/(4.000000*L)));   // z front left
-      vPzraw[5][2]=((double)(fz.force.z/4.000000+(-fz.torque.x+fz.torque.y-(L-Cm)*(-(fz.force.x)-(fz.force.y)))/(4.000000*L)));  // z front right
-      vPzraw[6][2]=((double)(fz.force.z/4.000000+(fz.torque.x+fz.torque.y-(L-Cm)*(-(fz.force.x)+(fz.force.y)))/(4.000000*L)));   // z back left
-      vPzraw[7][2]=((double)(fz.force.z/4.000000+(fz.torque.x-fz.torque.y-(L-Cm)*((fz.force.x)+(fz.force.y)))/(4.000000*L)));  // z back right
+        vPzraw[0][2]=((double)(fz.force.x/4.000000+(-fz.torque.z)/(8.000000*L)));  // x right
+        vPzraw[1][2]=((double)(fz.force.x/4.000000+(+fz.torque.z)/(8.000000*L)));  // x left
+        vPzraw[2][2]=((double)(fz.force.y/4.000000+(-fz.torque.z)/(8.000000*L)));  // y front
+        vPzraw[3][2]=((double)(fz.force.y/4.000000+(+fz.torque.z)/(8.000000*L)));  // y back
+        vPzraw[4][2]=((double)(fz.force.z/4.000000+(-fz.torque.x-fz.torque.y)/(8.000000*L)));   // z front left
+        vPzraw[5][2]=((double)(fz.force.z/4.000000+(-fz.torque.x+fz.torque.y)/(8.000000*L)));  // z front right
+        vPzraw[6][2]=((double)(fz.force.z/4.000000+(fz.torque.x+fz.torque.y)/(8.000000*L)));   // z back left
+        vPzraw[7][2]=((double)(fz.force.z/4.000000+(fz.torque.x-fz.torque.y)/(8.000000*L)));  // z back right
+        vPzraw[8][2]=((double)(fz.force.x/4.000000+(+fz.torque.z)/(8.000000*L)));  // x top right
+        vPzraw[9][2]=((double)(fz.force.x/4.000000+(-fz.torque.z)/(8.000000*L)));;  // x top left
+        vPzraw[10][2]=((double)(fz.force.y/4.000000+(+fz.torque.z)/(8.000000*L)));;  // y top front
+        vPzraw[11][2]=((double)(fz.force.y/4.000000+(-fz.torque.z)/(8.000000*L)));  // y top back
+      }
 
       Scale(vPraw);
       Scale(vPzraw);  // Normally useless but it's a protection
@@ -344,7 +396,7 @@ int main(int argc, char **argv)
           commands[i][2]=vP[i][2]+vPz[i][2];
       }
 
-      for(int i=0; i<8;i++)
+      for(int i=0; i<12;i++)
       {
         props.commands[i]=Saturation(Nocrash(force2command(RealForce(commands[i][2])),props.commands[i]));
       }
