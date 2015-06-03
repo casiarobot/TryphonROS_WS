@@ -39,6 +39,7 @@
 
 using namespace GVars3;
 using namespace TooN;
+using namespace CVD;
 
 GLWindow2::GLWindow2(CVD::ImageRef irSize, std::string sTitle)
   : GLWindow(irSize, sTitle)
@@ -124,7 +125,7 @@ void GLWindow2::SetupWindowOrtho()
 {
   glMatrixMode(GL_PROJECTION);
   glLoadIdentity();
-  glOrtho(size());
+  CVD::glOrtho(size());
 }
 
 void GLWindow2::SetupVideoOrtho()

@@ -19,7 +19,7 @@
 #include <controls/controlConfig.h>
 
 
-#include "controls/webCommands.h"
+#include "controls/Commands.h"
 
 #define PI 3.14159265
 

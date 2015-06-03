@@ -18,7 +18,7 @@
 #include <controls/trajectoryConfig.h>
 
 
-#include "controls/webCommands.h"
+#include "controls/Commands.h"
 
 #include "vects2geoMsgs.cpp"
 

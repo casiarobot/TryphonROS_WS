@@ -1,7 +1,0 @@
-<launch>
-
-    <node name="modes" pkg="mode" type="mode" respawn="false" args="3"/>
-   
-</launch>
-
-

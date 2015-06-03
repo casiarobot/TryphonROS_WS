@@ -8,6 +8,7 @@ find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   laser_geometry
   tf
+ cmake_modules
 )
 
 # since we need eigen search it as well

@@ -11,6 +11,7 @@ find_package(catkin REQUIRED COMPONENTS
   cv_bridge
   sensor_msgs
   state
+  cmake_modules
 )
 #find_package(OpenCV REQUIRED)
 FIND_PACKAGE (Threads)

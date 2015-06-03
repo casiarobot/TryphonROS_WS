@@ -29,7 +29,7 @@ CFLAGS = $(CPPFLAGS) @CFLAGS@
 CXXFLAGS = $(CPPFLAGS) -D_REENTRANT -Wall -Wextra -pthread
 OFLAGS=@OFLAGS@
 LDFLAGS = 
-LIBS = -lcurses  -lm 
+LIBS = -lreadline  -lm 
 HLIBS =  -lm 
 INSTALL = @INSTALL@
 AR=ar
@@ -107,7 +107,7 @@ OBJS=\
 	src/inst.o\
 	$(optional_objs)
 
-ifeq (,yes)
+ifeq (yes,yes)
 	OBJS+=src/GUI_readline.o
 	OBJS+=src/GUI_impl_readline.o
 	CPPFLAGS+=-DGUI_HAVE_READLINE
