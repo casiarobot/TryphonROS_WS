@@ -1,6 +1,12 @@
 <launch>
+	
 
-	 <node name="controls" pkg="controls" type="controls" respawn="false" />
+	<group ns="192_168_10_243">
+	 <node name="controls" pkg="controls" type="control" respawn="false" args="192_168_10_243" />
+	</group>
 
+	<group ns="192_168_10_244">
+	 <node name="controls" pkg="controls" type="control" respawn="false" args="192_168_10_244" />
+	 </group>
 
 </launch>
