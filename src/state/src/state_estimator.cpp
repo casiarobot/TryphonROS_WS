@@ -117,7 +117,7 @@ void subMCPTAM(const geometry_msgs::PoseArray Aposes) // with MCPTAM
   angle(2)=atan2(2*(quat.w()*quat.z()+quat.x()*quat.y()),1-2*(quat.z()*quat.z()+quat.y()*quat.y()));
   Rmatrix=quat.toRotationMatrix();
 
-  pos=pos-Rmatrix*CMIMUpos;  // offset due to the fact that the pose is the one of the IMU
+  //pos=pos-Rmatrix*CMIMUpos;  // offset due to the fact that the pose is the one of the IMU
   if(start_MCPTAM)
   {
     start_MCPTAM=false;
@@ -131,14 +131,26 @@ int main(int argc, char **argv)
 {
   ros::init(argc, argv, "state_estimator");
   ros::NodeHandle nh;
+  ros::NodeHandle nh1("~");
 
+ std::string ip_address;
+    if (nh1.getParam("ip", ip_address))
+    {
+      ROS_INFO("Got param: %s", ip_address.c_str());
+    }
+    else
+    {
+      ROS_ERROR("Failed to get param 'ip'");
+      ros::shutdown();
+    }
+    char rosname[100];
 
   // Loading from YAML files //
   Eigen::Vector3d rel_pos_CM, rel_pos_camera, rel_pos_IMU, rel_pos_SICK;
   Eigen::Quaterniond rel_quat_CM, rel_quat_camera, rel_quat_IMU, rel_quat_SICK;
 
 
-  char rosname[100];
+  
   // Publishers //
 
 
@@ -183,7 +195,7 @@ int main(int argc, char **argv)
   O6=Eigen::MatrixXd::Zero(6,6);
 
   I12=Eigen::MatrixXd::Identity(12,12);
-  RMCPTAM << 0.1*I3,O3,O3,0.05*I3;
+  RMCPTAM << 0.01*I3,O3,O3,0.005*I3;
   ROS_INFO("Initialization test");
   RIMU << 0.05*Eigen::MatrixXd::Identity(2,2),Eigen::MatrixXd::Zero(2,3),Eigen::MatrixXd::Zero(3,2),0.05*I3;
 
@@ -254,13 +266,17 @@ int main(int argc, char **argv)
       tf::Quaternion q;
       q.setEulerZYX(angle(0), angle(1), angle(2));
       transform.setRotation(q);
-      br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "world", "Gumstick"));
+     
+      sprintf(rosname,"Gumstick_%s",ip_address.c_str());
+      br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "world", rosname));
 
       transform.setOrigin( tf::Vector3(xkk(0), xkk(1), xkk(2)) );
       tf::Quaternion q2;
       q2.setEulerZYX(xkk(3), xkk(4), xkk(5));
       transform.setRotation(q2);
-      br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "world", "Gumstick_filtered"));
+
+      sprintf(rosname,"Gumstick_filtered_%s",ip_address.c_str());
+      br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "world", rosname));
 
       geometry_msgs::Pose PoseF;
       PoseF.position.x=xkk(0);

@@ -153,42 +153,25 @@ double modulo(double f) // not a modulo but dealing with the discontinuity aroun
 int main(int argc, char **argv)
 {
 
-  if (argc==2)
-  {
-    ROS_INFO("TARGET IS: %s", argv[1]);
-  }
-  else
-  {
-    ROS_ERROR("Failed to get param 'target'");
-    return 0;
-  }
-  std::string s, temp_arg ;
+  std::string s;
 
-  temp_arg = argv[1];
-  std::replace(temp_arg.begin(), temp_arg.end(), '.', '_');
-
-  char rosname[100],ip[100];
-  sprintf(rosname,"trajectory_%s",temp_arg.c_str());
+  //std::replace(temp_arg.begin(), temp_arg.end(), '.', '_');
+  //sprintf(rosname,"trajectory_%s",temp_arg.c_str());
 
 
-  ros::init(argc, argv, rosname);
+  ros::init(argc, argv, "trajectory");
   ros::NodeHandle node;
 
   // Publishers //
-  sprintf(rosname,"/%s/state_trajectory",temp_arg.c_str());
-  ros::Publisher State_pub = node.advertise<controls::State>(rosname,1);
-  sprintf(rosname,"/%s/path_info",temp_arg.c_str());
-  ros::Publisher Path_pub = node.advertise<geometry_msgs::Pose2D>(rosname,1);
+  ros::Publisher State_pub = node.advertise<controls::State>("state_trajectory",1);
+  ros::Publisher Path_pub = node.advertise<geometry_msgs::Pose2D>("path_info",1);
 
 
 
   // Subscribers //
-  sprintf(rosname,"/%s/path_command",temp_arg.c_str());
-  ros::Subscriber subP = node.subscribe(rosname, 1, subPath);
-  sprintf(rosname,"/%s/pose",temp_arg.c_str());
-  ros::Subscriber subPo = node.subscribe(rosname, 1, subPose);
-  sprintf(rosname,"/%s/velocity",temp_arg.c_str());
-  ros::Subscriber subV = node.subscribe(rosname, 1, subVel);
+  ros::Subscriber subP = node.subscribe("path_command", 1, subPath);
+  ros::Subscriber subPo = node.subscribe("pose", 1, subPose);
+  ros::Subscriber subV = node.subscribe("velocity", 1, subVel);
 
 
   // Dynamic Reconfigure //

@@ -376,7 +376,7 @@ void mySigintHandler(int sig)
 }
 
 
-const char* get_ip()
+/*const char* get_ip()
 {
   int fd;
   struct ifreq ifr;
@@ -384,77 +384,56 @@ const char* get_ip()
 
   fd = socket(AF_INET, SOCK_DGRAM, 0);
 
-  /* I want to get an IPv4 IP address */
+  /* I want to get an IPv4 IP address 
   ifr.ifr_addr.sa_family = AF_INET;
 
-  /* I want IP address attached to "eth0" */
+  /* I want IP address attached to "eth0"
   strncpy(ifr.ifr_name, "eth0", IFNAMSIZ-1);
 
   ioctl(fd, SIOCGIFADDR, &ifr);
 
   close(fd);
 
-  /* display result */
+  /* display result 
   sprintf(ip,"%s", inet_ntoa(((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr));
   std::string s = ip;
   std::replace(s.begin(), s.end(), '.', '_');
   //ip=s.c_str();
   return s.c_str();
-}
+} */
 
 int main(int argc, char **argv)
 {
 
-  char rosname[100],ip[100];
-  sprintf(rosname,"control_%s",get_ip());
-  std::string s, temp_arg ;
+ //char rosname[100],ip[100];
+  //sprintf(rosname,"control_%s",get_ip());
+  std::string s ;
 
-  ros::init(argc, argv, rosname);
+  ros::init(argc, argv, "control");
   ros::NodeHandle node;
   signal(SIGINT, mySigintHandler);
-  if (argc==2)
-  {
-    ROS_INFO("TARGET IS: %s", argv[1]);
-  }
-  else
-  {
-    ROS_ERROR("Failed to get param 'target'");
-    return 0;
-  }
 
-  temp_arg = argv[1];
-  std::replace(temp_arg.begin(), temp_arg.end(), '.', '_');
 
   // Publishers //
-  sprintf(rosname,"/%s/command_control",temp_arg.c_str());
-  Controle_node = node.advertise<geometry_msgs::Wrench>(rosname,1);
-  sprintf(rosname,"/%s/intFz_control",temp_arg.c_str());
-  Forcez_node = node.advertise<geometry_msgs::Wrench>(rosname,1);
-  //sprintf(rosname,"/%s/command_control_filtered",temp_arg.c_str());
-  //Controle_notfiltered_node = node.advertise<geometry_msgs::Wrench>(rosname,1);
-  sprintf(rosname,"/%s/desired_pose",temp_arg.c_str());
-  Desired_pose_node = node.advertise<geometry_msgs::Pose>(rosname,1);
-  sprintf(rosname,"/%s/pose",temp_arg.c_str());
-  Pose_node = node.advertise<geometry_msgs::Pose>(rosname,1);
-  sprintf(rosname,"/%s/velocity",temp_arg.c_str());
-  Vel_node = node.advertise<geometry_msgs::Pose>(rosname,1);
-  sprintf(rosname,"/%s/path_command",temp_arg.c_str());
-  Path_node = node.advertise<geometry_msgs::Pose2D>(rosname,1);
-  sprintf(rosname,"/%s/max_thrust",temp_arg.c_str());
-  MaxPrct_node = node.advertise<std_msgs::Float64>(rosname,1);
+  Controle_node = node.advertise<geometry_msgs::Wrench>("command_control",1);
+  
+  Forcez_node = node.advertise<geometry_msgs::Wrench>("intFz_control",1);
+  //Controle_notfiltered_node = node.advertise<geometry_msgs::Wrench>("command_control_filtered",1);
+  Desired_pose_node = node.advertise<geometry_msgs::Pose>("desired_pose",1);
+  Pose_node = node.advertise<geometry_msgs::Pose>("pose",1);
+  Vel_node = node.advertise<geometry_msgs::Pose>("velocity",1);
+  Path_node = node.advertise<geometry_msgs::Pose2D>("path_command",1);
+  MaxPrct_node = node.advertise<std_msgs::Float64>("max_thrust",1);
 
 
-  Fbuoy_node = node.advertise<geometry_msgs::Wrench>("/fbuoy",1);
+  Fbuoy_node = node.advertise<geometry_msgs::Wrench>("fbuoy",1);
 
 
 
   // Subscribers //
-  sprintf(rosname,"/%s/state",temp_arg.c_str());
-  ros::Subscriber subS = node.subscribe(rosname, 1, subState);
-  sprintf(rosname,"/%s/state_trajectory",temp_arg.c_str());
-  ros::Subscriber subSt = node.subscribe(rosname, 1, subStateT);
-  sprintf(rosname,"/%s/commands",temp_arg.c_str());
-  ros::Subscriber subC = node.subscribe(rosname, 1, subCommands);
+  ros::Subscriber subS = node.subscribe("state", 1, subState);
+  ros::Subscriber subSt = node.subscribe("state_trajectory", 1, subStateT);
+  ros::Subscriber subC = node.subscribe("commands", 1, subCommands);
   ros::Subscriber subP = node.subscribe("ekf_node/pose", 1, subPose);
   ros::Subscriber subV = node.subscribe("ekf_node/velocity", 1, subVel);
 

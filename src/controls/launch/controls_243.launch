@@ -1,0 +1,8 @@
+<launch>
+	
+
+	<group ns="192_168_10_243">
+	 <node name="controls" pkg="controls" type="control" respawn="false" />
+	</group>
+
+</launch>

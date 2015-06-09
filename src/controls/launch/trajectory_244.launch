@@ -1,0 +1,8 @@
+<launch>
+	
+
+	<group ns="192_168_10_244">
+	 <node name="trajectory" pkg="controls" type="trajectory" respawn="false" />
+	</group>
+
+</launch>

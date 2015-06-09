@@ -1,4 +1,0 @@
-roslaunch state_estimation ekf_fixed_rel_imu_vision.launch 
-roslaunch mcptam mcptam.launch group_name:=camera_1 load:=true
-rosrun controls control 192.168.10.244
-
