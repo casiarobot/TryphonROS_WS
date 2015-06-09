@@ -32,9 +32,9 @@ include_directories( ${catkin_INCLUDE_DIRS}
   ${EIGEN_INCLUDE_DIRS})
 
 
-#add_executable(state_estimator src/state_estimator.cpp)
-#target_link_libraries(state_estimator ${catkin_LIBRARIES} yaml-cpp)
-#add_dependencies(state_estimator sensors_gencpp std_msgs geometry_msgs)
+add_executable(state_estimator src/state_estimator.cpp)
+target_link_libraries(state_estimator ${catkin_LIBRARIES} yaml-cpp)
+add_dependencies(state_estimator sensors_gencpp std_msgs geometry_msgs)
 
 add_executable(state_estimator_SICK src/state_estimator_SICK.cpp)
 target_link_libraries(state_estimator_SICK ${catkin_LIBRARIES})

@@ -455,8 +455,8 @@ int main(int argc, char **argv)
   ros::Subscriber subSt = node.subscribe(rosname, 1, subStateT);
   sprintf(rosname,"/%s/commands",temp_arg.c_str());
   ros::Subscriber subC = node.subscribe(rosname, 1, subCommands);
-  ros::Subscriber subP = node.subscribe("/ekf_node/pose", 1, subPose);
-  ros::Subscriber subV = node.subscribe("/ekf_node/velocity", 1, subVel);
+  ros::Subscriber subP = node.subscribe("ekf_node/pose", 1, subPose);
+  ros::Subscriber subV = node.subscribe("ekf_node/velocity", 1, subVel);
 
   // Dynamic Reconfigure //
   dynamic_reconfigure::Server<controls::controlConfig> server;

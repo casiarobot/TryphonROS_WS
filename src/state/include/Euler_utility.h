@@ -6,7 +6,7 @@
 #include <Eigen/Geometry>
 #include <sensor_msgs/Imu.h>
 
-namespace euler{
+namespace EulerU{
 
   void getRollPitchIMU(sensor_msgs::Imu Imu, double& roll, double& pitch)
   {
@@ -29,6 +29,24 @@ namespace euler{
     roll=atan2(2*(quat.w()*quat.x()+quat.y()*quat.z()),1-2*(quat.x()*quat.x()+quat.y()*quat.y()));
     pitch=asin(2*(quat.w()*quat.y()-quat.z()*quat.x()));
     yaw=atan2(2*(quat.w()*quat.z()+quat.x()*quat.y()),1-2*(quat.z()*quat.z()+quat.y()*quat.y()));
+  }
+
+  Eigen::Matrix3d RbodyEuler(double roll,double pitch)
+  {
+    Eigen::Matrix3d R;
+    double sinr=sin(roll);
+    double sint=sin(pitch);
+    double cosr=cos(roll);
+    double cost=cos(pitch);
+    double tant=tan(pitch);
+
+
+    R<<1.0,sinr*tant,cosr*tant,
+        0 ,cosr     ,-sinr    ,
+        0 ,sinr/cost,cosr/cost;
+
+
+    return R;
   }
 
 
