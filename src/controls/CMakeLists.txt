@@ -37,7 +37,7 @@ include_directories(include ${catkin_INCLUDE_DIRS}
 
 
 add_executable(control src/control.cpp)
-target_link_libraries(control ${catkin_LIBRARIES})
+target_link_libraries(control ${state_LIBRARIES} ${catkin_LIBRARIES})
 add_dependencies(control sensors_gencpp std_msgs geometry_msgs sensors state)
 
 add_executable(trajectory src/trajectory.cpp)

@@ -21,6 +21,7 @@
 #include "geometry_msgs/Wrench.h"
 #include "geometry_msgs/Pose.h"
 #include "geometry_msgs/Twist.h"
+#include "geometry_msgs/TwistStamped.h"
 #include <sensor_msgs/Imu.h>
 
 //libraries for the sonars and the compass
@@ -158,8 +159,8 @@ int main(int argc, char **argv)
   ros::Subscriber subI = nh.subscribe("raw_imu", 1, subImu);
   ros::Subscriber subM = nh.subscribe("mcptam/tracker_pose_array",1,subMCPTAM);
 
-  ros::Publisher pubP = nh.advertise<geometry_msgs::Pose>("state_estimator/pose",1);
-  ros::Publisher pubV = nh.advertise<geometry_msgs::Twist>("state_estimator/vel",1);
+  ros::Publisher pubP = nh.advertise<geometry_msgs::PoseStamped>("state_estimator/pose",1);
+  ros::Publisher pubV = nh.advertise<geometry_msgs::TwistStamped>("state_estimator/vel",1);
 
   static tf::TransformBroadcaster br;
   tf::Transform transform;
@@ -278,24 +279,26 @@ int main(int argc, char **argv)
       sprintf(rosname,"Gumstick_filtered_%s",ip_address.c_str());
       br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "world", rosname));
 
-      geometry_msgs::Pose PoseF;
-      PoseF.position.x=xkk(0);
-      PoseF.position.y=xkk(1);
-      PoseF.position.z=xkk(2);
+      geometry_msgs::PoseStamped PoseF;
+      PoseF.header.stamp=ros::Time::now();
+      PoseF.pose.position.x=xkk(0);
+      PoseF.pose.position.y=xkk(1);
+      PoseF.pose.position.z=xkk(2);
 
-      PoseF.orientation.x=xkk(3);
-      PoseF.orientation.y=xkk(4);
-      PoseF.orientation.z=xkk(5);
+      PoseF.pose.orientation.x=xkk(3);
+      PoseF.pose.orientation.y=xkk(4);
+      PoseF.pose.orientation.z=xkk(5);
 
 
-      geometry_msgs::Twist TwistF;
-      TwistF.linear.x=xkk(6);
-      TwistF.linear.y=xkk(7);
-      TwistF.linear.z=xkk(8);
+      geometry_msgs::TwistStamped TwistF;
+      TwistF.header.stamp=ros::Time::now();
+      TwistF.twist.linear.x=xkk(6);
+      TwistF.twist.linear.y=xkk(7);
+      TwistF.twist.linear.z=xkk(8);
 
-      TwistF.angular.x=xkk(9);
-      TwistF.angular.y=xkk(10);
-      TwistF.angular.z=xkk(11);
+      TwistF.twist.angular.x=xkk(9);
+      TwistF.twist.angular.y=xkk(10);
+      TwistF.twist.angular.z=xkk(11);
 
       pubP.publish(PoseF);
       pubV.publish(TwistF);

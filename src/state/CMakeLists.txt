@@ -15,9 +15,8 @@ add_message_files(DIRECTORY msg FILES state.msg)
 ## Generate added messages and services
 generate_messages(DEPENDENCIES std_msgs geometry_msgs sensor_msgs tf)
 
-
 ## Declare a catkin package
-catkin_package( INCLUDE_DIRS
+catkin_package( INCLUDE_DIRS include
 # Libraries
 CATKIN_DEPENDS  sensor_msgs geometry_msgs tf
 DEPENDS eigen)
@@ -25,6 +24,7 @@ DEPENDS eigen)
 ##Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(include ${catkin_INCLUDE_DIRS})
+
 
 
 ## Build talker and listener

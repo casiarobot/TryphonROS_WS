@@ -28,7 +28,7 @@ typedef unsigned char BYTE;
 
 
 #include "controls/Commands.h"
-
+#include <Euler_utility.h>
 #include "vects2geoMsgs.cpp"
 
 double dsz=0;
@@ -44,17 +44,23 @@ double rzo=0;
 double rz0=0;
 int rzpos=1; // 0 between -360 and 0; 1-> 0-360; 2->360-720
 geometry_msgs::Wrench F, FOld1, FOld2;
-geometry_msgs::Pose fPose, desirPose, fVel;
+geometry_msgs::Pose fPose, desirPose;
+geometry_msgs::TwistStamped fVel;
 
 Eigen::Vector3d force, forceOld1, forceOld2, forceGlobF, forceGfOld1, forceGfOld2, torque, torqueOld1, torqueOld2;
 Eigen::Vector3d posdesir, pos, dPos, dPosOld1, dPosOld2, angledesir, angle, dAngle, dAngleOld1, dAngleOld2;
 Eigen::Vector3d posOrig, angleOrig;
 Eigen::Vector3d vel, avel;
-Eigen::Vector3d CMCpos(0,0,0.18);
-Eigen::Vector3d CMIMUpos(1,0,-1.125); // vector postion from Center of mass to IMU in tryphon frame
+Eigen::Vector3d CMCpos(0,0,0);
+Eigen::Vector3d CMIMUpos(0,0,0); // vector postion from Center of mass to IMU in tryphon frame
+//Eigen::Vector3d CMCpos(0,0,0.18);
+//Eigen::Vector3d CMIMUpos(1,0,-1.125); // vector postion from Center of mass to IMU in tryphon frame
 Eigen::Matrix3d Rmatrix, CPCMIMUmatrix, RIMUmatrix,CPCMCmatrix;
-Eigen::Quaterniond quatIMU(0.99255, 0,0.12187, 0); // quat of the rotation matrix between the tryphon frame and the IMU frame
-Eigen::Quaterniond quatIMU2(0.99255, 0,-0.12187, 0);
+Eigen::Quaterniond quatIMU(1, 0,0, 0); // quat of the rotation matrix between the tryphon frame and the IMU frame
+Eigen::Quaterniond quatIMU2(1, 0,0, 0);
+//Eigen::Quaterniond quatIMU(0.99255, 0,0.12187, 0); // quat of the rotation matrix between the tryphon frame and the IMU frame
+//Eigen::Quaterniond quatIMU2(0.99255, 0,-0.12187, 0);
+
 
 Eigen::Vector3d veldesir(0,0,0);
 Eigen::Vector3d aveldesir(0,0,0);
@@ -108,6 +114,26 @@ void subStateT(const controls::State state)
 
 }
 
+
+void glideT(const controls::State gstate)
+{
+  {
+    posdesir=pose2vect_pos(gstate.pose);
+    angledesir=pose2vect_angle(gstate.pose);
+    veldesir=twist2vect_linear(gstate.vel);
+    aveldesir=twist2vect_angular(gstate.vel);
+    acceldesir=twist2vect_linear(gstate.accel);
+    angleAcceldesir=twist2vect_angular(gstate.accel);
+
+    maxPrctThrust.data=gstate.maxThrust;
+    GainCP=gstate.GainCP;
+    noInt=gstate.noInt;
+
+  }
+
+} 
+
+
 void subState(const state::state state)
 {
   /*//Starting Pose needed only when the inertial frame is not centered//
@@ -146,7 +172,8 @@ void subState(const state::state state)
 
 }
 
-void subPose(const geometry_msgs::PoseStamped PoseS)
+/*
+void subPose_ekf(const geometry_msgs::PoseStamped PoseS)
 {
 
 
@@ -175,6 +202,43 @@ void subPose(const geometry_msgs::PoseStamped PoseS)
 
   pos=pos-Rmatrix*CMIMUpos;  // offset due to the fact that the pose is the one of the IMU
 
+} */
+
+
+void subPose(const geometry_msgs::PoseStamped PoseS)
+{
+
+
+  geometry_msgs::Pose Pose=PoseS.pose;
+  if(start)
+  {
+    RIMUmatrix=quatIMU.toRotationMatrix(); // need to be computed only once
+    CPCMIMUmatrix=CPM(CMIMUpos);
+    CPCMCmatrix=CPM(CMCpos);
+    start=false;
+  }
+
+  pos(0)=Pose.position.x; // defined in global frame
+  pos(1)=Pose.position.y;
+  pos(2)=Pose.position.z;
+ // Eigen::Quaterniond quat(Pose.orientation.w,Pose.orientation.x,Pose.orientation.y,Pose.orientation.z);
+  //Eigen::Quaterniond quat1(Pose.orientation.w,Pose.orientation.x,Pose.orientation.y,Pose.orientation.z);
+ // Eigen::Quaterniond quat2(Pose.orientation.w,Pose.orientation.x,Pose.orientation.y,Pose.orientation.z);
+ // Eigen::Quaterniond quat3(Pose.orientation.w,Pose.orientation.x,Pose.orientation.y,Pose.orientation.z);
+ // quat=quat*quatIMU.inverse();  // compute the quaternion between the vision world and the tryphon frame
+
+  angle(0)=Pose.orientation.x;
+  angle(1)=Pose.orientation.y;
+  angle(2)=Pose.orientation.z;
+
+  Eigen::Quaterniond quat;
+  EulerU::getQuatFromEuler(quat,angle(0),angle(1),angle(2));
+
+
+  Rmatrix=quat.toRotationMatrix();
+
+  //pos=pos-Rmatrix*CMIMUpos;  // offset due to the fact that the pose is the one of the IMU
+
 
 }
 
@@ -192,7 +256,7 @@ void subVel(const geometry_msgs::TwistStamped Velocities)
     avel(2)=Vel.angular.z;
     avel=RIMUmatrix*avel;  // defined in body frame
 
-    vel=vel+Rmatrix*CPCMIMUmatrix*avel; // compute the vel of the center of mass
+   // vel=vel+Rmatrix*CPCMIMUmatrix*avel; // compute the vel of the center of mass
 
   }
 }
@@ -420,8 +484,8 @@ int main(int argc, char **argv)
   Forcez_node = node.advertise<geometry_msgs::Wrench>("intFz_control",1);
   //Controle_notfiltered_node = node.advertise<geometry_msgs::Wrench>("command_control_filtered",1);
   Desired_pose_node = node.advertise<geometry_msgs::Pose>("desired_pose",1);
-  Pose_node = node.advertise<geometry_msgs::Pose>("pose",1);
-  Vel_node = node.advertise<geometry_msgs::Pose>("velocity",1);
+  Pose_node = node.advertise<geometry_msgs::Pose>("control/pose",1);
+  Vel_node = node.advertise<geometry_msgs::TwistStamped>("control/vel",1);
   Path_node = node.advertise<geometry_msgs::Pose2D>("path_command",1);
   MaxPrct_node = node.advertise<std_msgs::Float64>("max_thrust",1);
 
@@ -433,9 +497,12 @@ int main(int argc, char **argv)
   // Subscribers //
   ros::Subscriber subS = node.subscribe("state", 1, subState);
   ros::Subscriber subSt = node.subscribe("state_trajectory", 1, subStateT);
+  ros::Subscriber subglide = node.subscribe("glide_des_state", 1, glideT);
   ros::Subscriber subC = node.subscribe("commands", 1, subCommands);
-  ros::Subscriber subP = node.subscribe("ekf_node/pose", 1, subPose);
-  ros::Subscriber subV = node.subscribe("ekf_node/velocity", 1, subVel);
+ // ros::Subscriber subP = node.subscribe("ekf_node/pose", 1, subPose_ekf);
+  //ros::Subscriber subV = node.subscribe("ekf_node/velocity", 1, subVel);
+  ros::Subscriber subP = node.subscribe("state_estimator/pose", 1, subPose);
+  ros::Subscriber subV = node.subscribe("state_estimator/vel", 1, subVel);
 
   // Dynamic Reconfigure //
   dynamic_reconfigure::Server<controls::controlConfig> server;
@@ -742,12 +809,13 @@ int main(int argc, char **argv)
       desirPose.orientation.y=angledesir(1);
       desirPose.orientation.z=angledesir(2);
 
-      fVel.position.x=vel(0);
-      fVel.position.y=vel(1);
-      fVel.position.z=vel(2);
-      fVel.orientation.x=avel(0);
-      fVel.orientation.y=avel(1);
-      fVel.orientation.z=avel(2);
+
+      fVel.twist.linear.x=vel(0);
+      fVel.twist.linear.y=vel(1);
+      fVel.twist.linear.z=vel(2);
+      fVel.twist.angular.x=avel(0);
+      fVel.twist.angular.y=avel(1);
+      fVel.twist.angular.z=avel(2);
 
 
       /////////////////////////////////
