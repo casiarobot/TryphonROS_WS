@@ -19,7 +19,7 @@ The above packages can be used with the state_estimation node of the state packa
 
 ### ROS Nodes for Control
 
-The control package contains a Discrete PID, LQR or Computer-torque controller to control the cubic blimps for performances and experiments.
+The control package contains a Discrete PID, LQR or Computed-torque controller to control the cubic blimps for performances and experiments.
 
 ### ROS Nodes for User Commands
 
