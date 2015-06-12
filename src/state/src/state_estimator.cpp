@@ -229,31 +229,6 @@ void subMCPTAM(const geometry_msgs::PoseArray Aposes) // with MCPTAM
   }
 }
 
-const char* get_ip()
-{
-  int fd;
- struct ifreq ifr;
- char *ip = new char[100];
-
- fd = socket(AF_INET, SOCK_DGRAM, 0);
-
- /* I want to get an IPv4 IP address */
- ifr.ifr_addr.sa_family = AF_INET;
-
- /* I want IP address attached to "eth0" */
- strncpy(ifr.ifr_name, "eth0", IFNAMSIZ-1);
-
- ioctl(fd, SIOCGIFADDR, &ifr);
-
- close(fd);
-
- /* display result */
- sprintf(ip,"%s", inet_ntoa(((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr));
- std::string s = ip;
- std::replace(s.begin(), s.end(), '.', '_');
- //ip=s.c_str();
- return s.c_str();
-}
 
 int main(int argc, char **argv)
 {
@@ -261,22 +236,34 @@ int main(int argc, char **argv)
     std::string temp_arg;
     int pos_src=0;  //0=MCPTAM,1=SICK,2=SONARS(+CMP),3=LEDDARS(+CMP)
 
-    sprintf(rosname,"state_estimator_%s",get_ip());
-    ros::init(argc, argv, rosname);
-    ros::NodeHandle nh;
+  ros::init(argc, argv, "state_estimator");
+  ros::NodeHandle nh;
+  ros::NodeHandle nh1("~");
 
-    if (argc==3)
-        {
-          pos_src=atoi(argv[2]);
-          ROS_INFO("TARGET IS: %s AND POSE SOURCE: %i", argv[1], pos_src);
-        }
-        else
-        {
-          ROS_ERROR("Failed to get param 'target' and 'pose source'");
-        return 0;
-        }
-    temp_arg = argv[1];
-    std::replace(temp_arg.begin(), temp_arg.end(), '.', '_');
+
+std::string ip_address;
+    if (nh1.getParam("ip", ip_address))
+    {
+      ROS_INFO("Got param: %s", ip_address.c_str());
+    }
+    else
+    {
+      ROS_ERROR("Failed to get param 'ip'");
+      ros::shutdown();
+    }
+
+std::string pos_src_string;
+  if (nh1.getParam("pos_src", pos_src))
+    {
+      ROS_INFO("Got pos_src: %d", pos_src);
+      
+    }
+    else
+    {
+      ROS_ERROR("Failed to get param 'pos_src'");
+    }
+
+    
 
 
   // Loading from YAML files //
@@ -422,13 +409,17 @@ int main(int argc, char **argv)
       tf::Quaternion q;
       q.setEulerZYX(angle(0), angle(1), angle(2));
       transform.setRotation(q);
-      br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "world", "Gumstick"));
+      sprintf(rosname,"Gumstick_%s",ip_address.c_str());
+      br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "world", rosname));
 
       transform.setOrigin( tf::Vector3(xkk(0), xkk(1), xkk(2)) );
       tf::Quaternion q2;
       q2.setEulerZYX(xkk(3), xkk(4), xkk(5));
       transform.setRotation(q2);
-      br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "world", "Gumstick_filtered"));
+      sprintf(rosname,"Gumstick_filtered_%s",ip_address.c_str());
+      br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "world", rosname));
+
+
 
       geometry_msgs::PoseStamped PoseF;
       PoseF.header.stamp=ros::Time::now();

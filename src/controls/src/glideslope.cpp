@@ -87,14 +87,19 @@ Pose.pose=PoseS1.pose;
   pos_target(2)=Pose.pose.position.z;
   Eigen::Quaterniond quat(Pose.pose.orientation.w,Pose.pose.orientation.x,Pose.pose.orientation.y,Pose.pose.orientation.z);
  
-  quat=quat*quatIMU.inverse();  // compute the quaternion between the vision world and the tryphon frame
+  //quat=quat*quatIMU.inverse();  // compute the quaternion between the vision world and the tryphon frame
 
-  angle_target(0)=atan2(2*(quat.w()*quat.x()+quat.y()*quat.z()),1-2*(quat.x()*quat.x()+quat.y()*quat.y()));
-  angle_target(1)=asin(2*(quat.w()*quat.y()-quat.z()*quat.x()));
-  angle_target(2)=atan2(2*(quat.w()*quat.z()+quat.x()*quat.y()),1-2*(quat.z()*quat.z()+quat.y()*quat.y()));
-  Rmatrix_target=quat.toRotationMatrix();
+  angle_target(0)=Pose.pose.orientation.x;
+  angle_target(1)=Pose.pose.orientation.y;
+  angle_target(2)=Pose.pose.orientation.z;
 
-  pos_target=pos_target-Rmatrix_target*CMIMUpos;  // offset due to the fact that the pose is the one of the IMU, now at center of mass
+
+  //angle_target(0)=atan2(2*(quat.w()*quat.x()+quat.y()*quat.z()),1-2*(quat.x()*quat.x()+quat.y()*quat.y()));
+ // angle_target(1)=asin(2*(quat.w()*quat.y()-quat.z()*quat.x()));
+  //angle_target(2)=atan2(2*(quat.w()*quat.z()+quat.x()*quat.y()),1-2*(quat.z()*quat.z()+quat.y()*quat.y()));
+  //Rmatrix_target=quat.toRotationMatrix();
+
+  //pos_target=pos_target-Rmatrix_target*CMIMUpos;  // offset due to the fact that the pose is the one of the IMU, now at center of mass
 
 
 p_target.pose.position.x=pos_target(0);
@@ -126,14 +131,18 @@ Pose.pose=PoseS2.pose;
   pos_chaser(2)=Pose.pose.position.z;
   Eigen::Quaterniond quat(Pose.pose.orientation.w,Pose.pose.orientation.x,Pose.pose.orientation.y,Pose.pose.orientation.z);
  
-  quat=quat*quatIMU.inverse();  // compute the quaternion between the vision world and the tryphon frame
+ // quat=quat*quatIMU.inverse();  // compute the quaternion between the vision world and the tryphon frame
 
-  angle_chaser(0)=atan2(2*(quat.w()*quat.x()+quat.y()*quat.z()),1-2*(quat.x()*quat.x()+quat.y()*quat.y()));
-  angle_chaser(1)=asin(2*(quat.w()*quat.y()-quat.z()*quat.x()));
-  angle_chaser(2)=atan2(2*(quat.w()*quat.z()+quat.x()*quat.y()),1-2*(quat.z()*quat.z()+quat.y()*quat.y()));
-  Rmatrix_chaser=quat.toRotationMatrix();
+  //angle_chaser(0)=atan2(2*(quat.w()*quat.x()+quat.y()*quat.z()),1-2*(quat.x()*quat.x()+quat.y()*quat.y()));
+  //angle_chaser(1)=asin(2*(quat.w()*quat.y()-quat.z()*quat.x()));
+  //angle_chaser(2)=atan2(2*(quat.w()*quat.z()+quat.x()*quat.y()),1-2*(quat.z()*quat.z()+quat.y()*quat.y()));
+ // Rmatrix_chaser=quat.toRotationMatrix();
 
-  pos_chaser=pos_chaser-Rmatrix_chaser*CMIMUpos;  // offset due to the fact that the pose is the one of the IMU
+  angle_chaser(0)=Pose.pose.orientation.x;
+  angle_chaser(1)=Pose.pose.orientation.y;
+  angle_chaser(2)=Pose.pose.orientation.z;
+
+  //pos_chaser=pos_chaser-Rmatrix_chaser*CMIMUpos;  // offset due to the fact that the pose is the one of the IMU
 
 
 p_chaser.pose.position.x=pos_chaser(0);
@@ -170,6 +179,7 @@ bool facing_error(const geometry_msgs::PoseStamped Pose, double yaw) //returns t
 {
 
 double yaw_error_allowed=0.15; //set yaw range
+
 double angle_chaser_z;
 //Eigen::Quaterniond quat(Pose.orientation.w,Pose.orientation.x,Pose.orientation.y,Pose.orientation.z);
 angle_chaser_z=Pose.pose.orientation.z;    ///atan2(2*(quat.w()*quat.z()+quat.x()*quat.y()),1-2*(quat.z()*quat.z()+quat.y()*quat.y()));
@@ -286,9 +296,9 @@ while (ros::ok())
 			{
 			yawd_chaser=atan2(p_rel.pose.position.y,p_rel.pose.position.x); //finds yaw desired, careful for 0,0, working in -PI to PI
 			if(yawd_chaser<=0)
-				{ yawd_target=PI-yawd_chaser;}
+				{ yawd_target=PI+yawd_chaser;} //changed from - to +
 			else
-				{ yawd_target=yawd_chaser-PI;} //finds the yawd of target, make sure >PI works out
+				{ yawd_target=-(yawd_chaser-PI);} //finds the yawd of target, make sure >PI works out
 		
 
 		//set initial position where chaser and target will face each other
