@@ -178,7 +178,7 @@ void twist_zero(geometry_msgs::TwistStamped &tw) //set any pose msg to zero
 bool facing_error(const geometry_msgs::PoseStamped Pose, double yaw) //returns true when the yaw desired (range) is achieved 
 {
 
-double yaw_error_allowed=0.15; //set yaw range
+double yaw_error_allowed=0.08; //set yaw range
 
 double angle_chaser_z;
 //Eigen::Quaterniond quat(Pose.orientation.w,Pose.orientation.x,Pose.orientation.y,Pose.orientation.z);
@@ -296,9 +296,9 @@ while (ros::ok())
 			{
 			yawd_chaser=atan2(p_rel.pose.position.y,p_rel.pose.position.x); //finds yaw desired, careful for 0,0, working in -PI to PI
 			if(yawd_chaser<=0)
-				{ yawd_target=PI+yawd_chaser;} //changed from - to +
+				{ yawd_target=PI+yawd_chaser;} //changed from - to +     //playing around with PI to keep mcptam localized, 
 			else
-				{ yawd_target=-(yawd_chaser-PI);} //finds the yawd of target, make sure >PI works out
+				{ yawd_target=-(yawd_chaser-PI);} //finds the yawd of target, make sure >PI works out, might be wrong
 		
 
 		//set initial position where chaser and target will face each other
