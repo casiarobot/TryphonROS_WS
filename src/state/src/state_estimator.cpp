@@ -18,12 +18,12 @@
 #include <net/if.h>
 #include <arpa/inet.h>
 
-// Eigen linraries
+// Eigen libraries
 #include <Eigen/Geometry>
 #include <Eigen/Dense>
 
 
-// ROS messqges libraries
+// ROS messages libraries
 #include "geometry_msgs/PoseStamped.h"
 #include "geometry_msgs/PoseArray.h"
 #include "geometry_msgs/Wrench.h"
