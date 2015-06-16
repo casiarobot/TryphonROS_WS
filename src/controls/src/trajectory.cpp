@@ -79,6 +79,7 @@ void subPose(const geometry_msgs::Pose pose)
 void subVel(const geometry_msgs::Twist vels)
 {
 
+
     vel(0)=vels.linear.x; // defined in global frame
     vel(1)=vels.linear.y;
     vel(2)=vels.linear.z;
@@ -170,8 +171,8 @@ int main(int argc, char **argv)
 
   // Subscribers //
   ros::Subscriber subP = node.subscribe("path_command", 1, subPath);
-  ros::Subscriber subPo = node.subscribe("pose", 1, subPose);
-  ros::Subscriber subV = node.subscribe("velocity", 1, subVel);
+  ros::Subscriber subPo = node.subscribe("control/pose", 1, subPose);
+  ros::Subscriber subV = node.subscribe("control/vel", 1, subVel);
 
 
   // Dynamic Reconfigure //

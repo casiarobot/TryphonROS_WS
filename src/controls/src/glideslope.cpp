@@ -3,6 +3,7 @@
 #include <ros/ros.h>
 #include "geometry_msgs/Pose.h"
 #include "geometry_msgs/PoseStamped.h"
+#include "geometry_msgs/TwistStamped.h"
 #include <Eigen/Geometry>
 #include <Eigen/Dense>
 #include <cmath>
@@ -17,27 +18,32 @@
 #include "std_msgs/Bool.h"
 #include <dynamic_reconfigure/server.h>
 #include <controls/controlConfig.h>
-
+#include "controls/State.h"
 
 #include "controls/Commands.h"
+#include "vects2geoMsgs.cpp"
 
 #define PI 3.14159265
 
-ros::Publisher posed_chaser;
-ros::Publisher posed_target;
-ros::Publisher veld_chaser;
-ros::Publisher veld_target;
+ros::Publisher statedes_chaser;
+ros::Publisher statedes_target;
+
 ros::Publisher magnet;
 
 
 //tryphon 244 has docking on x-direction, confirmed
 
-geometry_msgs::Pose p_chaser,p_target,p_rel, pdes_chaser, pdes_target, p_target_initial,veldes_chaser,veldes_target;
+geometry_msgs::PoseStamped p_chaser,p_target,p_rel, pdes_chaser, pdes_target, p_target_initial;
+geometry_msgs::TwistStamped veldes_chaser,veldes_target;
 Eigen::Matrix3d Rmatrix_chaser,CPCMIMUmatrix_chaser, RIMUmatrix_chaser,CPCMCmatrix_chaser, Rmatrix_target,CPCMIMUmatrix_target, RIMUmatrix_target,CPCMCmatrix_target;
-Eigen::Vector3d pos_chaser,pos_target,angle_target,angle_chaser;
+Eigen::Vector3d pos_chaser,pos_target,angle_target, angle_chaser, posdesirT, posdesirC, angledesirT,angledesirC, veldesirT, aveldesirT, veldesirC, aveldesirC;
+Eigen::Vector3d CMIMUpos(0,0,0);
 Eigen::Vector3d CMCpos(0,0,0.18);
-Eigen::Vector3d CMIMUpos(1,0,-1.125);
-Eigen::Quaterniond quatIMU(0.99255, 0,0.12187, 0); // quat of the rotation matrix between the tryphon frame and the IMU frame
+Eigen::Quaterniond quatIMU(1, 0,0, 0); // quat of the rotation matrix between the tryphon frame and the IMU frame
+//Eigen::Vector3d CMCpos(0,0,0.18);
+//Eigen::Vector3d CMIMUpos(1,0,-1.125);
+//Eigen::Quaterniond quatIMU(0.99255, 0,0.12187, 0); // quat of the rotation matrix between the tryphon frame and the IMU frame
+controls::State statedesirT,statedesirC; 
 
 double t=0;
 double path_debut_time=0;
@@ -64,7 +70,9 @@ Eigen::Matrix3d CPM(Eigen::Vector3d vect) // return cross product matrix
 void subPose_target(const geometry_msgs::PoseStamped PoseS1) //only need this for inital positions once facing each other
 {
 
-geometry_msgs::Pose Pose=PoseS1.pose;
+geometry_msgs::PoseStamped Pose;
+
+Pose.pose=PoseS1.pose;
   
   if(start_T)
   {
@@ -74,34 +82,41 @@ geometry_msgs::Pose Pose=PoseS1.pose;
     start_T=false;
   }
 
-  pos_target(0)=Pose.position.x; // defined in global frame
-  pos_target(1)=Pose.position.y;
-  pos_target(2)=Pose.position.z;
-  Eigen::Quaterniond quat(Pose.orientation.w,Pose.orientation.x,Pose.orientation.y,Pose.orientation.z);
+  pos_target(0)=Pose.pose.position.x; // defined in global frame
+  pos_target(1)=Pose.pose.position.y;
+  pos_target(2)=Pose.pose.position.z;
+  Eigen::Quaterniond quat(Pose.pose.orientation.w,Pose.pose.orientation.x,Pose.pose.orientation.y,Pose.pose.orientation.z);
  
-  quat=quat*quatIMU.inverse();  // compute the quaternion between the vision world and the tryphon frame
+  //quat=quat*quatIMU.inverse();  // compute the quaternion between the vision world and the tryphon frame
 
-  angle_target(0)=atan2(2*(quat.w()*quat.x()+quat.y()*quat.z()),1-2*(quat.x()*quat.x()+quat.y()*quat.y()));
-  angle_target(1)=asin(2*(quat.w()*quat.y()-quat.z()*quat.x()));
-  angle_target(2)=atan2(2*(quat.w()*quat.z()+quat.x()*quat.y()),1-2*(quat.z()*quat.z()+quat.y()*quat.y()));
-  Rmatrix_target=quat.toRotationMatrix();
-
-  pos_target=pos_target-Rmatrix_target*CMIMUpos;  // offset due to the fact that the pose is the one of the IMU, now at center of mass
+  angle_target(0)=Pose.pose.orientation.x;
+  angle_target(1)=Pose.pose.orientation.y;
+  angle_target(2)=Pose.pose.orientation.z;
 
 
-p_target.position.x=pos_target(0);
-p_target.position.y=pos_target(1);
-p_target.position.z=pos_target(2);
-p_target.orientation.x=angle_target(0); //remap inertial roll pitch yaw angles to the pose quaternions where w is not used
-p_target.orientation.y=angle_target(1);
-p_target.orientation.z=angle_target(2);
+  //angle_target(0)=atan2(2*(quat.w()*quat.x()+quat.y()*quat.z()),1-2*(quat.x()*quat.x()+quat.y()*quat.y()));
+ // angle_target(1)=asin(2*(quat.w()*quat.y()-quat.z()*quat.x()));
+  //angle_target(2)=atan2(2*(quat.w()*quat.z()+quat.x()*quat.y()),1-2*(quat.z()*quat.z()+quat.y()*quat.y()));
+  //Rmatrix_target=quat.toRotationMatrix();
+
+  //pos_target=pos_target-Rmatrix_target*CMIMUpos;  // offset due to the fact that the pose is the one of the IMU, now at center of mass
+
+
+p_target.pose.position.x=pos_target(0);
+p_target.pose.position.y=pos_target(1);
+p_target.pose.position.z=pos_target(2);
+p_target.pose.orientation.x=angle_target(0); //remap inertial roll pitch yaw angles to the pose quaternions where w is not used
+p_target.pose.orientation.y=angle_target(1);
+p_target.pose.orientation.z=angle_target(2);
 //keeps track that at least one pose has been called for target
 }
 
 void subPose_chaser(const geometry_msgs::PoseStamped PoseS2) 
 {
 
-geometry_msgs::Pose Pose=PoseS2.pose;
+geometry_msgs::PoseStamped Pose;
+
+Pose.pose=PoseS2.pose;
   
   if(start_C)
   {
@@ -111,49 +126,63 @@ geometry_msgs::Pose Pose=PoseS2.pose;
     start_C=false;
   }
 
-  pos_chaser(0)=Pose.position.x; // defined in global frame
-  pos_chaser(1)=Pose.position.y;
-  pos_chaser(2)=Pose.position.z;
-  Eigen::Quaterniond quat(Pose.orientation.w,Pose.orientation.x,Pose.orientation.y,Pose.orientation.z);
+  pos_chaser(0)=Pose.pose.position.x; // defined in global frame
+  pos_chaser(1)=Pose.pose.position.y;
+  pos_chaser(2)=Pose.pose.position.z;
+  Eigen::Quaterniond quat(Pose.pose.orientation.w,Pose.pose.orientation.x,Pose.pose.orientation.y,Pose.pose.orientation.z);
  
-  quat=quat*quatIMU.inverse();  // compute the quaternion between the vision world and the tryphon frame
+ // quat=quat*quatIMU.inverse();  // compute the quaternion between the vision world and the tryphon frame
 
-  angle_chaser(0)=atan2(2*(quat.w()*quat.x()+quat.y()*quat.z()),1-2*(quat.x()*quat.x()+quat.y()*quat.y()));
-  angle_chaser(1)=asin(2*(quat.w()*quat.y()-quat.z()*quat.x()));
-  angle_chaser(2)=atan2(2*(quat.w()*quat.z()+quat.x()*quat.y()),1-2*(quat.z()*quat.z()+quat.y()*quat.y()));
-  Rmatrix_chaser=quat.toRotationMatrix();
+  //angle_chaser(0)=atan2(2*(quat.w()*quat.x()+quat.y()*quat.z()),1-2*(quat.x()*quat.x()+quat.y()*quat.y()));
+  //angle_chaser(1)=asin(2*(quat.w()*quat.y()-quat.z()*quat.x()));
+  //angle_chaser(2)=atan2(2*(quat.w()*quat.z()+quat.x()*quat.y()),1-2*(quat.z()*quat.z()+quat.y()*quat.y()));
+ // Rmatrix_chaser=quat.toRotationMatrix();
 
-  pos_chaser=pos_chaser-Rmatrix_chaser*CMIMUpos;  // offset due to the fact that the pose is the one of the IMU
+  angle_chaser(0)=Pose.pose.orientation.x;
+  angle_chaser(1)=Pose.pose.orientation.y;
+  angle_chaser(2)=Pose.pose.orientation.z;
+
+  //pos_chaser=pos_chaser-Rmatrix_chaser*CMIMUpos;  // offset due to the fact that the pose is the one of the IMU
 
 
-p_chaser.position.x=pos_chaser(0);
-p_chaser.position.y=pos_chaser(1);
-p_chaser.position.z=pos_chaser(2);
-p_chaser.orientation.x=angle_chaser(0);
-p_chaser.orientation.y=angle_chaser(1);
-p_chaser.orientation.z=angle_chaser(2);
+p_chaser.pose.position.x=pos_chaser(0);
+p_chaser.pose.position.y=pos_chaser(1);
+p_chaser.pose.position.z=pos_chaser(2);
+p_chaser.pose.orientation.x=angle_chaser(0);
+p_chaser.pose.orientation.y=angle_chaser(1);
+p_chaser.pose.orientation.z=angle_chaser(2);
 }
 
-void pose_zero(geometry_msgs::Pose &p) //set any pose msg to zero
+void pose_zero(geometry_msgs::PoseStamped &p) //set any pose msg to zero
 {
-	p.position.x=0;
-	p.position.y=0;
-	p.position.z=0;
-	p.orientation.w=0; 
-	p.orientation.x=0;
-	p.orientation.y=0;
-	p.orientation.z=0;
+	p.pose.position.x=0;
+	p.pose.position.y=0;
+	p.pose.position.z=0;
+	p.pose.orientation.w=0; 
+	p.pose.orientation.x=0;
+	p.pose.orientation.y=0;
+	p.pose.orientation.z=0;
+}
+
+void twist_zero(geometry_msgs::TwistStamped &tw) //set any pose msg to zero
+{
+	tw.twist.linear.x=0;
+	tw.twist.linear.y=0;
+	tw.twist.linear.z=0;
+	tw.twist.angular.x=0;
+	tw.twist.angular.y=0;
+	tw.twist.angular.z=0;
 }
 
 
-
-bool facing_error(const geometry_msgs::Pose Pose, double yaw) //returns true when the yaw desired (range) is achieved 
+bool facing_error(const geometry_msgs::PoseStamped Pose, double yaw) //returns true when the yaw desired (range) is achieved 
 {
 
-double yaw_error_allowed=0.05; //set yaw range
+double yaw_error_allowed=0.08; //set yaw range
+
 double angle_chaser_z;
 //Eigen::Quaterniond quat(Pose.orientation.w,Pose.orientation.x,Pose.orientation.y,Pose.orientation.z);
-angle_chaser_z=Pose.orientation.z;    ///atan2(2*(quat.w()*quat.z()+quat.x()*quat.y()),1-2*(quat.z()*quat.z()+quat.y()*quat.y()));
+angle_chaser_z=Pose.pose.orientation.z;    ///atan2(2*(quat.w()*quat.z()+quat.x()*quat.y()),1-2*(quat.z()*quat.z()+quat.y()*quat.y()));
 
 if (abs(angle_chaser_z-yaw)<=yaw_error_allowed)
 	{
@@ -165,20 +194,26 @@ else {return false;}
 
 int main(int argc, char **argv) //arguments should be IP of chaser then IP of target
 {
+
+ros::init(argc, argv,"glideslope");
+ros::NodeHandle node;
 //////ROS node setup with IP of chaser
 std::string s; //temp_arg;
 magnet_on.data=false;
 
 char rosname[100],rosnameC[100],rosnameT[100],ip[100]; 
 s=argv[1];
-std::replace(s.begin(), s.end(), '.', '_');
+//std::replace(s.begin(), s.end(), '.', '_');
 sprintf(rosnameC,"%s",s.c_str());
-s=argv[1];
-std::replace(s.begin(), s.end(), '.', '_');
+s=argv[2];
+//std::replace(s.begin(), s.end(), '.', '_');
 sprintf(rosnameT,"%s",s.c_str()); //used for target and chaser
 
-ros::init(argc, argv,rosnameC);
-ros::NodeHandle node;
+int maxThrust=100;
+bool noInt=false;
+double GainCP=1;
+
+
 
 if (argc==3)
   {
@@ -214,18 +249,14 @@ temp_arg = argv[1];
 */
 magnet = node.advertise<std_msgs::Bool>("/magnet_on",1);
 
-sprintf(rosname,"/%s/glide_dpos",rosnameC);
-posed_chaser = node.advertise<geometry_msgs::Pose>(rosname,1);
-sprintf(rosname,"/%s/glide_dvel",rosnameC);
-veld_chaser = node.advertise<geometry_msgs::Pose>(rosname,1);
-sprintf(rosname,"/%s/glide_dpos",rosnameT);
-posed_target = node.advertise<geometry_msgs::Pose>(rosname,1);
-sprintf(rosname,"/%s/glide_dvel",rosnameT);
-veld_target = node.advertise<geometry_msgs::Pose>(rosname,1);
+sprintf(rosname,"/%s/glide_des_state",rosnameC);
+statedes_chaser = node.advertise<controls::State>(rosname,1);
+sprintf(rosname,"/%s/glide_des_state",rosnameT);
+statedes_target = node.advertise<controls::State>(rosname,1);
 
-sprintf(rosname,"/%s/ekf_node/pose",rosnameC);
+sprintf(rosname,"/%s/state_estimator/pose",rosnameC);
 ros::Subscriber subP_chase = node.subscribe(rosname, 1, subPose_chaser); //c
-sprintf(rosname,"/%s/ekf_node/pose",rosnameT);
+sprintf(rosname,"/%s/state_estimator/pose",rosnameT);
 ros::Subscriber supP_targ = node.subscribe(rosname, 1 , subPose_target); //must change this accordingly
 
 
@@ -235,8 +266,8 @@ pose_zero(p_rel);
 pose_zero(pdes_target);
 pose_zero(pdes_chaser);
 pose_zero(p_target_initial);
-pose_zero(veldes_chaser);
-pose_zero(veldes_target);
+twist_zero(veldes_chaser);
+twist_zero(veldes_target);
 
 bool path_debut=true;
 ///////////glideslope parameters
@@ -258,29 +289,29 @@ while (ros::ok())
 	if(!start_T && !start_C)
 		{
 
-		p_rel.position.x=p_target.position.x-p_chaser.position.x;
-		p_rel.position.y=p_target.position.y-p_chaser.position.y;
+		p_rel.pose.position.x=p_target.pose.position.x-p_chaser.pose.position.x;
+		p_rel.pose.position.y=p_target.pose.position.y-p_chaser.pose.position.y;
 
 		if(count_targ1) //count arg becomes false after first loop
 			{
-			yawd_chaser=atan2(p_rel.position.y,p_rel.position.x); //finds yaw desired, careful for 0,0, working in -PI to PI
+			yawd_chaser=atan2(p_rel.pose.position.y,p_rel.pose.position.x); //finds yaw desired, careful for 0,0, working in -PI to PI
 			if(yawd_chaser<=0)
-				{ yawd_target=PI-yawd_chaser;}
+				{ yawd_target=PI+yawd_chaser;} //changed from - to +     //playing around with PI to keep mcptam localized, 
 			else
-				{ yawd_target=yawd_chaser-PI;} //finds the yawd of target, make sure >PI works out
+				{ yawd_target=-(yawd_chaser-PI);} //finds the yawd of target, make sure >PI works out, might be wrong
 		
 
 		//set initial position where chaser and target will face each other
 			p_target_initial=p_target;
-			pdes_target.position.x=p_target.position.x;
-			pdes_target.position.y=p_target.position.y;
-			pdes_target.position.z=p_target.position.z;
-			pdes_target.orientation.z=yawd_target;
+			pdes_target.pose.position.x=p_target.pose.position.x;
+			pdes_target.pose.position.y=p_target.pose.position.y;
+			pdes_target.pose.position.z=p_target.pose.position.z;
+			pdes_target.pose.orientation.z=yawd_target;
 
-			pdes_chaser.position.x=p_chaser.position.x;
-			pdes_chaser.position.y=p_chaser.position.y;
-			pdes_chaser.position.z=p_target.position.z; //chaser goes to height of target
-			pdes_chaser.orientation.z=yawd_chaser;
+			pdes_chaser.pose.position.x=p_chaser.pose.position.x;
+			pdes_chaser.pose.position.y=p_chaser.pose.position.y;
+			pdes_chaser.pose.position.z=p_target.pose.position.z; //chaser goes to height of target
+			pdes_chaser.pose.orientation.z=yawd_chaser;
 
 			count_targ1=false;
 			}
@@ -292,13 +323,13 @@ while (ros::ok())
 
 		if (facing_each_other) //glideslope loop for which begins once tryphons are facing each other
 			{	
-		
+		ROS_INFO("Facing each other now");
 			if (path_debut) // sets up the inital conditions of glideslope
 				{
 				
     			path_debut_time=ros::Time::now().toSec();
    
-				x_initial=-sqrt(pow(p_rel.position.x,2.0)+pow(p_rel.position.y,2.0))+sidelength_cube; //noRm of the relative velocity vector
+				x_initial=-sqrt(pow(p_rel.pose.position.x,2.0)+pow(p_rel.pose.position.y,2.0))+sidelength_cube; //noRm of the relative velocity vector
 				a=(.01*x_initial); //define slope as a function of x_initial, (a distance of 4 m should take more time for docking than 3m)
 				v_max=.02; //maximum allowed velocity upon docking
 				v_init=a*x_initial+v_max; 
@@ -317,17 +348,17 @@ while (ros::ok())
 			//calulcate desired position and velocity of chaser
 			if(abs(yawd_target)<PI/2) //Addition of r_target with r_x, r_y of glideslope decomposed using yaw of target
 				{
-				pdes_chaser.position.x=p_target_initial.position.x-r*cos(yawd_target);//will have to play around with this to make sure its proper
-				pdes_chaser.position.y=p_target_initial.position.y-r*sin(yawd_target);
-				veldes_chaser.position.x=r_dot*cos(yawd_chaser);
-				veldes_chaser.position.y=r_dot*sin(yawd_chaser);
+				pdes_chaser.pose.position.x=p_target_initial.pose.position.x-r*cos(yawd_target);//will have to play around with this to make sure its proper
+				pdes_chaser.pose.position.y=p_target_initial.pose.position.y-r*sin(yawd_target);
+				veldes_chaser.twist.linear.x=r_dot*cos(yawd_chaser);
+				veldes_chaser.twist.linear.y=r_dot*sin(yawd_chaser);
 				}
 			else
 				{
-				pdes_chaser.position.x=p_target_initial.position.x+r*sin(yawd_target);
-				pdes_chaser.position.y=p_target_initial.position.y+r*cos(yawd_target);	
-				veldes_chaser.position.x=r_dot*cos(yawd_target);
-				veldes_chaser.position.y=r_dot*sin(yawd_target);
+				pdes_chaser.pose.position.x=p_target_initial.pose.position.x+r*sin(yawd_target);
+				pdes_chaser.pose.position.y=p_target_initial.pose.position.y+r*cos(yawd_target);	
+				veldes_chaser.twist.linear.x=r_dot*cos(yawd_target);
+				veldes_chaser.twist.linear.y=r_dot*sin(yawd_target);
 				}
 
 
@@ -339,15 +370,70 @@ while (ros::ok())
 		pose_zero(veld_chaser);
 	} */
 
-	posed_target.publish(pdes_target); //what is sent has orientation in euler z=yaw
-	posed_chaser.publish(pdes_chaser); //what is sent has orientation in euler z=yaw
-	veld_chaser.publish(veldes_chaser);
-	veld_target.publish(veldes_target);
+
+
+///set up to send to new control node
+posdesirT(0)=pdes_target.pose.position.x;
+posdesirT(1)=pdes_target.pose.position.y;
+posdesirT(2)=pdes_target.pose.position.z;
+posdesirC(0)=pdes_chaser.pose.position.x;
+posdesirC(1)=pdes_chaser.pose.position.y;
+posdesirC(2)=pdes_chaser.pose.position.z;
+
+angledesirT(0)=pdes_target.pose.orientation.x;
+angledesirT(1)=pdes_target.pose.orientation.y;
+angledesirT(2)=pdes_target.pose.orientation.z;
+angledesirC(0)=pdes_chaser.pose.orientation.x;
+angledesirC(1)=pdes_chaser.pose.orientation.y;
+angledesirC(2)=pdes_chaser.pose.orientation.z;
+
+veldesirT(0)=veldes_target.twist.linear.x;
+veldesirT(1)=veldes_target.twist.linear.y;
+veldesirT(2)=veldes_target.twist.linear.z;
+veldesirC(0)=veldes_chaser.twist.linear.x;
+veldesirC(1)=veldes_chaser.twist.linear.y;
+veldesirC(2)=veldes_chaser.twist.linear.z;
+
+
+aveldesirT(0)=veldes_target.twist.angular.x;
+aveldesirT(1)=veldes_target.twist.angular.y;
+aveldesirT(2)=veldes_target.twist.angular.z;
+aveldesirC(0)=veldes_chaser.twist.angular.x;
+aveldesirC(1)=veldes_chaser.twist.angular.y;
+aveldesirC(2)=veldes_chaser.twist.angular.z;
+
+///end set up
+
+////////////////
+
+    statedesirT.header.stamp=ros::Time::now();
+    statedesirT.pose=vects2pose(posdesirT,angledesirT);
+    statedesirT.vel=vects2twist(veldesirT,aveldesirT);
+    //statedesir.accel=vects2twist(acceldesir,angleAcceldesir);
+    statedesirT.maxThrust=maxThrust;
+    statedesirT.GainCP=GainCP;
+    statedesirT.noInt=noInt;
+
+
+    statedesirC.header.stamp=ros::Time::now();
+    statedesirC.pose=vects2pose(posdesirC,angledesirC);
+    statedesirC.vel=vects2twist(veldesirC,aveldesirC);
+    //statedesir.accel=vects2twist(acceldesir,angleAcceldesir);
+    statedesirC.maxThrust=maxThrust;
+    statedesirC.GainCP=GainCP;
+    statedesirC.noInt=noInt;
+/////////////
+
+
+
+	statedes_target.publish(statedesirT); //what is sent has orientation in euler z=yaw
+	statedes_chaser.publish(statedesirC); //what is sent has orientation in euler z=yaw
 	magnet.publish(magnet_on);
 
 	if (t>=period){break;} //break the loop after period so the desired pos,vel doesn't keep changing
 	loop_rate.sleep();
 	}	
+
 	}
 return 0;
 }
