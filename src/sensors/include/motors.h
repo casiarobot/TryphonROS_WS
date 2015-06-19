@@ -56,7 +56,7 @@
 //MAXPWR ou MAXAUT
 #define MAXAUT
 
-#define	VITESSE_MIN 				0
+#define	VITESSE_MIN 				10
 //#ifdef MAXPWR
 #define	VITESSE_MAX 				255
 //#else
