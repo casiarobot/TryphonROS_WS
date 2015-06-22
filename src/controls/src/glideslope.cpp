@@ -45,6 +45,7 @@ Eigen::Quaterniond quatIMU(1, 0,0, 0); // quat of the rotation matrix between th
 //Eigen::Quaterniond quatIMU(0.99255, 0,0.12187, 0); // quat of the rotation matrix between the tryphon frame and the IMU frame
 controls::State statedesirT,statedesirC; 
 
+double chaser_rotation,target_rotation; //to make sure chaser settles before begining docking
 double t=0;
 double path_debut_time=0;
 double sidelength_cube=2*1.125;
@@ -153,6 +154,15 @@ p_chaser.pose.orientation.y=angle_chaser(1);
 p_chaser.pose.orientation.z=angle_chaser(2);
 }
 
+void subVel_chaser(const geometry_msgs::TwistStamped TwistC) 
+{	
+chaser_rotation=TwistC.twist.angular.z;
+}
+void subVel_target(const geometry_msgs::TwistStamped TwistT) 
+{	
+target_rotation=TwistT.twist.angular.z;
+}
+
 void pose_zero(geometry_msgs::PoseStamped &p) //set any pose msg to zero
 {
 	p.pose.position.x=0;
@@ -178,13 +188,13 @@ void twist_zero(geometry_msgs::TwistStamped &tw) //set any pose msg to zero
 bool facing_error(const geometry_msgs::PoseStamped Pose, double yaw) //returns true when the yaw desired (range) is achieved 
 {
 
-double yaw_error_allowed=0.08; //set yaw range
+double yaw_error_allowed=0.06; //set yaw range
 
 double angle_chaser_z;
 //Eigen::Quaterniond quat(Pose.orientation.w,Pose.orientation.x,Pose.orientation.y,Pose.orientation.z);
 angle_chaser_z=Pose.pose.orientation.z;    ///atan2(2*(quat.w()*quat.z()+quat.x()*quat.y()),1-2*(quat.z()*quat.z()+quat.y()*quat.y()));
 
-if (abs(angle_chaser_z-yaw)<=yaw_error_allowed)
+if (abs(angle_chaser_z-yaw-PI/2)<=yaw_error_allowed) //abs(angle_chaser_z-yaw-PI/2) ensure last term is (-) of that added to the one on pdes_target and chaser 
 	{
 	return true;
 	}
@@ -256,8 +266,13 @@ statedes_target = node.advertise<controls::State>(rosname,1);
 
 sprintf(rosname,"/%s/state_estimator/pose",rosnameC);
 ros::Subscriber subP_chase = node.subscribe(rosname, 1, subPose_chaser); //c
+sprintf(rosname,"/%s/state_estimator/vel",rosnameC);
+ros::Subscriber subV_chase = node.subscribe(rosname, 1, subVel_chaser); //c
 sprintf(rosname,"/%s/state_estimator/pose",rosnameT);
 ros::Subscriber supP_targ = node.subscribe(rosname, 1 , subPose_target); //must change this accordingly
+sprintf(rosname,"/%s/state_estimator/vel",rosnameT);
+ros::Subscriber supV_targ = node.subscribe(rosname, 1 , subVel_target);
+
 
 
 pose_zero(p_chaser);
@@ -296,9 +311,14 @@ while (ros::ok())
 			{
 			yawd_chaser=atan2(p_rel.pose.position.y,p_rel.pose.position.x); //finds yaw desired, careful for 0,0, working in -PI to PI
 			if(yawd_chaser<=0)
-				{ yawd_target=PI+yawd_chaser;} //changed from - to +     //playing around with PI to keep mcptam localized, 
+				
+				{ yawd_target=PI+yawd_chaser;
+					
+				} //changed from - to +     //playing around with PI to keep mcptam localized, 
 			else
-				{ yawd_target=-(yawd_chaser-PI);} //finds the yawd of target, make sure >PI works out, might be wrong
+				{ yawd_target=yawd_chaser-PI;
+					
+				} //finds the yawd of target, make sure >PI works out, might be wrong
 		
 
 		//set initial position where chaser and target will face each other
@@ -306,19 +326,23 @@ while (ros::ok())
 			pdes_target.pose.position.x=p_target.pose.position.x;
 			pdes_target.pose.position.y=p_target.pose.position.y;
 			pdes_target.pose.position.z=p_target.pose.position.z;
-			pdes_target.pose.orientation.z=yawd_target;
+			pdes_target.pose.orientation.z=yawd_target+PI/2; //add angle to choose face for docking
 
 			pdes_chaser.pose.position.x=p_chaser.pose.position.x;
 			pdes_chaser.pose.position.y=p_chaser.pose.position.y;
 			pdes_chaser.pose.position.z=p_target.pose.position.z; //chaser goes to height of target
-			pdes_chaser.pose.orientation.z=yawd_chaser;
+			pdes_chaser.pose.orientation.z=yawd_chaser+PI/2; //add an angle to choose a face for docking
 
 			count_targ1=false;
 			}
 
 		if (facing_error(p_target,yawd_target) && facing_error(p_chaser,yawd_chaser)) //this deteRmines whether the two tryphons are close to facing each other
 			{
-			facing_each_other=true;//compare quaternion of the angle_chasers and makesure within a certain range of facing each other
+
+			if(chaser_rotation<0.03 && chaser_rotation>-0.03 && target_rotation<0.03 && target_rotation>-0.03) //abs() wasn't working
+			{
+				facing_each_other=true;
+			}// compare the z angles and ensure facing each other as well as check that no overshoot is occuring
 			} 
 
 		if (facing_each_other) //glideslope loop for which begins once tryphons are facing each other
