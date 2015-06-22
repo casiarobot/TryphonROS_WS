@@ -111,13 +111,16 @@ void subSonar(const sensors::sonarArray::ConstPtr& msg)
     dsx1=0;
     dsy1=0;
     int okdsz=0;
-    for(int i=0; i<4;i++){
+    /*
+	for(int i=0; i<4;i++){
       	dsxt[i]=dsxt[i+1];
-	dsxtf[i]=dsxtf[i+1];
-	dsyt[i]=dsyt[i+1];
-	dsytf[i]=dsytf[i+1];
-	dszt[i]=dszt[i+1];
-	dsztf[i]=dsztf[i+1];}
+		dsxtf[i]=dsxtf[i+1];
+		dsyt[i]=dsyt[i+1];
+		dsytf[i]=dsytf[i+1];
+		dszt[i]=dszt[i+1];
+		dsztf[i]=dsztf[i+1];
+	}
+	*/
     //dszto=dszt;
     for (int i=0; i<msg->sonars.size(); ++i)
     {
@@ -128,35 +131,44 @@ void subSonar(const sensors::sonarArray::ConstPtr& msg)
         // Average but not dividing by ten to convert cm into mm
         if (sonar.id == (int)(0xE0)/2){
             for (int j=0;j<10;j++)
-            {dsx1=dsx1-sonar.distance[j];}
+            	dsx1 -= sonar.distance / 10;
         }
-        if (sonar.id == (int)(0xE6)/2){
+        else if (sonar.id == (int)(0xE6)/2){
             for (int j=0;j<10;j++)
-            {dsy1=dsy1+sonar.distance[j];}
+            	dsy1 += sonar.distance / 10;
         }
-        if (sonar.id == (int)(0xF8)/2){
+        else if (sonar.id == (int)(0xF8)/2){
             for (int j=0;j<10;j++)
-            {dsz3=dsz3+sonar.distance[j];}
-	    if(dsz3>hmax){dsz3=0;}
-	    else {++okdsz;}}
-
-        if (sonar.id == (int)(0xFA)/2){
+            	dsz3 += sonar.distance / 10;
+			if(dsz3>hmax)
+				dsz3 = 0;
+			else 
+				++okdsz;
+		}
+        else if (sonar.id == (int)(0xFA)/2){
             for (int j=0;j<10;j++)
-            {dsz4=dsz4+sonar.distance[j];}
-            if(dsz4>hmax){dsz4=0;}
-            else {++okdsz;}}
-
-        if (sonar.id == (int)(0xFC)/2){
+            	dsz4 += sonar.distance / 10;
+            if(dsz4>hmax)
+				dsz4 = 0;
+            else 
+				++okdsz;
+		}
+        else if (sonar.id == (int)(0xFC)/2){
             for (int j=0;j<10;j++)
-            {dsz1=dsz1+sonar.distance[j];}
-            if(dsz1>hmax){dsz1=0;}
-            else {++okdsz;}}
-
-        if (sonar.id == (int)(0xFE)/2){
+            	dsz1 += sonar.distance / 10;
+            if(dsz1>hmax)
+				dsz1 = 0;
+            else 
+				++okdsz;
+		}
+        else if (sonar.id == (int)(0xFE)/2){
             for (int j=0;j<10;j++)
-            {dsz2=dsz2+sonar.distance[j];}
-            if(dsz2>hmax){dsz2=0;}
-            else {++okdsz;}}
+            	dsz2 += sonar.distance / 10;
+            if(dsz2>hmax)
+				dsz2 = 0;
+            else 
+				++okdsz;
+		}
 
     }
     dsxt[4]=dsx1;dsyt[4]=dsy1;

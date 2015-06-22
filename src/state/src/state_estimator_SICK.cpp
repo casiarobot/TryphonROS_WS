@@ -120,35 +120,44 @@ void subSonar(const sensors::sonarArray::ConstPtr& msg)
         // Average but not dividing by ten to convert cm into mm
         if (sonar.id == (int)(0xE0)/2){
             for (int j=0;j<10;j++)
-            {dsx1=dsx1-sonar.distance[j];}
+            	dsx1 -= sonar.distance / 10;
         }
-        if (sonar.id == (int)(0xE6)/2){
+        else if (sonar.id == (int)(0xE6)/2){
             for (int j=0;j<10;j++)
-            {dsy1=dsy1+sonar.distance[j];}
+            	dsy1 += sonar.distance / 10;
         }
-        if (sonar.id == (int)(0xF8)/2){
+        else if (sonar.id == (int)(0xF8)/2){
             for (int j=0;j<10;j++)
-            {dsz3=dsz3+sonar.distance[j];}
-	    if(dsz3>hmax){dsz3=0;}
-	    else {++okdsz;}}
-        
-        if (sonar.id == (int)(0xFA)/2){
+            	dsz3 += sonar.distance / 10;
+			if(dsz3>hmax)
+				dsz3 = 0;
+			else 
+				++okdsz;
+		}
+        else if (sonar.id == (int)(0xFA)/2){
             for (int j=0;j<10;j++)
-            {dsz4=dsz4+sonar.distance[j];}
-            if(dsz4>hmax){dsz4=0;} 
-            else {++okdsz;}}
-        
-        if (sonar.id == (int)(0xFC)/2){
+            	dsz4 += sonar.distance / 10;
+            if(dsz4>hmax)
+				dsz4 = 0;
+            else 
+				++okdsz;
+		}
+        else if (sonar.id == (int)(0xFC)/2){
             for (int j=0;j<10;j++)
-            {dsz1=dsz1+sonar.distance[j];}
-            if(dsz1>hmax){dsz1=0;} 
-            else {++okdsz;}}
-        
-        if (sonar.id == (int)(0xFE)/2){
+            	dsz1 += sonar.distance / 10;
+            if(dsz1>hmax)
+				dsz1 = 0;
+            else 
+				++okdsz;
+		}
+        else if (sonar.id == (int)(0xFE)/2){
             for (int j=0;j<10;j++)
-            {dsz2=dsz2+sonar.distance[j];}
-            if(dsz2>hmax){dsz2=0;} 
-            else {++okdsz;}}
+            	dsz2 += sonar.distance / 10;
+            if(dsz2>hmax)
+				dsz2 = 0;
+            else 
+				++okdsz;
+		}
         
     }
     dsxt[4]=dsx1;dsyt[4]=dsy1;
@@ -161,9 +170,10 @@ void subComp(const sensors::compass::ConstPtr& msg)
 {
     //ROS_INFO_STREAM("ID: " << msg->id << " - RZ0: " << msg->rz[0] <<
     //                ", RZ1: " << msg->rz[1]);
-        for(int i=0; i<4;i++){
+    for(int i = 0; i < 4; i++){
       	dsrt[i]=dsrt[i+1];
-	dsrtf[i]=dsrtf[i+1];}
+		dsrtf[i]=dsrtf[i+1];
+	}
 	
     if (msg->id == (int)(0xC0)/2){
 	rz1=(msg->rz[0])-rz0;}

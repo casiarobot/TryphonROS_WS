@@ -1,2 +1,2 @@
 int32 id
-int32[10] distance
+int32 distance

@@ -35,7 +35,7 @@ time_t	seed;
 void getimudata(sensors::imuros *imuptr )
 {
 
-imu::Vector<3> a;
+/*imu::Vector<3> a;
 imu::Vector<3> g;
 imu::Vector<3> m;
 
@@ -52,7 +52,7 @@ imuptr->gyro[2]=g[2];
 imuptr->magn[0]=m[0];
 imuptr->magn[1]=m[1];
 imuptr->magn[2]=m[2];
-
+*/
 }
 
 
