@@ -1,0 +1,8 @@
+<launch>
+	
+
+	<group ns="192_168_10_243">
+	 <node name="force_distribution" pkg="controls" type="force_distribution" respawn="false" output="screen" />
+	</group>
+
+</launch>
