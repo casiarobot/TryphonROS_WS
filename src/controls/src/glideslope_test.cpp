@@ -299,9 +299,10 @@ double r,r_dot;
 
 while (ros::ok())
 	{
-	ros::spinOnce(); 
-	
-	if(!start_T && !start_C)
+ros::spinOnce(); 
+
+
+if(!start_T && !start_C)
 		{
 
 		p_rel.pose.position.x=p_target.pose.position.x-p_chaser.pose.position.x;
@@ -325,75 +326,22 @@ while (ros::ok())
 			p_target_initial=p_target;
 			pdes_target.pose.position.x=p_target.pose.position.x;
 			pdes_target.pose.position.y=p_target.pose.position.y;
-			pdes_target.pose.position.z=p_target.pose.position.z;
-			pdes_target.pose.orientation.z=yawd_target+PI/2; //add angle to choose face for docking
+			//pdes_target.pose.position.z=p_target.pose.position.z;
+			//pdes_target.pose.orientation.z=yawd_target+PI/2; //add angle to choose face for docking
 
 			pdes_chaser.pose.position.x=p_chaser.pose.position.x;
 			pdes_chaser.pose.position.y=p_chaser.pose.position.y;
-			pdes_chaser.pose.position.z=p_target.pose.position.z; //chaser goes to height of target
-			pdes_chaser.pose.orientation.z=yawd_chaser+PI/2; //add an angle to choose a face for docking
+			//pdes_chaser.pose.position.z=p_target.pose.position.z; //chaser goes to height of target
+			//pdes_chaser.pose.orientation.z=yawd_chaser+PI/2; //add an angle to choose a face for docking
 
 			count_targ1=false;
 			}
-
-		if (facing_error(p_target,yawd_target) && facing_error(p_chaser,yawd_chaser)) //this deteRmines whether the two tryphons are close to facing each other
-			{
-
-			if(chaser_rotation<0.03 && chaser_rotation>-0.03 && target_rotation<0.03 && target_rotation>-0.03) //abs() wasn't working
-			{
-				facing_each_other=true;
-			}// compare the z angles and ensure facing each other as well as check that no overshoot is occuring
-			} 
-
-		if (facing_each_other) //glideslope loop for which begins once tryphons are facing each other
-			{	
-		ROS_INFO("Facing each other now");
-			if (path_debut) // sets up the inital conditions of glideslope
-				{
-				
-    			path_debut_time=ros::Time::now().toSec();
-   
-				x_initial=-sqrt(pow(p_rel.pose.position.x,2.0)+pow(p_rel.pose.position.y,2.0))+sidelength_cube; //noRm of the relative velocity vector
-				a=(.01*x_initial); //define slope as a function of x_initial, (a distance of 4 m should take more time for docking than 3m)
-				v_max=.02; //maximum allowed velocity upon docking
-				v_init=a*x_initial+v_max; 
-				period=1.0/a*log(v_max/v_init); //The glideslope algorithm has a period (TBD)
-				ROS_INFO("Period=%f", period); //this must be possible with force of thrusters
-				magnet_on.data=true;
-				path_debut=false;
-				}
 		
-			t= ros::Time::now().toSec() - path_debut_time; 
 
-			//r is a negative number measured from the target and r_dot is positive
-			r=x_initial*exp(a*t)+v_max/a*(exp(a*t)-1); //x_initial should be defined as distance from
-			r_dot=a*r+v_max;
+pdes_target.pose.position.z= p_chaser.pose.position.z;
+pdes_chaser.pose.position.z=p_target.pose.position.z;
 
-			//calulcate desired position and velocity of chaser
-			if(abs(yawd_target)<PI/2) //Addition of r_target with r_x, r_y of glideslope decomposed using yaw of target
-				{
-				pdes_chaser.pose.position.x=p_target_initial.pose.position.x-r*cos(yawd_target);//will have to play around with this to make sure its proper
-				pdes_chaser.pose.position.y=p_target_initial.pose.position.y-r*sin(yawd_target);
-				veldes_chaser.twist.linear.x=r_dot*cos(yawd_chaser);
-				veldes_chaser.twist.linear.y=r_dot*sin(yawd_chaser);
-				}
-			else
-				{
-				pdes_chaser.pose.position.x=p_target_initial.pose.position.x+r*sin(yawd_target);
-				pdes_chaser.pose.position.y=p_target_initial.pose.position.y+r*cos(yawd_target);	
-				veldes_chaser.twist.linear.x=r_dot*cos(yawd_target);
-				veldes_chaser.twist.linear.y=r_dot*sin(yawd_target);
-				}
-
-
-			} //end of glideslope alg
 	
-
-	/*if(t>=period) //attempt at stopping the glideslope after period
-	{
-		pose_zero(veld_chaser);
-	} */
-
 
 
 ///set up to send to new control node

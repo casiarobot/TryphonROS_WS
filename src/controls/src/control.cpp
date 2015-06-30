@@ -476,6 +476,7 @@ int main(int argc, char **argv)
   ros::init(argc, argv, "control");
   ros::NodeHandle node;
   signal(SIGINT, mySigintHandler);
+  ros::NodeHandle nh1("~");
 
 
   // Publishers //
@@ -617,6 +618,30 @@ int main(int argc, char **argv)
   wrench_zero(FOld1);
   wrench_zero(FOld2);
 
+
+double x_start,y_start;
+
+    if (nh1.getParam("x", x_start))
+    {
+      ROS_INFO("Got param: %f", x_start );
+    	posdesir(0)=x_start;
+    }
+    else
+    {
+      ROS_ERROR("Failed to get param 'x'");
+      posdesir(0)=0.0;
+    }
+
+   if (nh1.getParam("y", y_start))
+    {
+      ROS_INFO("Got param: %f", y_start );
+      posdesir(1)=y_start;
+    }
+    else
+    {
+      ROS_ERROR("Failed to get param 'y'");
+      posdesir(1)=0.0;
+    }
 
   start=true;
 

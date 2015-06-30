@@ -5,7 +5,7 @@ project(controls)
 
 ## Find catkin and any catkin packages
 find_package(catkin REQUIRED COMPONENTS geometry_msgs roscpp rospy std_msgs sensors state dynamic_reconfigure message_generation 
-# hydro cmake_modules
+cmake_modules
 )
 find_package(Eigen REQUIRED)
 
@@ -51,14 +51,15 @@ target_link_libraries(ctr_fuzzy ${catkin_LIBRARIES})
 add_dependencies(ctr_fuzzy sensors_gencpp std_msgs geometry_msgs sensors state)
 
 
-##add_executable(glideslope src/glideslope.cpp)
-##target_link_libraries(glideslope ${catkin_LIBRARIES})
-##add_dependencies(glideslope sensors_gencpp std_msgs geometry_msgs sensors)
+
 
 add_executable(glideslope src/glideslope.cpp)
 target_link_libraries(glideslope ${catkin_LIBRARIES})
 add_dependencies(glideslope sensors_gencpp std_msgs geometry_msgs sensors)
 
+add_executable(glideslope_test src/glideslope_test.cpp)
+target_link_libraries(glideslope_test ${catkin_LIBRARIES})
+add_dependencies(glideslope_test sensors_gencpp std_msgs geometry_msgs sensors)
 
 
 add_executable(force_distribution src/force_distribution.cpp)

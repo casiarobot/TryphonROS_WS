@@ -1,4 +1,5 @@
 roslaunch state state_estimator_34.launch  //or 244
 roslaunch mcptam mcptam.launch group_name:=camera_1 load:=true
 roslaunch controls controls_243.launch  //or 244
+-------roslaunch controls force_distribution_243.launch
 roslaunch controls trajectory_243.launch //or 244
