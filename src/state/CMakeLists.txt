@@ -4,6 +4,9 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(state)
 
+
+set(CMAKE_BUILD_TYPE Debug)
+
 ## Find catkin and any catkin packages
 find_package(catkin REQUIRED COMPONENTS geometry_msgs sensor_msgs roscpp rospy std_msgs genmsg sensors tf 
 # cmake_modules

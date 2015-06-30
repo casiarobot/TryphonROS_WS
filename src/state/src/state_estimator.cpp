@@ -35,6 +35,8 @@
 //libraries for the sonars and the compass
 #include "sensors/sonar.h"
 #include "sensors/sonarArray.h"
+#include "sensors/leddar.h"
+#include "sensors/leddarArray.h"
 #include "sensors/compass.h"
 
 // YAML file
@@ -91,78 +93,126 @@ Eigen::Matrix3d CPM(Eigen::Vector3d vect) // return cross product matrix
 //Publishers //
 
 
+//Subscribers //
+void subLeddar(const sensors::leddarArray::ConstPtr& msg)
+{
+
+	pose_received = true;
+	int hmax=6000;
+	double dsx = 0, dsy = 0, dsz = 0;
+	for(int i = 0; i < 4;i++){
+		dsxt[i] = dsxt[i+1];
+		dsxtf[i] = dsxtf[i+1];
+		dsyt[i] = dsyt[i+1];
+		dsytf[i] = dsytf[i+1];
+		dszt[i] = dszt[i+1];
+		dsztf[i] = dsztf[i+1];
+	}
+	//dszto=dszt;
+	for (int i=0; i < msg->leddars.size(); ++i)
+	{
+		const sensors::leddar &leddar = msg->leddars[i];
+		//ROS_INFO_STREAM("ID: " << sonar.id << " - D0: " << sonar.distance[0] <<
+		//	               ", D1: " << sonar.distance[1]);
+
+		// From cm to m
+		switch (leddar.id) {
+			case 0x90:
+				dsx = leddar.distance / 100.0;
+				break;
+			case 0x92:
+				dsy = leddar.distance / 100.0;
+				break;
+			case 0x98:
+				dsz = leddar.distance / 100.0;
+				break;
+		}
+
+	}
+
+	dsxt[4] = dsx;
+	dsyt[4] = dsy;
+	dszt[4] = dsz;
+
+	// Sonars filtering
+	dsxtf[4]=3.159*dsxtf[3]-3.815*dsxtf[2]+2.076*dsxtf[1]-0.4291*dsxtf[0]+0.01223*dsxt[4]-0.02416*dsxt[3]+0.03202*dsxt[2]-0.02416*dsxt[1]+0.01223*dsxt[0];
+	dsytf[4]=3.159*dsytf[3]-3.815*dsytf[2]+2.076*dsytf[1]-0.4291*dsytf[0]+0.01223*dsyt[4]-0.02416*dsyt[3]+0.03202*dsyt[2]-0.02416*dsyt[1]+0.01223*dsyt[0];
+	dsztf[4]=3.159*dsztf[3]-3.815*dsztf[2]+2.076*dsztf[1]-0.4291*dsztf[0]+0.01223*dszt[4]-0.02416*dszt[3]+0.03202*dszt[2]-0.02416*dszt[1]+0.01223*dszt[0];
+	//ROS_INFO("distance z: %f, distance x : %f, distance y : %f",dsztf[4],dsxtf[4],dsytf[4]);
+
+	//SONARpos = Eigen::Vector3d(dsxtf[4], dsytf[4], dsztf[4]);
+	SONARpos(0) = dsxtf[4];
+	SONARpos(1) = dsytf[4];
+	SONARpos(2) = dsztf[4];
+}
+
 
 //Subscribers //
 void subSonar(const sensors::sonarArray::ConstPtr& msg)
 {
-    int hmax=6000;
-    double dsz1=0, dsz2=0, dsz3=0, dsz4=0, dsx1=0, dsy1=0, okdsz=0;
-    for(int i=0; i<4;i++){
-        dsxt[i]=dsxt[i+1];
-    dsxtf[i]=dsxtf[i+1];
-    dsyt[i]=dsyt[i+1];
-    dsytf[i]=dsytf[i+1];
-    dszt[i]=dszt[i+1];
-    dsztf[i]=dsztf[i+1];}
-    //dszto=dszt;
-    for (int i=0; i<msg->sonars.size(); ++i)
-    {
-        const sensors::sonar &sonar = msg->sonars[i];
-        //ROS_INFO_STREAM("ID: " << sonar.id << " - D0: " << sonar.distance[0] <<
-        //	               ", D1: " << sonar.distance[1]);
+	int hmax=6000;
+	double dsz1=0, dsz2=0, dsz3=0, dsz4=0, dsx1=0, dsy1=0, okdsz=0;
+	for(int i=0; i<4;i++){
+		dsxt[i]=dsxt[i+1];
+		dsxtf[i]=dsxtf[i+1];
+		dsyt[i]=dsyt[i+1];
+		dsytf[i]=dsytf[i+1];
+		dszt[i]=dszt[i+1];
+		dsztf[i]=dsztf[i+1];
+	}
+	//dszto=dszt;
+	for (int i=0; i<msg->sonars.size(); ++i)
+	{
+		const sensors::sonar &sonar = msg->sonars[i];
+		//ROS_INFO_STREAM("ID: " << sonar.id << " - D0: " << sonar.distance[0] <<
+		//	               ", D1: " << sonar.distance[1]);
 
-        // Average but not dividing by ten to convert cm into mm
-        if (sonar.id == (int)(0xE0)/2){
-            for (int j=0;j<10;j++)
-            	dsx1 -= sonar.distance / 10;
-        }
-        else if (sonar.id == (int)(0xE6)/2){
-            for (int j=0;j<10;j++)
-            	dsy1 += sonar.distance / 10;
-        }
-        else if (sonar.id == (int)(0xF8)/2){
-            for (int j=0;j<10;j++)
-            	dsz3 += sonar.distance / 10;
+		// Average but not dividing by ten to convert cm into mm
+		if (sonar.id == (int)(0xE0)/2){
+			dsx1 -= sonar.distance / 100;
+		}
+		else if (sonar.id == (int)(0xE6)/2){
+			dsy1 += sonar.distance / 100;
+		}
+		else if (sonar.id == (int)(0xF8)/2){
+			dsz3 += sonar.distance / 100;
 			if(dsz3>hmax)
 				dsz3 = 0;
-			else 
+			else
 				++okdsz;
 		}
-        else if (sonar.id == (int)(0xFA)/2){
-            for (int j=0;j<10;j++)
-            	dsz4 += sonar.distance / 10;
-            if(dsz4>hmax)
+		else if (sonar.id == (int)(0xFA)/2){
+			dsz4 += sonar.distance / 100;
+			if(dsz4>hmax)
 				dsz4 = 0;
-            else 
+			else
 				++okdsz;
 		}
-        else if (sonar.id == (int)(0xFC)/2){
-            for (int j=0;j<10;j++)
-            	dsz1 += sonar.distance / 10;
-            if(dsz1>hmax)
+		else if (sonar.id == (int)(0xFC)/2){
+			dsz1 += sonar.distance / 100;
+			if(dsz1>hmax)
 				dsz1 = 0;
-            else 
+			else
 				++okdsz;
 		}
-        else if (sonar.id == (int)(0xFE)/2){
-            for (int j=0;j<10;j++)
-            	dsz2 += sonar.distance / 10;
-            if(dsz2>hmax)
+		else if (sonar.id == (int)(0xFE)/2){
+			dsz2 += sonar.distance / 100;
+			if(dsz2>hmax)
 				dsz2 = 0;
-            else 
+			else
 				++okdsz;
 		}
 
-    }
-    dsxt[4]=dsx1;dsyt[4]=dsy1;
-    if(okdsz!=0){dszt[4]=(dsz1+dsz2+dsz3+dsz4)/okdsz;}
-    else {dszt[4]=dszt[3];}
+	}
+	dsxt[4]=dsx1;dsyt[4]=dsy1;
+	if(okdsz!=0){dszt[4]=(dsz1+dsz2+dsz3+dsz4)/okdsz;}
+	else {dszt[4]=dszt[3];}
 
-    // Sonars filtering
-    dsxtf[4]=3.159*dsxtf[3]-3.815*dsxtf[2]+2.076*dsxtf[1]-0.4291*dsxtf[0]+0.01223*dsxt[4]-0.02416*dsxt[3]+0.03202*dsxt[2]-0.02416*dsxt[1]+0.01223*dsxt[0];
-    dsytf[4]=3.159*dsytf[3]-3.815*dsytf[2]+2.076*dsytf[1]-0.4291*dsytf[0]+0.01223*dsyt[4]-0.02416*dsyt[3]+0.03202*dsyt[2]-0.02416*dsyt[1]+0.01223*dsyt[0];
-    dsztf[4]=3.159*dsztf[3]-3.815*dsztf[2]+2.076*dsztf[1]-0.4291*dsztf[0]+0.01223*dszt[4]-0.02416*dszt[3]+0.03202*dszt[2]-0.02416*dszt[1]+0.01223*dszt[0];
-    ROS_INFO("distance z: %f, rotation : %f, distance x : %f, distance y : %f",dsztf[4],dsrtf[4],dsxtf[4],dsytf[4]);
+	// Sonars filtering
+	dsxtf[4]=3.159*dsxtf[3]-3.815*dsxtf[2]+2.076*dsxtf[1]-0.4291*dsxtf[0]+0.01223*dsxt[4]-0.02416*dsxt[3]+0.03202*dsxt[2]-0.02416*dsxt[1]+0.01223*dsxt[0];
+	dsytf[4]=3.159*dsytf[3]-3.815*dsytf[2]+2.076*dsytf[1]-0.4291*dsytf[0]+0.01223*dsyt[4]-0.02416*dsyt[3]+0.03202*dsyt[2]-0.02416*dsyt[1]+0.01223*dsyt[0];
+	dsztf[4]=3.159*dsztf[3]-3.815*dsztf[2]+2.076*dsztf[1]-0.4291*dsztf[0]+0.01223*dszt[4]-0.02416*dszt[3]+0.03202*dszt[2]-0.02416*dszt[1]+0.01223*dszt[0];
+//ROS_INFO("distance z: %f, rotation : %f, distance x : %f, distance y : %f",dsztf[4],dsrtf[4],dsxtf[4],dsytf[4]);
 }
 
 void subComp(const sensors::compass::ConstPtr& msg)
@@ -173,12 +223,16 @@ void subComp(const sensors::compass::ConstPtr& msg)
 
     for(int i=0; i<4;i++){
         dsrt[i]=dsrt[i+1];
-        dsrtf[i]=dsrtf[i+1];}
+		dsrtf[i]=dsrtf[i+1];
+	}
 
-    if (msg->id == (int)(0xC0)/2){
-        rz1=(msg->rz[0])-rz0;}
-    if (start_CMP && rz1!=0){rz0=rz1;
-        start_CMP=false;}
+	if(msg->id == (int)(0xC0)/2)
+		rz1=(msg->rz[0])-rz0;
+
+	if (start_CMP && rz1!=0){
+		rz0=rz1;
+		start_CMP=false;
+	}
 
     dsrt[4]=rz1;
     //ROS_INFO("rotation: %f",rz);
@@ -279,9 +333,11 @@ std::string pos_src_string;
   Eigen::Quaterniond rel_quat_CM, rel_quat_camera, rel_quat_IMU, rel_quat_SICK;
 
   // Subscribers //
+  /* sensors_thruster use imubuff, gazebo use raw_imu*/
   ros::Subscriber subI = nh.subscribe("raw_imu", 1, subImu);
-  ros::Subscriber subM = nh.subscribe("mcptam/tracker_pose_array",1,subMCPTAM);
-  ros::Subscriber subS = nh.subscribe("sonars", 1, subSonar);
+  //ros::Subscriber subM = nh.subscribe("mcptam/tracker_pose_array",1,subMCPTAM);
+  //ros::Subscriber subS = nh.subscribe("sonars", 1, subSonar);
+  ros::Subscriber subL = nh.subscribe("leddars", 1, subLeddar);
   ros::Subscriber subC = nh.subscribe("compass",1,subComp);
 
   //Publishers //
@@ -319,11 +375,13 @@ std::string pos_src_string;
   Eigen::VectorXd yLEDDAR(3); // LEDDAR measurement
   Eigen::VectorXd yCMP(1); // COMPASS measurement
 
-  Eigen::MatrixXd F(12,12), Q(12,12), Pk1k1(12,12), Pk1k(12,12), Pkk(12,12), I6(6,6), O6(3,3), I2(2,2), I3(3,3), O3(3,3), I13(6,6), I12(6,6), RIMU(5,5), RMCPTAM(6,6),R(11,11), RSONAR(3,3), RLEDDAR(3,3);
+  Eigen::MatrixXd F(12,12), Q(12,12), Pk1k1(12,12), Pk1k(12,12), Pkk(12,12),
+		  I6(6,6), O6(3,3), I2(2,2), I3(3,3), O3(3,3), I13(6,6), I12(6,6),
+		  RIMU(5,5), RMCPTAM(6,6), RSONAR(3,3), RLEDDAR(3,3);
   int obsStates=11;
   if(pos_src!=0)
       obsStates=9;
-  Eigen::MatrixXd S(obsStates,obsStates), K(12,obsStates), H(obsStates,12);
+  Eigen::MatrixXd S(obsStates,obsStates), K(12,obsStates), H(obsStates,12), R(obsStates, obsStates);
   Eigen::VectorXd z(obsStates), y(obsStates); // measurement and measurement residual
   //Eigen::MatrixXd R(6,6), S(6,6), K(12,6), H(6,12);
 
@@ -347,9 +405,10 @@ std::string pos_src_string;
   //R << RMCPTAM;
 
 //State observation matrix
-  H<< I6,O6,
-          Eigen::MatrixXd::Zero(2,3),I2,Eigen::MatrixXd::Zero(2,7),
-          Eigen::MatrixXd::Zero(3,9),I3;
+//  H << I6, O6,
+//	   Eigen::MatrixXd::Zero(2,3), I2, Eigen::MatrixXd::Zero(2,7),
+//	   Eigen::MatrixXd::Zero(3,9), I3;
+  H = Eigen::MatrixXd::Identity(obsStates,12);
   //H<< I6,Eigen::MatrixXd::Zero(6,6);
 
 
@@ -367,7 +426,7 @@ std::string pos_src_string;
   if(pos_src==0)
         xkk << MCPTAMpos,angle,Eigen::MatrixXd::Zero(3,1),Eigen::MatrixXd::Zero(3,1);
   else
-      xkk << SONARpos,dsrtf[4],Eigen::MatrixXd::Zero(3,1),Eigen::MatrixXd::Zero(3,1);
+	  xkk << SONARpos, dsrtf[4], 0, 0, Eigen::MatrixXd::Zero(3,1), Eigen::MatrixXd::Zero(3,1);
 
   double t_last=ros::Time::now().toSec();
 
