@@ -8,7 +8,6 @@ find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   laser_geometry
   tf
- cmake_modules
 )
 
 # since we need eigen search it as well
@@ -41,6 +40,7 @@ include_directories(
 # make the executable
 add_executable(sick_pose
   src/sick_pose_node.cpp 
+  include/sick_pose/sick_pose_node.h
 )
 
 # to build the executable we depend on other packets,
