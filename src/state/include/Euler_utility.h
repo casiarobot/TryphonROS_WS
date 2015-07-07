@@ -18,6 +18,16 @@ namespace EulerU{
     pitch = atan2(-gx,sqrt(gy*gy+gz*gz));
   }
 
+  void getRollPitchIMU(double *accel, double& roll, double& pitch)
+  {
+    double gx=accel[0];
+    double gy=accel[1];
+    double gz=accel[2];
+
+    roll = atan2(gy,gz);
+    pitch = atan2(-gx,sqrt(gy*gy+gz*gz));
+  }
+
   void getQuatFromEuler(Eigen::Quaterniond& quat, double roll, double pitch, double yaw)
   {
     Eigen::Quaterniond qx(cos(roll/2),sin(roll/2),0,0), qy(cos(pitch/2),0,sin(pitch/2),0), qz(cos(yaw/2),0,0,sin(yaw/2));

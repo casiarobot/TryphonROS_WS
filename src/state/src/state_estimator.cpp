@@ -30,7 +30,7 @@
 #include "geometry_msgs/Pose.h"
 #include "geometry_msgs/Twist.h"
 #include "geometry_msgs/TwistStamped.h"
-#include <sensor_msgs/Imu.h>
+//#include <sensor_msgs/Imu.h>
 
 //libraries for the sonars and the compass
 #include "sensors/sonar.h"
@@ -38,6 +38,8 @@
 #include "sensors/leddar.h"
 #include "sensors/leddarArray.h"
 #include "sensors/compass.h"
+#include "sensors/imubuff.h"
+#include "sensors/imuros.h"
 
 // YAML file
 //#include <YAMLParser.h>
@@ -55,9 +57,7 @@
 double tIMU, tMCPTAM, tSICK, tSonars, tComp;
 sensor_msgs::Imu Imu;
 
-bool start_IMU=true;
-bool start_MCPTAM=true;
-bool start_CMP=true;
+bool start_IMU=true, start_MCPTAM=true, start_CMP=true, start_sonar=true, start_leddar=true, start_SICK=true;
 bool pose_received;
 
 double dsxt[5]={0,0,0,0,0};
@@ -70,11 +70,11 @@ double dsztf[5]={0,0,0,0,0};
 double dsrtf[5]={0,0,0,0,0};
 double rz0=0;
 
-Eigen::Vector3d MCPTAMpos, SONARpos, angle, avel;
-Eigen::Vector2d rollPitchI;
+Eigen::Vector3d SONARpos, SICKpos, angle, avel;
+Eigen::VectorXd MCPTAMpos(6);
 
 Eigen::Vector3d CMIMUpos(1,0,-1.125); // vector postion from Center of mass to IMU in tryphon frame
-Eigen::Matrix3d Rmatrix, CPCMIMUmatrix, RIMUmatrix,CPCMCmatrix;
+Eigen::Matrix3d Rmatrix, CPCMIMUmatrix, RIMUmatrix, CPCMCmatrix;
 Eigen::Quaterniond quatIMU(0.99255, 0,0.12187, 0); // quat of the rotation matrix between the tryphon frame and the IMU frame
 Eigen::Quaterniond quatMCPTAM(1, 0,0, 0); // quat of the rotation matrix between the tryphon frame and the IMU frame
 
@@ -98,7 +98,6 @@ void subLeddar(const sensors::leddarArray::ConstPtr& msg)
 {
 
 	pose_received = true;
-	int hmax=6000;
 	double dsx = 0, dsy = 0, dsz = 0;
 	for(int i = 0; i < 4;i++){
 		dsxt[i] = dsxt[i+1];
@@ -144,14 +143,18 @@ void subLeddar(const sensors::leddarArray::ConstPtr& msg)
 	SONARpos(0) = dsxtf[4];
 	SONARpos(1) = dsytf[4];
 	SONARpos(2) = dsztf[4];
+
+	if(start_leddar){
+		start_leddar=false;
+		ROS_INFO("Leddar started!");
+	}
 }
 
-
-//Subscribers //
 void subSonar(const sensors::sonarArray::ConstPtr& msg)
 {
+	pose_received = true;
 	int hmax=6000;
-	double dsz1=0, dsz2=0, dsz3=0, dsz4=0, dsx1=0, dsy1=0, okdsz=0;
+	double dsz1=0, dsz2=0, dsz3=0, dsz4=0, dsx=0, dsy=0, okdsz=0;
 	for(int i=0; i<4;i++){
 		dsxt[i]=dsxt[i+1];
 		dsxtf[i]=dsxtf[i+1];
@@ -169,34 +172,34 @@ void subSonar(const sensors::sonarArray::ConstPtr& msg)
 
 		// Average but not dividing by ten to convert cm into mm
 		if (sonar.id == (int)(0xE0)/2){
-			dsx1 -= sonar.distance / 100;
+			dsx = -sonar.distance / 100;
 		}
 		else if (sonar.id == (int)(0xE6)/2){
-			dsy1 += sonar.distance / 100;
+			dsy = sonar.distance / 100;
 		}
 		else if (sonar.id == (int)(0xF8)/2){
-			dsz3 += sonar.distance / 100;
+			dsz3 = sonar.distance / 100;
 			if(dsz3>hmax)
 				dsz3 = 0;
 			else
 				++okdsz;
 		}
 		else if (sonar.id == (int)(0xFA)/2){
-			dsz4 += sonar.distance / 100;
+			dsz4 = sonar.distance / 100;
 			if(dsz4>hmax)
 				dsz4 = 0;
 			else
 				++okdsz;
 		}
 		else if (sonar.id == (int)(0xFC)/2){
-			dsz1 += sonar.distance / 100;
+			dsz1 = sonar.distance / 100;
 			if(dsz1>hmax)
 				dsz1 = 0;
 			else
 				++okdsz;
 		}
 		else if (sonar.id == (int)(0xFE)/2){
-			dsz2 += sonar.distance / 100;
+			dsz2 = sonar.distance / 100;
 			if(dsz2>hmax)
 				dsz2 = 0;
 			else
@@ -204,15 +207,64 @@ void subSonar(const sensors::sonarArray::ConstPtr& msg)
 		}
 
 	}
-	dsxt[4]=dsx1;dsyt[4]=dsy1;
-	if(okdsz!=0){dszt[4]=(dsz1+dsz2+dsz3+dsz4)/okdsz;}
-	else {dszt[4]=dszt[3];}
+	dsxt[4]=dsx;dsyt[4]=dsy;
+	if(okdsz!=0)
+		dszt[4]=(dsz1+dsz2+dsz3+dsz4)/okdsz;
+	else
+		dszt[4]=dszt[3];
 
 	// Sonars filtering
 	dsxtf[4]=3.159*dsxtf[3]-3.815*dsxtf[2]+2.076*dsxtf[1]-0.4291*dsxtf[0]+0.01223*dsxt[4]-0.02416*dsxt[3]+0.03202*dsxt[2]-0.02416*dsxt[1]+0.01223*dsxt[0];
 	dsytf[4]=3.159*dsytf[3]-3.815*dsytf[2]+2.076*dsytf[1]-0.4291*dsytf[0]+0.01223*dsyt[4]-0.02416*dsyt[3]+0.03202*dsyt[2]-0.02416*dsyt[1]+0.01223*dsyt[0];
 	dsztf[4]=3.159*dsztf[3]-3.815*dsztf[2]+2.076*dsztf[1]-0.4291*dsztf[0]+0.01223*dszt[4]-0.02416*dszt[3]+0.03202*dszt[2]-0.02416*dszt[1]+0.01223*dszt[0];
-//ROS_INFO("distance z: %f, rotation : %f, distance x : %f, distance y : %f",dsztf[4],dsrtf[4],dsxtf[4],dsytf[4]);
+
+	//SONARpos = Eigen::Vector3d(dsxtf[4], dsytf[4], dsztf[4]);
+	SONARpos(0) = dsxtf[4];
+	SONARpos(1) = dsytf[4];
+	SONARpos(2) = dsztf[4];
+
+	if(start_sonar){
+		start_sonar=false;
+		ROS_INFO("Sonars started!");
+	}
+
+}
+
+void subposeSick(geometry_msgs::PoseStamped ps){
+  if(ps.pose.position.x==ps.pose.position.x)
+    SICKpos(0)=ps.pose.position.x;
+  if(ps.pose.position.y==ps.pose.position.y)
+    SICKpos(1)=ps.pose.position.y;
+
+  //rz2=-sgn(ps.pose.orientation.z)*ps.pose.orientation.w;
+  Eigen::Quaterniond quad(ps.pose.orientation.x,ps.pose.orientation.y,ps.pose.orientation.z,ps.pose.orientation.w);
+  float rz2_tmp = atan2(quad.toRotationMatrix()(1, 2), quad.toRotationMatrix()(2, 2));
+  if(rz2_tmp == rz2_tmp) //Testing if NaN
+    SICKpos(3)=rz2_tmp;
+/*
+  if ((last_rz2-rz2) < -1.6)
+          rz2_init=rz2_init+3.1416;
+  
+  if ((last_rz2-rz2) > 1.6)
+          rz2_init=rz2_init-3.1416;     
+
+  float rz2_tmp = rz2 - rz2_init;
+  
+  if (rz2_tmp > 1.6)
+          rz2_init=rz2_init+3.1416;     
+
+  if (rz2_tmp < -1.6)
+          rz2_init=rz2_init-3.1416;
+  
+  last_rz2 = rz2;
+  rz2 = rz2 - rz2_init;*/
+  //rz2=-3.14*sin(rz2);
+  
+    if(start_SICK)
+  {
+    start_SICK=false;
+    ROS_INFO("SICK started!");
+  }
 }
 
 void subComp(const sensors::compass::ConstPtr& msg)
@@ -238,15 +290,42 @@ void subComp(const sensors::compass::ConstPtr& msg)
     //ROS_INFO("rotation: %f",rz);
 
     dsrtf[4]=3.159*dsrtf[3]-3.815*dsrtf[2]+2.076*dsrtf[1]-0.4291*dsrtf[0]+0.01223*dsrt[4]-0.02416*dsrt[3]+0.03202*dsrt[2]-0.02416*dsrt[1]+0.01223*dsrt[0];
+    angle(3)=dsrtf[4];
 }
 
-void subImu(const sensor_msgs::Imu Imu_msg)
+//void subImu(const sensor_msgs::Imu Imu_msg)
+void subImu(const sensors::imubuff::ConstPtr& msg)
 {
-  
+  double roll, pitch;
+  double accel[3]={msg->buffer[0].accel[0],msg->buffer[0].accel[1],msg->buffer[0].accel[2]};
+  EulerU::getRollPitchIMU(accel,roll,pitch);
+  angle(0)=(angle(0)+roll)/2; // low pass filter
+  angle(1)=(angle(1)+0.244+pitch)/2; // low pass filter
+
+  Eigen::Vector3d avel_temp;
+	avel_temp(0)=msg->buffer[0].gyro[0];
+	avel_temp(1)=msg->buffer[0].gyro[1];
+	avel_temp(2)=msg->buffer[0].gyro[2];
+	avel_temp=RIMUmatrix*avel_temp;
+  avel_temp=EulerU::RbodyEuler(angle(0),angle(1))*avel_temp;
+  avel=(avel+avel_temp)/2;
+
+  if(start_IMU){
+    start_IMU=false;
+    ROS_INFO("IMU started!");
+  }
+
+	//mx=msg->buffer[0].magn[0];
+	//my=msg->buffer[0].magn[1];
+	//mz=msg->buffer[0].magn[2];
+}
+
+/*void subImu(const sensor_msgs::Imu Imu_msg)
+{
   double roll, pitch;
   EulerU::getRollPitchIMU(Imu_msg,roll,pitch);
-  rollPitchI(0)=(rollPitchI(0)+roll)/2; // low pass filter
-  rollPitchI(1)=(rollPitchI(1)+0.244+pitch)/2; // low pass filter
+  angle(0)=(angle(0)+roll)/2; // low pass filter
+  angle(1)=(angle(1)+0.244+pitch)/2; // low pass filter
 
   Eigen::Vector3d avel_temp;
   avel_temp(0)=Imu_msg.angular_velocity.x; // defined in IMU frame
@@ -254,14 +333,15 @@ void subImu(const sensor_msgs::Imu Imu_msg)
   avel_temp(2)=Imu_msg.angular_velocity.z;
   avel_temp=RIMUmatrix*avel_temp;  // defined in body frame
 
-  avel_temp=EulerU::RbodyEuler(rollPitchI(0),rollPitchI(1))*avel_temp;
+  avel_temp=EulerU::RbodyEuler(angle(0),angle(1))*avel_temp;
   avel=(avel+avel_temp)/2;
     if(start_IMU)
   {
     start_IMU=false;
+    ROS_INFO("IMU started!");
   }
 
-}
+}*/
 
 void subMCPTAM(const geometry_msgs::PoseArray Aposes) // with MCPTAM
 {
@@ -279,15 +359,16 @@ void subMCPTAM(const geometry_msgs::PoseArray Aposes) // with MCPTAM
   Eigen::Quaterniond quat3(Pose.orientation.w,Pose.orientation.x,Pose.orientation.y,Pose.orientation.z);
   quat=quat*quatMCPTAM.inverse();  // compute the quaternion between the vision world and the tryphon frame
 
-  angle(0)=atan2(2*(quat.w()*quat.x()+quat.y()*quat.z()),1-2*(quat.x()*quat.x()+quat.y()*quat.y()));
-  angle(1)=asin(2*(quat.w()*quat.y()-quat.z()*quat.x()));
-  angle(2)=atan2(2*(quat.w()*quat.z()+quat.x()*quat.y()),1-2*(quat.z()*quat.z()+quat.y()*quat.y()));
+  MCPTAMpos(4)=atan2(2*(quat.w()*quat.x()+quat.y()*quat.z()),1-2*(quat.x()*quat.x()+quat.y()*quat.y()));
+  MCPTAMpos(5)=asin(2*(quat.w()*quat.y()-quat.z()*quat.x()));
+  MCPTAMpos(6)=atan2(2*(quat.w()*quat.z()+quat.x()*quat.y()),1-2*(quat.z()*quat.z()+quat.y()*quat.y()));
   Rmatrix=quat.toRotationMatrix();
 
   //MCPTAMpos=MCPTAMpos-Rmatrix*CMIMUpos;  // offset due to the fact that the pose is the one of the IMU
   if(start_MCPTAM)
   {
     start_MCPTAM=false;
+    ROS_INFO("MCPTAM started");
   }
 }
 
@@ -296,7 +377,7 @@ int main(int argc, char **argv)
 {
     char rosname[100];
     std::string temp_arg;
-    int pos_src=0;  //0=MCPTAM,1=SICK,2=SONARS(+CMP),3=LEDDARS(+CMP)
+    int pos_src=0;  //0=MCPTAM,1=SICK(+SONARZ),2=SONARS,3=LEDDARS ALL[+IMU,+CMP]
 
   ros::init(argc, argv, "state_estimator");
   ros::NodeHandle nh;
@@ -334,11 +415,12 @@ std::string pos_src_string;
 
   // Subscribers //
   /* sensors_thruster use imubuff, gazebo use raw_imu*/
-  ros::Subscriber subI = nh.subscribe("raw_imu", 1, subImu);
-  //ros::Subscriber subM = nh.subscribe("mcptam/tracker_pose_array",1,subMCPTAM);
-  //ros::Subscriber subS = nh.subscribe("sonars", 1, subSonar);
+  ros::Subscriber subI = nh.subscribe("imubuff", 1, subImu); //raw_imu
+  ros::Subscriber subM = nh.subscribe("mcptam/tracker_pose_array",1,subMCPTAM);
+  ros::Subscriber subS = nh.subscribe("sonars", 1, subSonar);
   ros::Subscriber subL = nh.subscribe("leddars", 1, subLeddar);
-  ros::Subscriber subC = nh.subscribe("compass",1,subComp);
+  ros::Subscriber subC = nh.subscribe("compass",1, subComp);
+  ros::Subscriber subSP = nh.subscribe("/cubeA_pose",1, subposeSick);
 
   //Publishers //
   ros::Publisher pubP = nh.advertise<geometry_msgs::PoseStamped>("state_estimator/pose",1);
@@ -369,15 +451,10 @@ std::string pos_src_string;
 
   // Matrices and vectors for the kalman filter //
   Eigen::VectorXd xk1k1(12),xk1k(12),xkk(12);
-  Eigen::VectorXd yMCPTAM(6); // MCPTAM measurement
-  Eigen::VectorXd yIMU(5); // IMU measurement
-  Eigen::VectorXd ySONAR(3); // SONAR measurement
-  Eigen::VectorXd yLEDDAR(3); // LEDDAR measurement
-  Eigen::VectorXd yCMP(1); // COMPASS measurement
 
   Eigen::MatrixXd F(12,12), Q(12,12), Pk1k1(12,12), Pk1k(12,12), Pkk(12,12),
 		  I6(6,6), O6(3,3), I2(2,2), I3(3,3), O3(3,3), I13(6,6), I12(6,6),
-		  RIMU(5,5), RMCPTAM(6,6), RSONAR(3,3), RLEDDAR(3,3);
+		  RIMU(5,5), RMCPTAM(6,6), RSONAR(3,3), RLEDDAR(3,3), RSICK(3,3);
   int obsStates=11;
   if(pos_src!=0)
       obsStates=9;
@@ -396,24 +473,37 @@ std::string pos_src_string;
   RMCPTAM << 0.1*I3,O3,O3,0.005*I3;
   RSONAR << 0.1*I3;
   RLEDDAR << 0.1*I3;
+  RSICK << 0.1*I3;
   float RCMP = 0.05;
   RIMU << 0.05*I2,Eigen::MatrixXd::Zero(2,3),Eigen::MatrixXd::Zero(3,2),0.05*I3;
   if(pos_src==0)
-    R << RMCPTAM,Eigen::MatrixXd::Zero(6,5),Eigen::MatrixXd::Zero(5,6),RIMU;
+    R << RMCPTAM,Eigen::MatrixXd::Zero(6,6),Eigen::MatrixXd::Zero(1,6),RCMP,Eigen::MatrixXd::Zero(1,5),Eigen::MatrixXd::Zero(5,7),RIMU;
+  else if(pos_src==1)
+    R << RSICK,Eigen::MatrixXd::Zero(3,7),Eigen::MatrixXd::Zero(1,3),RSONAR(1,1),Eigen::MatrixXd::Zero(3,6),Eigen::MatrixXd::Zero(1,4),RCMP,Eigen::MatrixXd::Zero(1,5),Eigen::MatrixXd::Zero(5,5),RIMU;
   else if(pos_src==3)
     R << RSONAR,Eigen::MatrixXd::Zero(3,6),Eigen::MatrixXd::Zero(1,3),RCMP,Eigen::MatrixXd::Zero(1,5),Eigen::MatrixXd::Zero(5,4),RIMU;
   //R << RMCPTAM;
 
 //State observation matrix
-//  H << I6, O6,
-//	   Eigen::MatrixXd::Zero(2,3), I2, Eigen::MatrixXd::Zero(2,7),
-//	   Eigen::MatrixXd::Zero(3,9), I3;
-  H = Eigen::MatrixXd::Identity(obsStates,12);
-  //H<< I6,Eigen::MatrixXd::Zero(6,6);
+if(pos_src==0){
+	  H << I6, O6,
+	   O3, I3, Eigen::MatrixXd::Zero(3,6),
+	   Eigen::MatrixXd::Zero(3,9), I3;
+} else if(pos_src==1) {
+	  H << I3, Eigen::MatrixXd::Zero(3,9),
+	   Eigen::MatrixXd::Zero(1,5), 1, Eigen::MatrixXd::Zero(1,8),
+	   O3, I3, Eigen::MatrixXd::Zero(3,6),
+	   Eigen::MatrixXd::Zero(3,9), I3;
+} else if(pos_src==3) {
+	  H << I3, Eigen::MatrixXd::Zero(3,9),
+	   O3, I3, Eigen::MatrixXd::Zero(3,6),
+	   Eigen::MatrixXd::Zero(3,9), I3;
+}
+//  H = Eigen::MatrixXd::Identity(obsStates,12);
 
 
   ROS_INFO("Initialization");
-  while((start_IMU || start_MCPTAM) && ros::ok())
+  while(start_IMU && ((start_leddar && pos_src==3) || (start_sonar && pos_src==2) || (start_MCPTAM && pos_src==0) || (start_SICK && pos_src==1)) && ros::ok())
   {
     ros::spinOnce();
     loop_rate.sleep();
@@ -424,9 +514,9 @@ std::string pos_src_string;
   bool accel=false;
   Pkk<<2*I12;
   if(pos_src==0)
-        xkk << MCPTAMpos,angle,Eigen::MatrixXd::Zero(3,1),Eigen::MatrixXd::Zero(3,1);
-  else
-	  xkk << SONARpos, dsrtf[4], 0, 0, Eigen::MatrixXd::Zero(3,1), Eigen::MatrixXd::Zero(3,1);
+        xkk << MCPTAMpos,Eigen::MatrixXd::Zero(3,1),Eigen::MatrixXd::Zero(3,1);
+  else if(pos_src==3)
+	xkk << SONARpos, angle, Eigen::MatrixXd::Zero(3,1), Eigen::MatrixXd::Zero(3,1);
 
   double t_last=ros::Time::now().toSec();
 
@@ -447,15 +537,18 @@ std::string pos_src_string;
 
 	//Sensors inputs
       if(pos_src==0)
-        z << MCPTAMpos,angle,rollPitchI,avel;
+        z << MCPTAMpos,angle,avel;
+      else if(pos_src==1)
+        z << SICKpos,angle,avel;
       else if(pos_src==3)
-        z << SONARpos,dsrtf[4],rollPitchI,avel;
+        z << SONARpos,angle,avel;
       //std::cout << "measurement" << z << std::endl;
 
       // Predict //
       xk1k=F*xkk;
       Pk1k=F*Pkk*F.transpose()+Q;
- //std::cout << "xk1k" << xk1k << std::endl;
+      //std::cout << "xk1k" << xk1k << std::endl;
+
       //Update //
       y     = z - H*xk1k;
       S     = H*Pk1k*H.transpose()+R;
@@ -474,7 +567,7 @@ std::string pos_src_string;
       else
           transform.setOrigin( tf::Vector3(SONARpos(0), SONARpos(1), SONARpos(2)) );
       tf::Quaternion q;
-      q.setEulerZYX(angle(0), angle(1), angle(2));
+      q.setEulerZYX(MCPTAMpos(4), MCPTAMpos(5), MCPTAMpos(6));
       transform.setRotation(q);
       sprintf(rosname,"Gumstick_%s",ip_address.c_str());
       br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "world", rosname));
