@@ -51,7 +51,7 @@ private:
 	std::vector<Eigen::Vector2d> cubes;
   std::vector<double> cubesAngles;
 
-	std::vector<int> missing_association;
+  std::vector<int> missing_association;
 
   ros::Publisher marker_pub_;
   ros::Publisher cubeA_pub_;
@@ -82,6 +82,7 @@ private:
   double right_wall, left_wall, front_wall, back_wall, front_room_delim, left_room_delim;
   double cluster_distance_threshold, min_cluster_size, min_line_length, max_line_length, edge_split_and_merge_threshold, split_and_merge_threshold, max_translation;
   int max_tick_ghost;
+  double angle_offset;
 
 };
 

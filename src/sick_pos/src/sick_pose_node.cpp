@@ -63,7 +63,7 @@ void SP::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan_msg){
 	    pose_.pose.position.y = cubes[0][1];
 	    
 	    //Convert from angle to Quaterion
-	    Eigen::Quaterniond orientation = Eigen::Quaterniond(Eigen::AngleAxisd(cubesAngles[0], Eigen::Vector3d::UnitZ()));
+		Eigen::Quaterniond orientation = Eigen::Quaterniond(Eigen::AngleAxisd(cubesAngles[0] + angle_offset, Eigen::Vector3d::UnitZ()));
 
         pose_.pose.orientation.x = orientation.x();
         pose_.pose.orientation.y = orientation.y();
@@ -78,7 +78,7 @@ void SP::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan_msg){
 	    pose_.pose.position.x = cubes[1][0];
 	    pose_.pose.position.y = cubes[1][1];
 
-	   orientation = Eigen::Quaterniond(Eigen::AngleAxisd(cubesAngles[1], Eigen::Vector3d::UnitZ()));
+	   orientation = Eigen::Quaterniond(Eigen::AngleAxisd(cubesAngles[1] + angle_offset, Eigen::Vector3d::UnitZ()));
 
         pose_.pose.orientation.x = orientation.x();
         pose_.pose.orientation.y = orientation.y();
@@ -388,7 +388,11 @@ int SP::SplitAndMerge(ListVector2d data, int begin, int end, double & dist){
     
 }
 
-void SP::ComputeCubeCenterWithLine(ListVector2d pointsInLine, int begin, int end, Eigen::Vector2d & p1,  Eigen::Vector2d & p2, vector<geometry_msgs::Point32> &p_data){
+void SP::ComputeCubeCenterWithLine(ListVector2d pointsInLine,
+								   int begin, int end,
+								   Eigen::Vector2d & p1,
+								   Eigen::Vector2d & p2,
+								   vector<geometry_msgs::Point32> &p_data){
 	//Eigen::linearRegression::linearRegression(end, &(pointsInLine[0]), &line_coeffs, 0);
 	// ===== linear Regression ==== 
 	// explication => http://onlinestatbook.com/2/regression/intro.html
@@ -595,6 +599,8 @@ void SP::dynamicParametersCallback(sick_pose::sickPoseConfig &config, uint32_t l
 	min_line_length = config.min_line_length;
 	max_tick_ghost = config.max_tick_ghost;
 	max_translation = config.max_translation;
+
+	angle_offset = config.angle_offset;
 
 	ROS_INFO("Parameters changed");
   
