@@ -39,7 +39,7 @@ tests::props_command props;
 double maxForce=0.63;
 double minForce=-0.32;
 double L=1.115;
-double Cm=0.17;
+double Cm=0.05;
 double maxPrct;
 double nbMotor=0;
 
@@ -49,13 +49,13 @@ void callback(controls::fdistributionConfig &config, uint32_t level) {
   ROS_INFO("Reconfigure Request: Max props percentage: %f",
            config.maxPrct);
 
-  maxPrct=(config.maxPrct)/100;
+  maxPrct=(config.maxPrct)/100.000;
   }
 }
 
 void subMax(const std_msgs::Float64 inputMsg)
 {
-  maxPrct=(inputMsg.data)/100;
+  maxPrct=(inputMsg.data)/100.000;
 }
 
 void subForces(const geometry_msgs::Wrench inputMsg)
@@ -278,27 +278,27 @@ int main(int argc, char **argv)
     {
       if(nbMotor<9)
       {
-        vPraw[0][2]=((double)(input.force.x/2.000000-input.torque.z/(4.000000*L)));  // x right
-        vPraw[1][2]=((double)(input.force.x/2.000000+input.torque.z/(4.000000*L)));  // x left
-        vPraw[2][2]=((double)(input.force.y/2.000000-input.torque.z/(4.000000*L)));  // y front
-        vPraw[3][2]=((double)(input.force.y/2.000000+input.torque.z/(4.000000*L)));  // y back
-        vPraw[4][2]=((double)(input.force.z/4.000000+(-input.torque.x-input.torque.y-(L-Cm)*((input.force.x)-(input.force.y)))/(4.000000*L)));   // z front left
-        vPraw[5][2]=((double)(input.force.z/4.000000+(-input.torque.x+input.torque.y-(L-Cm)*(-(input.force.x)-(input.force.y)))/(4.000000*L)));  // z front right
-        vPraw[6][2]=((double)(input.force.z/4.000000+(input.torque.x+input.torque.y-(L-Cm)*(-(input.force.x)+(input.force.y)))/(4.000000*L)));   // z back left
-        vPraw[7][2]=((double)(input.force.z/4.000000+(input.torque.x-input.torque.y-(L-Cm)*((input.force.x)+(input.force.y)))/(4.000000*L)));  // z back right
+        vPraw[0][2]=((double)(input.force.x/2.000000+input.torque.z/(4.000000*L)));  // x right
+        vPraw[1][2]=((double)(input.force.x/2.000000-input.torque.z/(4.000000*L)));  // x left
+        vPraw[2][2]=((double)(input.force.y/2.000000+input.torque.z/(4.000000*L)));  // y front
+        vPraw[3][2]=((double)(input.force.y/2.000000-input.torque.z/(4.000000*L)));  // y back
+        vPraw[4][2]=((double)(input.force.z/4.000000+(+input.torque.x-input.torque.y-(L-Cm)*((input.force.x)+(input.force.y)))/(4.000000*L)));   // z front left
+        vPraw[5][2]=((double)(input.force.z/4.000000+(-input.torque.x-input.torque.y-(L-Cm)*((input.force.x)-(input.force.y)))/(4.000000*L)));  // z front right
+        vPraw[6][2]=((double)(input.force.z/4.000000+(-input.torque.x+input.torque.y-(L-Cm)*(-(input.force.x)-(input.force.y)))/(4.000000*L)));   // z back left
+        vPraw[7][2]=((double)(input.force.z/4.000000+(input.torque.x+input.torque.y-(L-Cm)*(-(input.force.x)+(input.force.y)))/(4.000000*L)));  // z back right
         vPraw[8][2]=0;  // x top right
         vPraw[9][2]=0;  // x top left
         vPraw[10][2]=0;  // y top front
         vPraw[11][2]=0;  // y top back
 
-        vPzraw[0][2]=((double)(fz.force.x/2.000000-fz.torque.z/(4.000000*L)));  // x right
-        vPzraw[1][2]=((double)(fz.force.x/2.000000+fz.torque.z/(4.000000*L)));  // x left
-        vPzraw[2][2]=((double)(fz.force.y/2.000000-fz.torque.z/(4.000000*L)));  // y front
-        vPzraw[3][2]=((double)(fz.force.y/2.000000+fz.torque.z/(4.000000*L)));  // y back
-        vPzraw[4][2]=((double)(fz.force.z/4.000000+(-fz.torque.x-fz.torque.y-(L-Cm)*((fz.force.x)-(fz.force.y)))/(4.000000*L)));   // z front left
-        vPzraw[5][2]=((double)(fz.force.z/4.000000+(-fz.torque.x+fz.torque.y-(L-Cm)*(-(fz.force.x)-(fz.force.y)))/(4.000000*L)));  // z front right
-        vPzraw[6][2]=((double)(fz.force.z/4.000000+(fz.torque.x+fz.torque.y-(L-Cm)*(-(fz.force.x)+(fz.force.y)))/(4.000000*L)));   // z back left
-        vPzraw[7][2]=((double)(fz.force.z/4.000000+(fz.torque.x-fz.torque.y-(L-Cm)*((fz.force.x)+(fz.force.y)))/(4.000000*L)));  // z back right
+        vPzraw[0][2]=((double)(fz.force.x/2.000000+fz.torque.z/(4.000000*L)));  // x right
+        vPzraw[1][2]=((double)(fz.force.x/2.000000-fz.torque.z/(4.000000*L)));  // x left
+        vPzraw[2][2]=((double)(fz.force.y/2.000000+fz.torque.z/(4.000000*L)));  // y front
+        vPzraw[3][2]=((double)(fz.force.y/2.000000-fz.torque.z/(4.000000*L)));  // y back
+        vPzraw[4][2]=((double)(fz.force.z/4.000000+(fz.torque.x-fz.torque.y-(L-Cm)*((fz.force.x)+(fz.force.y)))/(4.000000*L)));   // z front left
+        vPzraw[5][2]=((double)(fz.force.z/4.000000+(-fz.torque.x+fz.torque.y-(L-Cm)*((fz.force.x)-(fz.force.y)))/(4.000000*L)));  // z front right
+        vPzraw[6][2]=((double)(fz.force.z/4.000000+(-fz.torque.x+fz.torque.y-(L-Cm)*(-(fz.force.x)-(fz.force.y)))/(4.000000*L)));   // z back left
+        vPzraw[7][2]=((double)(fz.force.z/4.000000+(fz.torque.x-fz.torque.y-(L-Cm)*(-(fz.force.x)+(fz.force.y)))/(4.000000*L)));  // z back right
         vPzraw[8][2]=0;  // x top right
         vPzraw[9][2]=0;  // x top left
         vPzraw[10][2]=0;  // y top front
@@ -306,6 +306,32 @@ int main(int argc, char **argv)
       }
       else
       {
+		vPraw[0][2]=((double)(input.force.x/4.000000+(-input.torque.y+input.torque.z)/(8.000000*L)));  // x right
+        vPraw[1][2]=((double)(input.force.x/4.000000+(-input.torque.y-input.torque.z)/(8.000000*L)));  // x left
+        vPraw[2][2]=((double)(input.force.y/4.000000+(input.torque.x+input.torque.z)/(8.000000*L)));  // y front
+        vPraw[3][2]=((double)(input.force.y/4.000000+(input.torque.x-input.torque.z)/(8.000000*L)));  // y back
+        vPraw[4][2]=((double)(input.force.z/4.000000+(input.torque.x-input.torque.y)/(8.000000*L)));   // z front left
+        vPraw[5][2]=((double)(input.force.z/4.000000+(-input.torque.x-input.torque.y)/(8.000000*L)));  // z front right
+        vPraw[6][2]=((double)(input.force.z/4.000000+(-input.torque.x+input.torque.y)/(8.000000*L)));   // z back left
+        vPraw[7][2]=((double)(input.force.z/4.000000+(input.torque.x+input.torque.y)/(8.000000*L)));  // z back right
+        vPraw[8][2]=((double)(input.force.x/4.000000+(input.torque.y+input.torque.z)/(8.000000*L)));  // x top right
+        vPraw[9][2]=((double)(input.force.x/4.000000+(input.torque.y-input.torque.z)/(8.000000*L)));;  // x top left
+        vPraw[10][2]=((double)(input.force.y/4.000000+(-input.torque.x+input.torque.z)/(8.000000*L)));  // y top front
+        vPraw[11][2]=((double)(input.force.y/4.000000+(-input.torque.x-input.torque.z)/(8.000000*L)));  // y top back
+
+        vPzraw[0][2]=(double)(fz.force.x/4.000000);  // x right
+        vPzraw[1][2]=(double)(fz.force.x/4.000000);  // x left
+        vPzraw[2][2]=(double)(fz.force.y/4.000000);  // y front
+        vPzraw[3][2]=(double)(fz.force.y/4.000000);  // y back
+        vPzraw[4][2]=(double)(fz.force.z/4.000000);   // z front left
+        vPzraw[5][2]=(double)(fz.force.z/4.000000);  // z front right
+        vPzraw[6][2]=(double)(fz.force.z/4.000000);   // z back left
+        vPzraw[7][2]=(double)(fz.force.z/4.000000);  // z back right
+        vPzraw[8][2]=(double)(fz.force.x/4.000000);  // x top right
+        vPzraw[9][2]=(double)(fz.force.x/4.000000);  // x top left
+        vPzraw[10][2]=(double)(fz.force.y/4.000000);  // y top front
+        vPzraw[11][2]=(double)(fz.force.y/4.000000);  // y top back
+        /*
         vPraw[0][2]=((double)(input.force.x/4.000000-input.torque.z/(4.000000*L)));  // x right
         vPraw[1][2]=((double)(input.force.x/4.000000+input.torque.z/(4.000000*L)));  // x left
         vPraw[2][2]=((double)(input.force.y/4.000000-input.torque.z/(4.000000*L)));  // y front
@@ -329,9 +355,9 @@ int main(int argc, char **argv)
         vPzraw[6][2]=((double)(fz.force.z/4.000000+(fz.torque.x+fz.torque.y)/(4.000000*L)));   // z back left
         vPzraw[7][2]=((double)(fz.force.z/4.000000+(fz.torque.x-fz.torque.y)/(4.000000*L)));  // z back right
         vPzraw[8][2]=((double)(fz.force.x/4.000000+(+fz.torque.z)/(4.000000*L)));  // x top right
-        vPzraw[9][2]=((double)(fz.force.x/4.000000+(-fz.torque.z)/(4.000000*L)));;  // x top left
-        vPzraw[10][2]=((double)(fz.force.y/4.000000+(+fz.torque.z)/(4.000000*L)));;  // y top front
-        vPzraw[11][2]=((double)(fz.force.y/4.000000+(-fz.torque.z)/(4.000000*L)));  // y top back
+        vPzraw[9][2]=((double)(fz.force.x/4.000000+(-fz.torque.z)/(4.000000*L)));  // x top left
+        vPzraw[10][2]=((double)(fz.force.y/4.000000+(+fz.torque.z)/(4.000000*L)));  // y top front
+        vPzraw[11][2]=((double)(fz.force.y/4.000000+(-fz.torque.z)/(4.000000*L)));  // y top back*/
       }
 
       Scale(vPraw);

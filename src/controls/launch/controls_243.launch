@@ -3,8 +3,10 @@
 
 	<group ns="192_168_10_243">
 	 <node name="controls" pkg="controls" type="control" respawn="false" output="screen">
-	 <param name="x" type="double" value="2.0" />
-	 <param name="y" type="double" value="2.0" />
+	 <param name="x" type="double" value="3.0" />
+	 <param name="y" type="double" value="0.0" />
+	 <param name="z" type="double" value="1.5" />
+	 <param name="tz" type="double" value="0" />
 	</node>
 	</group>
 

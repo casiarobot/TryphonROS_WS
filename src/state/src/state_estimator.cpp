@@ -74,10 +74,11 @@ Eigen::Vector3d SONARpos, SICKpos, angle, avel;
 Eigen::VectorXd MCPTAMpos(6);
 
 Eigen::Vector3d CMIMUpos(1,0,-1.125); // vector postion from Center of mass to IMU in tryphon frame
+Eigen::Vector3d CMCAMpos(1.125,0,1.125); // vector postion from Center of mass to IMU in tryphon frame
 Eigen::Matrix3d Rmatrix, CPCMIMUmatrix, RIMUmatrix, CPCMCmatrix;
 Eigen::Quaterniond quatIMU(0.99255, 0,0.12187, 0); // quat of the rotation matrix between the tryphon frame and the IMU frame
-Eigen::Quaterniond quatMCPTAM(1, 0,0, 0); // quat of the rotation matrix between the tryphon frame and the IMU frame
-
+Eigen::Quaterniond quatMCPTAM(0.64,-0.755, -0.065,0.066); // quat of the rotation matrix between the tryphon frame and the IMU frame
+Eigen::Vector3d GyroOffset(-0.183,-0.124,-1.40);
 
 
 Eigen::Matrix3d CPM(Eigen::Vector3d vect) // return cross product matrix
@@ -140,9 +141,9 @@ void subLeddar(const sensors::leddarArray::ConstPtr& msg)
 	//ROS_INFO("distance z: %f, distance x : %f, distance y : %f",dsztf[4],dsxtf[4],dsytf[4]);
 
 	//SONARpos = Eigen::Vector3d(dsxtf[4], dsytf[4], dsztf[4]);
-	SONARpos(0) = dsxtf[4];
+	/*SONARpos(0) = dsxtf[4];
 	SONARpos(1) = dsytf[4];
-	SONARpos(2) = dsztf[4];
+	SONARpos(2) = dsztf[4];*/
 
 	if(start_leddar){
 		start_leddar=false;
@@ -172,34 +173,34 @@ void subSonar(const sensors::sonarArray::ConstPtr& msg)
 
 		// Average but not dividing by ten to convert cm into mm
 		if (sonar.id == (int)(0xE0)/2){
-			dsx = -sonar.distance / 100;
+			dsx = -sonar.distance / 100.000;
 		}
 		else if (sonar.id == (int)(0xE6)/2){
-			dsy = sonar.distance / 100;
+			dsy = sonar.distance / 100.000;
 		}
 		else if (sonar.id == (int)(0xF8)/2){
-			dsz3 = sonar.distance / 100;
+			dsz3 = sonar.distance / 100.000;
 			if(dsz3>hmax)
 				dsz3 = 0;
 			else
 				++okdsz;
 		}
 		else if (sonar.id == (int)(0xFA)/2){
-			dsz4 = sonar.distance / 100;
+			dsz4 = sonar.distance / 100.000;
 			if(dsz4>hmax)
-				dsz4 = 0;
+				dsz4 = 0;				
 			else
 				++okdsz;
 		}
 		else if (sonar.id == (int)(0xFC)/2){
-			dsz1 = sonar.distance / 100;
+			dsz1 = sonar.distance / 100.000;
 			if(dsz1>hmax)
 				dsz1 = 0;
 			else
 				++okdsz;
 		}
 		else if (sonar.id == (int)(0xFE)/2){
-			dsz2 = sonar.distance / 100;
+			dsz2 = sonar.distance / 100.000;
 			if(dsz2>hmax)
 				dsz2 = 0;
 			else
@@ -240,7 +241,7 @@ void subposeSick(geometry_msgs::PoseStamped ps){
   Eigen::Quaterniond quad(ps.pose.orientation.x,ps.pose.orientation.y,ps.pose.orientation.z,ps.pose.orientation.w);
   float rz2_tmp = atan2(quad.toRotationMatrix()(1, 2), quad.toRotationMatrix()(2, 2));
   if(rz2_tmp == rz2_tmp) //Testing if NaN
-    SICKpos(3)=rz2_tmp;
+    SICKpos(2)=rz2_tmp;
 /*
   if ((last_rz2-rz2) < -1.6)
           rz2_init=rz2_init+3.1416;
@@ -297,15 +298,15 @@ void subComp(const sensors::compass::ConstPtr& msg)
 void subImu(const sensors::imubuff::ConstPtr& msg)
 {
   double roll, pitch;
-  double accel[3]={msg->buffer[0].accel[0],msg->buffer[0].accel[1],msg->buffer[0].accel[2]};
+  double accel[3]={msg->buffer[0].accel[0],-msg->buffer[0].accel[1],-msg->buffer[0].accel[2]};
   EulerU::getRollPitchIMU(accel,roll,pitch);
   angle(0)=(angle(0)+roll)/2; // low pass filter
-  angle(1)=(angle(1)+0.244+pitch)/2; // low pass filter
+  angle(1)=(angle(1)-0.244+pitch)/2; // low pass filter
 
   Eigen::Vector3d avel_temp;
-	avel_temp(0)=msg->buffer[0].gyro[0];
-	avel_temp(1)=msg->buffer[0].gyro[1];
-	avel_temp(2)=msg->buffer[0].gyro[2];
+	avel_temp(0)=(msg->buffer[0].gyro[0]-GyroOffset(0))*0.017453;
+	avel_temp(1)=-(msg->buffer[0].gyro[1]-GyroOffset(1))*0.017453;
+	avel_temp(2)=-(msg->buffer[0].gyro[2]-GyroOffset(2))*0.017453;
 	avel_temp=RIMUmatrix*avel_temp;
   avel_temp=EulerU::RbodyEuler(angle(0),angle(1))*avel_temp;
   avel=(avel+avel_temp)/2;
@@ -348,23 +349,32 @@ void subMCPTAM(const geometry_msgs::PoseArray Aposes) // with MCPTAM
   tMCPTAM=ros::Time::now().toSec();
   pose_received=true;
   geometry_msgs::Pose Pose=Aposes.poses[0];
-  
+  Eigen::Vector3d MCPTAMposition;
 
-  MCPTAMpos(0)=Pose.position.x; // defined in global frame
-  MCPTAMpos(1)=Pose.position.y;
-  MCPTAMpos(2)=Pose.position.z;
+  MCPTAMposition(0)=Pose.position.x; // defined in global frame
+  MCPTAMposition(1)=Pose.position.y;
+  MCPTAMposition(2)=Pose.position.z;
   Eigen::Quaterniond quat(Pose.orientation.w,Pose.orientation.x,Pose.orientation.y,Pose.orientation.z);
-  Eigen::Quaterniond quat1(Pose.orientation.w,Pose.orientation.x,Pose.orientation.y,Pose.orientation.z);
-  Eigen::Quaterniond quat2(Pose.orientation.w,Pose.orientation.x,Pose.orientation.y,Pose.orientation.z);
-  Eigen::Quaterniond quat3(Pose.orientation.w,Pose.orientation.x,Pose.orientation.y,Pose.orientation.z);
-  quat=quat*quatMCPTAM.inverse();  // compute the quaternion between the vision world and the tryphon frame
+  //Eigen::Quaterniond quat1(Pose.orientation.w,Pose.orientation.x,Pose.orientation.y,Pose.orientation.z);
+  //Eigen::Quaterniond quat2(Pose.orientation.w,Pose.orientation.x,Pose.orientation.y,Pose.orientation.z);
+  //Eigen::Quaterniond quat3(Pose.orientation.w,Pose.orientation.x,Pose.orientation.y,Pose.orientation.z);
+  Eigen::Quaterniond quattf;
+  EulerU::getQuatFromEuler(quattf, 0,0,-M_PI/2);
+  
+  
+  quat=quat*quatMCPTAM.inverse()*quattf.inverse();  // compute the quaternion between the vision world and the tryphon frame
 
-  MCPTAMpos(4)=atan2(2*(quat.w()*quat.x()+quat.y()*quat.z()),1-2*(quat.x()*quat.x()+quat.y()*quat.y()));
-  MCPTAMpos(5)=asin(2*(quat.w()*quat.y()-quat.z()*quat.x()));
-  MCPTAMpos(6)=atan2(2*(quat.w()*quat.z()+quat.x()*quat.y()),1-2*(quat.z()*quat.z()+quat.y()*quat.y()));
+
+
+  MCPTAMpos(3)=atan2(2*(quat.w()*quat.x()+quat.y()*quat.z()),1-2*(quat.x()*quat.x()+quat.y()*quat.y()));
+  MCPTAMpos(4)=asin(2*(quat.w()*quat.y()-quat.z()*quat.x()));
+  MCPTAMpos(5)=atan2(2*(quat.w()*quat.z()+quat.x()*quat.y()),1-2*(quat.z()*quat.z()+quat.y()*quat.y()));
   Rmatrix=quat.toRotationMatrix();
-
-  //MCPTAMpos=MCPTAMpos-Rmatrix*CMIMUpos;  // offset due to the fact that the pose is the one of the IMU
+  MCPTAMposition=MCPTAMposition-Rmatrix*CMCAMpos;  // offset due to the fact that the pose is the one of the IMU
+  MCPTAMpos(0)=MCPTAMposition(0);
+  MCPTAMpos(1)=MCPTAMposition(1);
+  MCPTAMpos(2)=MCPTAMposition(2);
+  
   if(start_MCPTAM)
   {
     start_MCPTAM=false;
@@ -419,7 +429,7 @@ std::string pos_src_string;
   ros::Subscriber subM = nh.subscribe("mcptam/tracker_pose_array",1,subMCPTAM);
   ros::Subscriber subS = nh.subscribe("sonars", 1, subSonar);
   ros::Subscriber subL = nh.subscribe("leddars", 1, subLeddar);
-  ros::Subscriber subC = nh.subscribe("compass",1, subComp);
+ // ros::Subscriber subC = nh.subscribe("compass",1, subComp);
   ros::Subscriber subSP = nh.subscribe("/cubeA_pose",1, subposeSick);
 
   //Publishers //
@@ -453,11 +463,13 @@ std::string pos_src_string;
   Eigen::VectorXd xk1k1(12),xk1k(12),xkk(12);
 
   Eigen::MatrixXd F(12,12), Q(12,12), Pk1k1(12,12), Pk1k(12,12), Pkk(12,12),
-		  I6(6,6), O6(3,3), I2(2,2), I3(3,3), O3(3,3), I13(6,6), I12(6,6),
+		  I6(6,6), O6(3,3), I2(2,2), I3(3,3), O3(3,3), O2(2,2), I13(6,6), I12(6,6),
 		  RIMU(5,5), RMCPTAM(6,6), RSONAR(3,3), RLEDDAR(3,3), RSICK(3,3);
   int obsStates=11;
-  if(pos_src!=0)
+  if(pos_src==3)
       obsStates=9;
+  else if(pos_src==1)
+      obsStates=10;
   Eigen::MatrixXd S(obsStates,obsStates), K(12,obsStates), H(obsStates,12), R(obsStates, obsStates);
   Eigen::VectorXd z(obsStates), y(obsStates); // measurement and measurement residual
   //Eigen::MatrixXd R(6,6), S(6,6), K(12,6), H(6,12);
@@ -465,6 +477,7 @@ std::string pos_src_string;
   I2=Eigen::MatrixXd::Identity(2,2);
   I3=Eigen::MatrixXd::Identity(3,3);
   O3=Eigen::MatrixXd::Zero(3,3);
+  O2=Eigen::MatrixXd::Zero(2,2);
   I6=Eigen::MatrixXd::Identity(6,6);
   O6=Eigen::MatrixXd::Zero(6,6);
   I12=Eigen::MatrixXd::Identity(12,12);
@@ -477,21 +490,25 @@ std::string pos_src_string;
   float RCMP = 0.05;
   RIMU << 0.05*I2,Eigen::MatrixXd::Zero(2,3),Eigen::MatrixXd::Zero(3,2),0.05*I3;
   if(pos_src==0)
-    R << RMCPTAM,Eigen::MatrixXd::Zero(6,6),Eigen::MatrixXd::Zero(1,6),RCMP,Eigen::MatrixXd::Zero(1,5),Eigen::MatrixXd::Zero(5,7),RIMU;
+    R << RMCPTAM,Eigen::MatrixXd::Zero(6,5),
+    Eigen::MatrixXd::Zero(5,6),RIMU;
   else if(pos_src==1)
-    R << RSICK,Eigen::MatrixXd::Zero(3,7),Eigen::MatrixXd::Zero(1,3),RSONAR(1,1),Eigen::MatrixXd::Zero(3,6),Eigen::MatrixXd::Zero(1,4),RCMP,Eigen::MatrixXd::Zero(1,5),Eigen::MatrixXd::Zero(5,5),RIMU;
+    R << RSICK,Eigen::MatrixXd::Zero(3,7),
+    Eigen::MatrixXd::Zero(1,3),0.1,Eigen::MatrixXd::Zero(1,6),
+    Eigen::MatrixXd::Zero(1,4),RCMP,Eigen::MatrixXd::Zero(1,5),
+    Eigen::MatrixXd::Zero(5,5),RIMU;
   else if(pos_src==3)
     R << RSONAR,Eigen::MatrixXd::Zero(3,6),Eigen::MatrixXd::Zero(1,3),RCMP,Eigen::MatrixXd::Zero(1,5),Eigen::MatrixXd::Zero(5,4),RIMU;
   //R << RMCPTAM;
-
+ROS_INFO("Initialization2");
 //State observation matrix
 if(pos_src==0){
 	  H << I6, O6,
-	   O3, I3, Eigen::MatrixXd::Zero(3,6),
+	   Eigen::MatrixXd::Zero(2,3), I2, Eigen::MatrixXd::Zero(2,7),
 	   Eigen::MatrixXd::Zero(3,9), I3;
 } else if(pos_src==1) {
 	  H << I3, Eigen::MatrixXd::Zero(3,9),
-	   Eigen::MatrixXd::Zero(1,5), 1, Eigen::MatrixXd::Zero(1,8),
+	   Eigen::MatrixXd::Zero(1,5), 1, Eigen::MatrixXd::Zero(1,6),
 	   O3, I3, Eigen::MatrixXd::Zero(3,6),
 	   Eigen::MatrixXd::Zero(3,9), I3;
 } else if(pos_src==3) {
@@ -503,7 +520,7 @@ if(pos_src==0){
 
 
   ROS_INFO("Initialization");
-  while(start_IMU && ((start_leddar && pos_src==3) || (start_sonar && pos_src==2) || (start_MCPTAM && pos_src==0) || (start_SICK && pos_src==1)) && ros::ok())
+  while((start_IMU || ((start_leddar && pos_src==3) || (start_sonar && pos_src==2) || (start_MCPTAM && pos_src==0) || (start_SICK && pos_src==1))) && ros::ok())
   {
     ros::spinOnce();
     loop_rate.sleep();
@@ -515,7 +532,7 @@ if(pos_src==0){
   Pkk<<2*I12;
   if(pos_src==0)
         xkk << MCPTAMpos,Eigen::MatrixXd::Zero(3,1),Eigen::MatrixXd::Zero(3,1);
-  else if(pos_src==3)
+  else //if(pos_src==3)
 	xkk << SONARpos, angle, Eigen::MatrixXd::Zero(3,1), Eigen::MatrixXd::Zero(3,1);
 
   double t_last=ros::Time::now().toSec();
@@ -532,17 +549,18 @@ if(pos_src==0){
       // Compute the F and H matrices and z vector //
       F=KalmanU::Fmatrix(dt,6,accel);	//state matrix - kinematic relations
       Q=KalmanU::Qmatrix(dt,6,accel);	//std discrete error model matrix (Zarchan, 2005)
-      //std::cout << "Fmatrix" << F << std::endl;
+      //std::cout << "Fmatrix" << F << std::endl;  y: -1.79832460758
+
       //std::cout << "Qmatrix" << Q << std::endl;
 
 	//Sensors inputs
       if(pos_src==0)
-        z << MCPTAMpos,angle,avel;
+        z << MCPTAMpos,angle(0),angle(1),avel;
       else if(pos_src==1)
-        z << SICKpos,angle,avel;
+        z << SICKpos(0),SICKpos(1),SONARpos(2),SICKpos(2),angle(0),angle(1),SICKpos(2),avel;
       else if(pos_src==3)
         z << SONARpos,angle,avel;
-      //std::cout << "measurement" << z << std::endl;
+      std::cout << "measurement" << z << std::endl;
 
       // Predict //
       xk1k=F*xkk;
@@ -557,24 +575,29 @@ if(pos_src==0){
       Pk1k1 = (I12 - K*H)*Pk1k;
       //std::cout << "z" << z << std::endl;
       //std::cout << "y" << y << std::endl;
-
       xkk = xk1k1;
       Pkk = Pk1k1;
 
 
+
+		tf::Quaternion q;
       if(pos_src==0)
-          transform.setOrigin( tf::Vector3(MCPTAMpos(0), MCPTAMpos(1), MCPTAMpos(2)) );
-      else
-          transform.setOrigin( tf::Vector3(SONARpos(0), SONARpos(1), SONARpos(2)) );
-      tf::Quaternion q;
-      q.setEulerZYX(MCPTAMpos(4), MCPTAMpos(5), MCPTAMpos(6));
+          {transform.setOrigin( tf::Vector3(MCPTAMpos(0), MCPTAMpos(1), MCPTAMpos(2)) );
+      q.setEulerZYX(MCPTAMpos(3), MCPTAMpos(4), MCPTAMpos(5));}
+      else if(pos_src==3)
+          {transform.setOrigin( tf::Vector3(SONARpos(0), SONARpos(1), SONARpos(2)) );
+      q.setEulerZYX(MCPTAMpos(3), MCPTAMpos(4), MCPTAMpos(5));}
+      else if(pos_src==1)
+          {transform.setOrigin( tf::Vector3(SICKpos(0), SICKpos(1), SONARpos(2)) );
+      q.setEulerZYX( SICKpos(2),angle(1), angle(0));}
+      
       transform.setRotation(q);
       sprintf(rosname,"Gumstick_%s",ip_address.c_str());
       br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "world", rosname));
 
       transform.setOrigin( tf::Vector3(xkk(0), xkk(1), xkk(2)) );
       tf::Quaternion q2;
-      q2.setEulerZYX(xkk(3), xkk(4), xkk(5));
+      q2.setEulerZYX(xkk(5), xkk(4), xkk(3));
       transform.setRotation(q2);
       sprintf(rosname,"Gumstick_filtered_%s",ip_address.c_str());
       br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "world", rosname));

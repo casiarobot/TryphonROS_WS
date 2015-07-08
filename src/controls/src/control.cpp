@@ -1,3 +1,4 @@
+
 #include "controls.h"
 #include "ctr_fuzzy.h"
 /*#define DEVICE_I2C      "/dev/i2c-3"
@@ -83,6 +84,13 @@ bool startWeb=true;
 bool noInt=false;          // increase integral term
 std_msgs::Float64 maxPrctThrust;
 
+void zero_vel()
+{
+  vect3_zero(veldesir);
+  vect3_zero(aveldesir);
+  vect3_zero(acceldesir);
+  vect3_zero(angleAcceldesir);
+}
 
 Eigen::Matrix3d CPM(Eigen::Vector3d vect) // return cross product matrix
 {
@@ -106,9 +114,7 @@ void subStateT(const controls::State state)
     acceldesir=twist2vect_linear(state.accel);
     angleAcceldesir=twist2vect_angular(state.accel);
 
-    maxPrctThrust.data=state.maxThrust;
-    GainCP=state.GainCP;
-    noInt=state.noInt;
+
 
   }
 
@@ -282,6 +288,9 @@ void subCommands(const controls::Commands commands)
     ctrlNb=commands.ctrlNb;
     path=commands.path;
     pathNb=commands.pathNb;
+    maxPrctThrust.data=commands.maxThrust;
+    GainCP=commands.GainCP;
+    noInt=commands.noInt;
 
   }
 
@@ -289,10 +298,7 @@ void subCommands(const controls::Commands commands)
   geometry_msgs::Pose dPose=commands.deltaPose;
 
   if(Command && !path)
-  {  Eigen::Vector3d veldesir(0,0,0);
-  Eigen::Vector3d aveldesir(0,0,0);
-  Eigen::Vector3d acceldesir(0,0,0);
-  Eigen::Vector3d angleAcceldesir(0,0,0);
+  { zero_vel();
 
 
     if(dPose.position.x<=MAX_X && dPose.position.x>=MIN_X)
@@ -325,14 +331,18 @@ void subCommands(const controls::Commands commands)
 void callback(controls::controlConfig &config, uint32_t level) {
   if(!Command)
   {
-    ROS_INFO("Reconfigure Request: x: %f, y: %f, z: %f, yaw: %f  ",
+    ROS_INFO("Reconfigure Request: x: %f, y: %f, z: %f, roll: %f, pitch: %f, yaw: %f  ",
              config.x,
              config.y,
              config.z,
+             config.roll,
+             config.pitch,
              config.yaw);
     posdesir(0)=config.x,
     posdesir(1)=config.y;
     posdesir(2)=config.z;
+    angledesir(0)=config.roll;
+    angledesir(1)=config.pitch;
     angledesir(2)=config.yaw;
     fbuoyCoeff=config.fbuoy;
     path=config.path;
@@ -560,11 +570,7 @@ int main(int argc, char **argv)
 
 
   vecZ(0)=0;
-  vecZ(1)=0;  Eigen::Vector3d veldesir(0,0,0);
-  Eigen::Vector3d aveldesir(0,0,0);
-  Eigen::Vector3d acceldesir(0,0,0);
-  Eigen::Vector3d angleAcceldesir(0,0,0);
-
+  vecZ(1)=0;  
   vecZ(2)=0.0141;
 
 
@@ -581,12 +587,12 @@ int main(int argc, char **argv)
   0,  1,  0,
   0,   0, 1;
 
-  kpT<< 0.3,  0,  0,
-  0,  0.3,  0,
+  kpT<< 1,  0,  0,
+  0,  1,  0,
   0,   0, 1;
 
-  kvT<< 0.4,  0,  0,
-  0,  0.4,  0,
+  kvT<< 1,  0,  0,
+  0,  1,  0,
   0,   0, 1;
 
   MassM=massTotal*Identity3;
@@ -598,10 +604,10 @@ int main(int argc, char **argv)
 
 
   KpF=(0.1*Identity3)*GainCP;
-  KpT=(0.06*kpT)*GainCP;
+  KpT=(0.4*kpT)*GainCP;
 
   KvF=(0.55*Identity3)*GainCP;
-  KvT=(0.49*kvT)*GainCP;
+  KvT=(2.0*kvT)*GainCP;
 
   // Drag coeffs //
 
@@ -619,7 +625,7 @@ int main(int argc, char **argv)
   wrench_zero(FOld2);
 
 
-double x_start,y_start;
+double x_start,y_start,z_start,tz_start;
 
     if (nh1.getParam("x", x_start))
     {
@@ -641,6 +647,26 @@ double x_start,y_start;
     {
       ROS_ERROR("Failed to get param 'y'");
       posdesir(1)=0.0;
+    }
+    if (nh1.getParam("z", z_start))
+    {
+      ROS_INFO("Got param: %f", z_start );
+    	posdesir(2)=z_start;
+    }
+    else
+    {
+      ROS_ERROR("Failed to get param 'z'");
+      posdesir(2)=0.0;
+    }
+    if (nh1.getParam("tz", tz_start))
+    {
+      ROS_INFO("Got param: %f", tz_start );
+    	angledesir(2)=tz_start;
+    }
+    else
+    {
+      ROS_ERROR("Failed to get param 'tz'");
+      angledesir(2)=0.00;
     }
 
   start=true;
@@ -705,10 +731,10 @@ double x_start,y_start;
         MassM=massTotal*Identity3;
 
         KpF=(0.09*Identity3)*GainCP;
-        KpT=(0.06*kpT)*GainCP;
+        KpT=(0.40*kpT)*GainCP;
 
         KvF=(0.55*Identity3)*GainCP;
-        KvT=(0.49*kvT)*GainCP;
+        KvT=(2.0*kvT)*GainCP;
 
         GainCPOld=GainCP;
         CdOld=Cd;
@@ -861,7 +887,9 @@ double x_start,y_start;
       path_command.theta=path;
       Path_node.publish(path_command);
       MaxPrct_node.publish(maxPrctThrust);
-
+		ROS_INFO("vel x: %f, y: %f ,z: %f ",veldesir(0),veldesir(1),veldesir(2));
+		ROS_INFO("avel x: %f, y: %f ,z: %f ",aveldesir(0),aveldesir(1),aveldesir(2));
+		ROS_INFO("Dangle x: %f, y: %f ,z: %f ",dAngle(0),dAngle(1),dAngle(2));
 
       loop_rate.sleep();
     }

@@ -3,6 +3,7 @@
 #include "geometry_msgs/Pose.h"
 #include "geometry_msgs/Pose2D.h"
 #include "geometry_msgs/Twist.h"
+#include "geometry_msgs/TwistStamped.h"
 #include "controls/State.h"
 
 
@@ -76,10 +77,10 @@ void subPose(const geometry_msgs::Pose pose)
 
 }
 
-void subVel(const geometry_msgs::Twist vels)
+void subVel(const geometry_msgs::TwistStamped velStamped)
 {
 
-
+	geometry_msgs::Twist vels=velStamped.twist;
     vel(0)=vels.linear.x; // defined in global frame
     vel(1)=vels.linear.y;
     vel(2)=vels.linear.z;
@@ -727,7 +728,47 @@ int main(int argc, char **argv)
             posdesir(2)=2.0;
             noInt=false;
           }
+          
         }
+        if(pathNb==9) // +- 15 yaw
+        {
+			t=ros::Time::now().toSec();
+			posdesir(0)=3.0;
+            posdesir(1)=0;
+            posdesir(2)=3.0;
+            angledesir(0)=0;
+            angledesir(1)=0;
+
+            aveldesir(1)=0;
+            angleAcceldesir(1)=0;
+            
+
+            angledesir(2)=0.35*sin(0.34*(t));
+
+            aveldesir(2)=0.34*0.35*cos(0.34*(t));
+
+            angleAcceldesir(2)=-0.34*0.34*0.35*sin(0.34*(t));
+         }
+         if(pathNb==10) // +- 15 pitch
+        {
+			t=ros::Time::now().toSec();
+			posdesir(0)=3.0;
+            posdesir(1)=0;
+            posdesir(2)=3.0;
+
+            angledesir(0)=0;
+            angledesir(2)=0;
+            
+            aveldesir(2)=0;
+            angleAcceldesir(2)=0;
+
+
+            angledesir(1)=0.35*sin(0.34*(t));
+
+            aveldesir(1)=0.34*0.35*cos(0.34*(t));
+
+            angleAcceldesir(1)=-0.34*0.34*0.35*sin(0.34*(t));
+         } 
         ROS_INFO("Path number %i",pathNb);
 
 
@@ -740,6 +781,8 @@ int main(int argc, char **argv)
       maxThrust=100;
       noInt=false;
     }
+    
+    
 
     statedesir.header.stamp=ros::Time::now();
     statedesir.pose=vects2pose(posdesir,angledesir);

@@ -17,7 +17,7 @@ int main(int argc, char **argv)
   ros::NodeHandle n;
 
   ros::Publisher wrench_publisher = n.advertise<tests::props_command>("/192_168_10_243/command_props",1);
-  ros::Rate loop_rate(2);
+  ros::Rate loop_rate(5);
 
 
   tests::props_command props;
@@ -27,9 +27,9 @@ int main(int argc, char **argv)
   }
   //props.commands[0]=100;
 
-  int prct=0;
-  int prop=0;
-  ROS_INFO("prop nb: %i",prop);
+  int prct=20;
+  int prop=11;
+  
 
   while (ros::ok() && prop<12)
   {
@@ -68,14 +68,14 @@ int main(int argc, char **argv)
       ROS_INFO("prop nb: %i",prop);
     }
     */
-    for(int i=0; i<12;i++)
-    {
-      props.commands[i]=prct;
-    }
-    if(prct<230)prct+=10;
-    else prct=0;
+    //for(int i=0; i<12;i++)
+    //{
+    ROS_INFO("prop nb: %i",prop);
+      props.commands[prop]=prct;
+    //}
+    //if(prct<230)prct+=10;
+    //else prct=0;
     wrench_publisher.publish(props);
-
     loop_rate.sleep();
   }
   ROS_INFO("Done");

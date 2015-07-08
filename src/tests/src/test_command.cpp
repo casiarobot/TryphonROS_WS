@@ -90,10 +90,10 @@ int main(int argc, char **argv)
   command_node = node.advertise<geometry_msgs::Wrench>(rosname,1);
 
   double force[13]={-0.64,-0.5,-0.4,-0.3,-0.2,-0.1,0,0.2,0.4,0.6,0.8,1.0,1.24};
-  double torque[13]={-0.64,-0.5,-0.4,-0.3,-0.2,-0.1,0,0.2,0.4,0.6,0.8,1.0,1.24};
+  double torque[13]={-5.0,-4.0,-3.0,-2.0,-1.0,-0.0,1.0,2.0,3.0,4.0,5.0,5.0,6.0};
 
   int j=0;
-  int k=0;
+  int k=1;
   int l=0;
 
   geometry_msgs::Wrench command;
@@ -134,13 +134,14 @@ int main(int argc, char **argv)
       }
       else
       {
-        if(k<2){ROS_INFO("Test force");}
+        if(k<2){ROS_INFO("Torque force");}
         else{ROS_INFO("Done");}
         k++;
         j=0;
         l=0;
       }
     }
+    ROS_INFO("k= %i",k);
     loop_rate.sleep();
   }
 
