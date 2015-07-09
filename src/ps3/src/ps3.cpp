@@ -1,6 +1,7 @@
 #include <geometry_msgs/Pose.h>
 #include <ros/ros.h>
 #include <sensor_msgs/Joy.h>
+#include <controls/Commands.h>
 
 // note on plain values:
 // buttons are either 0 or 1
@@ -48,9 +49,9 @@
 
 
 geometry_msgs::Pose  move_to;
+controls::Commands com;
 
-
-
+ros::Publisher Desired_pose_node;
 
 int bool_input(float a,float b)
 {
@@ -121,14 +122,25 @@ move_to.orientation.w=0;
   ros::Subscriber  joy_stick = n.subscribe<sensor_msgs::Joy>("joy",10,&joycallback);
 
 
+  Desired_pose_node = n.advertise<controls::Commands>("/192_168_10_243/commands",1);
 
-
-  ros::Publisher  to_control = n.advertise<geometry_msgs::Pose>("ps3_control",10);
+  //ros::Publisher  to_control = n.advertise<geometry_msgs::Pose>("ps3_control",10);
   ros::Rate loop_rate(20);
+
+
+    ///set up to send to new control node
+    com.header.stamp=ros::Time::now();
+    com.deltaPose=move_to;
+    com.onOff=true;
+    com.commandOnOff=true;
+    com.ctrlNb=3;
+    com.maxThrust=50;
+    com.GainCP=0.3;
+    com.noInt=true;
 
 while (ros::ok())
 {
-  to_control.publish(move_to);
+  Desired_pose_node.publish(com);
   ros::spinOnce();
   loop_rate.sleep();
 }
