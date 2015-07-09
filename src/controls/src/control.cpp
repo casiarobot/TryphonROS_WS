@@ -78,6 +78,7 @@ double fbuoyCoeff=1;       // gazebo parameter
 int pathNb=0;              // Path nb wanted
 int pathNbOld=0;              // Path nb wanted
 int ctrlNb=0;              // Ctrl nb wanted
+int GainFlip=1;
 
 bool Command=false;     // getting the command from the website
 bool startWeb=true;
@@ -113,9 +114,6 @@ void subStateT(const controls::State state)
     aveldesir=twist2vect_angular(state.vel);
     acceldesir=twist2vect_linear(state.accel);
     angleAcceldesir=twist2vect_angular(state.accel);
-
-
-
   }
 
 }
@@ -349,6 +347,7 @@ void callback(controls::controlConfig &config, uint32_t level) {
     pathNb=config.pathNb-1;
     ctrlNb=config.ctrlNb;
     GainCP=config.gaincp;
+    GainFlip=config.gainflip;
     Cd=config.cd;
     massTotal=config.massTotal;
     On=config.onOff;
@@ -703,6 +702,7 @@ double x_start,y_start,z_start,tz_start;
     {
     if(!start)
     {
+	  if(!path){zero_vel();}
       // Integral term //
       if(fabs(force(2))<1.2 && fabs(force(1))<0.6 && fabs(force(0))<0.6 && !noInt) // increasing only if the command is not saturating //
      {
@@ -731,10 +731,10 @@ double x_start,y_start,z_start,tz_start;
         MassM=massTotal*Identity3;
 
         KpF=(0.09*Identity3)*GainCP;
-        KpT=(0.40*kpT)*GainCP;
+        KpT=(0.1*kpT)*GainCP*GainFlip;
 
         KvF=(0.55*Identity3)*GainCP;
-        KvT=(2.0*kvT)*GainCP;
+        KvT=(0.9*kvT)*GainCP;
 
         GainCPOld=GainCP;
         CdOld=Cd;
