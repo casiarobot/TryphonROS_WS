@@ -1,6 +1,8 @@
 #include <geometry_msgs/Pose.h>
+#include <geometry_msgs/Wrench.h>
 #include <ros/ros.h>
 #include <sensor_msgs/Joy.h>
+#include <controls/Commands.h>
 
 // note on plain values:
 // buttons are either 0 or 1
@@ -48,9 +50,12 @@
 
 
 geometry_msgs::Pose  move_to;
+geometry_msgs::Pose  default_pose;
+controls::Commands com;
+geometry_msgs::Wrench manual;
+int mode =1;
 
-
-
+ros::Publisher Desired_pose_node;
 
 int bool_input(float a,float b)
 {
@@ -107,28 +112,61 @@ int main(int argc, char** argv)
 {
   ros::init(argc, argv, "ps3");
   ros::NodeHandle n;
+  ros::NodeHandle nh1("~");
 
-move_to.position.x=0;
-move_to.position.y=0;
-move_to.position.z=0;
-move_to.orientation.x=0;
-move_to.orientation.y=0;
-move_to.orientation.z=0;
-move_to.orientation.w=0;
-
+  move_to.position.x=0;
+  move_to.position.y=0;
+  move_to.position.z=0;
+  move_to.orientation.x=0;
+  move_to.orientation.y=0;
+  move_to.orientation.z=0;
+  move_to.orientation.w=0;
+  default_pose.position.x=3;
+  default_pose.position.y=0;
+  default_pose.position.z=3;
+  default_pose.orientation.x=0;
+  default_pose.orientation.y=0;
+  default_pose.orientation.z=0;
+  default_pose.orientation.w=0;
+  manual.force.x = 0;
+  manual.force.y = 0;
+  manual.force.z = 0;
+  manual.torque.x = 0;
+  manual.torque.y = 0;
+  manual.torque.z = 0;
 
 
   ros::Subscriber  joy_stick = n.subscribe<sensor_msgs::Joy>("joy",10,&joycallback);
 
 
+  Desired_pose_node = n.advertise<controls::Commands>("commands",1);
 
-
-  ros::Publisher  to_control = n.advertise<geometry_msgs::Pose>("ps3_control",10);
+  //ros::Publisher  to_control = n.advertise<geometry_msgs::Pose>("ps3_control",10);
   ros::Rate loop_rate(20);
+
+    if (nh1.getParam("mode", mode))
+      ROS_INFO("Got param: %f", mode );
+
+    ///set up to send to new control node
+    com.header.stamp=ros::Time::now();
+    com.deltaPose=move_to;
+    com.onOff=true;
+    com.commandOnOff=true;
+    com.ctrlNb=3;
+    com.maxThrust=50;
+    com.GainCP=0.3;
+    com.noInt=true;
 
 while (ros::ok())
 {
-  to_control.publish(move_to);
+  com.deltaPose.position.x=move_to.position.x+default_pose.position.x;
+  com.deltaPose.position.y=move_to.position.y+default_pose.position.y;
+  com.deltaPose.position.z=move_to.position.z+default_pose.position.z;
+  com.deltaPose.orientation.x=move_to.orientation.x+default_pose.orientation.x;
+  com.deltaPose.orientation.y=move_to.orientation.y+default_pose.orientation.y;
+  com.deltaPose.orientation.z=move_to.orientation.z+default_pose.orientation.z;
+  com.deltaPose.orientation.w=move_to.orientation.w+default_pose.orientation.w;
+  Desired_pose_node.publish(com);
   ros::spinOnce();
   loop_rate.sleep();
 }

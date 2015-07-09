@@ -481,8 +481,8 @@ int main(int argc, char **argv)
 
   ros::init(argc, argv, "control");
   ros::NodeHandle node;
-  signal(SIGINT, mySigintHandler);
   ros::NodeHandle nh1("~");
+  signal(SIGINT, mySigintHandler);
 
 
   // Publishers //
