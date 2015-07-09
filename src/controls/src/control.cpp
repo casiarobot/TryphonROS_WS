@@ -114,6 +114,7 @@ void subStateT(const controls::State state)
     aveldesir=twist2vect_angular(state.vel);
     acceldesir=twist2vect_linear(state.accel);
     angleAcceldesir=twist2vect_angular(state.accel);
+    ctrlNb=state.ctrlNb;
   }
 
 }
@@ -283,7 +284,7 @@ void subCommands(const controls::Commands commands)
   // Update commands //
   if(Command)
   {
-    ctrlNb=commands.ctrlNb;
+    
     path=commands.path;
     pathNb=commands.pathNb;
     maxPrctThrust.data=commands.maxThrust;
@@ -298,7 +299,7 @@ void subCommands(const controls::Commands commands)
   if(Command && !path)
   { zero_vel();
 
-
+	ctrlNb=commands.ctrlNb;
     if(dPose.position.x<=MAX_X && dPose.position.x>=MIN_X)
     {posdesir(0)=dPose.position.x;}
 
@@ -327,8 +328,6 @@ void subCommands(const controls::Commands commands)
 }
 
 void callback(controls::controlConfig &config, uint32_t level) {
-  if(!Command)
-  {
     ROS_INFO("Reconfigure Request: x: %f, y: %f, z: %f, roll: %f, pitch: %f, yaw: %f  ",
              config.x,
              config.y,
@@ -347,13 +346,11 @@ void callback(controls::controlConfig &config, uint32_t level) {
     pathNb=config.pathNb-1;
     ctrlNb=config.ctrlNb;
     GainCP=config.gaincp;
-    GainFlip=config.gainflip;
     Cd=config.cd;
     massTotal=config.massTotal;
     On=config.onOff;
     maxPrctThrust.data=config.maxThrust;
     noInt=config.noInt;
-  }
 }
 
 void all_vects_zero()
@@ -602,16 +599,17 @@ int main(int argc, char **argv)
 
 
 
-  KpF=(0.1*Identity3)*GainCP;
-  KpT=(0.4*kpT)*GainCP;
+  KpF=(0.09*Identity3)*GainCP;
+  KpT=(0.06*kpT)*GainCP;
 
   KvF=(0.55*Identity3)*GainCP;
-  KvT=(2.0*kvT)*GainCP;
+  KvT=(0.55*kvT)*GainCP;
 
   // Drag coeffs //
 
 
   double GainCPOld=GainCP;
+  double GainFlipOld=GainFlip;
   double CdOld=Cd;
   double massTotalOld=massTotal;
 
@@ -691,7 +689,13 @@ double x_start,y_start,z_start,tz_start;
 
   Eigen::Vector3d intFzGlbf, intFz;
   geometry_msgs::Wrench Fz;
-
+  
+  // Torque integral term //
+  double intTX=0;
+  double intTY=0;
+  double intTZ=0; 
+  
+  Eigen::Vector3d intT;
 
   //////////////////////////
 
@@ -703,13 +707,7 @@ double x_start,y_start,z_start,tz_start;
     if(!start)
     {
 	  if(!path){zero_vel();}
-      // Integral term //
-      if(fabs(force(2))<1.2 && fabs(force(1))<0.6 && fabs(force(0))<0.6 && !noInt) // increasing only if the command is not saturating //
-     {
-        intZ+= (pos(2)-posdesir(2))/10;
-        if(fabs(intZ*vecZ(2))>0.6){intZ=copysign(0.6/vecZ(2),intZ);}
-
-      }
+      
 
       /// Computing the errors ///
 
@@ -722,23 +720,45 @@ double x_start,y_start,z_start,tz_start;
       dAvel=avel-aveldesir;
 
       ////////////////////////////
+      
+      // Integral terms //
+      if(fabs(force(2))<2.4 && fabs(force(1))<1.2 && fabs(force(0))<1.2 && !noInt) // increasing only if the command is not saturating //
+     {
+        intZ+= (pos(2)-posdesir(2))/10;
+        if(fabs(intZ*vecZ(2))>0.6){intZ=copysign(0.6/vecZ(2),intZ);}
+
+      }
+      
+      if(fabs(torque(2))<2.4 && fabs(torque(1))<1.2 && fabs(torque(0))<1.2 && !noInt) // increasing only if the command is not saturating //
+     {
+        intTX+= (dAngle(0))/10*0.01;
+        if(fabs(intTX)>1){intTX=copysign(1,intTX);}
+        intTY+= (dAngle(1))/10*0.01;
+        if(fabs(intTY)>1){intTY=copysign(1,intTY);}
+        intTZ+= (dAngle(2))/10*0.01;
+        if(fabs(intTZ)>1){intTZ=copysign(1,intTZ);}
+		intT<<intTX,intTY,intTZ;
+      }
+      
+      //////////////////////////////
 
       /// Updating the gain of the Computed torque ///
-      if(GainCPOld!=GainCP || CdOld!=Cd || massTotalOld!=massTotal)
+      if(GainCPOld!=GainCP || CdOld!=Cd || massTotalOld!=massTotal || GainFlipOld!=GainFlip)
       {
         DragCoeffF=Cd*0.5*2.15*2.15*1.205;
 
         MassM=massTotal*Identity3;
 
         KpF=(0.09*Identity3)*GainCP;
-        KpT=(0.1*kpT)*GainCP*GainFlip;
+        KpT=(0.06*kpT)*GainCP;
 
         KvF=(0.55*Identity3)*GainCP;
-        KvT=(0.9*kvT)*GainCP;
+        KvT=(0.55*kvT)*GainCP;
 
         GainCPOld=GainCP;
         CdOld=Cd;
         massTotalOld=massTotal;
+        GainFlipOld=GainFlip;
       }
 
 
@@ -782,13 +802,36 @@ double x_start,y_start,z_start,tz_start;
               DragTorque=DragTorque+CPCMCmatrix*Rmatrix.inverse()*DragForce;			  //CPM_CM may be already defined (Cross Product Matrix Center of mass)
 
               forceGlobF=MassM*(acceldesir-KpF*dPos-KvF*dVel)+DragForce;             // BE CAREFULL of the sign before Kp and Kv because of the definition of Dpos Dvel , etc
-              torque=InertiaM*(angleAcceldesir-KpT*dAngle-KvT*dAvel)+DragTorque+CPM(avel)*InertiaM*avel;
+              torque=InertiaM*(angleAcceldesir-KpT*dAngle-KvT*dAvel)+DragTorque+CPM(avel)*InertiaM*avel - intT;
 
               // Addition of the g(q) reduced to the difference of buoyancy and gravity
 
-              forceGlobF(2) = forceGlobF(2);// - 0.0141*intZ;  // put into the intFz vector
+              //forceGlobF(2) = forceGlobF(2);// - 0.0141*intZ;  // put into the intFz vector
               vect3_zero(intFzGlbf);
               intFzGlbf(2)=-0.0141*intZ;
+              break;
+              
+        case 4 :
+			  // Computed Torque //
+              DragForce(0)=DragCoeffF*vel(0)*vel(0);
+              DragForce(1)=DragCoeffF*vel(1)*vel(1);
+              DragForce(2)=DragCoeffF*vel(2)*vel(2);
+
+              DragTorque(0)=DragCoeffT*avel(0)*avel(0);
+              DragTorque(1)=DragCoeffT*avel(1)*avel(1);
+              DragTorque(2)=DragCoeffT*avel(2)*avel(2);
+
+              DragTorque=DragTorque+CPCMCmatrix*Rmatrix.inverse()*DragForce;			  //CPM_CM may be already defined (Cross Product Matrix Center of mass)
+
+              forceGlobF=MassM*(acceldesir-KpF*dPos-KvF*dVel)+DragForce;   
+              //forceGlobF(2) = forceGlobF(2);// - 0.0141*intZ;  // put into the intFz vector
+              vect3_zero(intFzGlbf);
+              intFzGlbf(2)=-0.0141*intZ;
+              torque=angleAcceldesir;
+              intTX=0;
+              intTY=0;
+              intTZ=0;
+              
               break;
 
 
@@ -903,6 +946,7 @@ double x_start,y_start,z_start,tz_start;
       F.torque.x=torque(0);
       F.torque.y=torque(1);
       F.torque.z=torque(2);
+      intZ=0;
       Controle_node.publish(F);
       Forcez_node.publish(F);
       loop_rate.sleep();

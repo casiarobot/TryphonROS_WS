@@ -198,6 +198,7 @@ int main(int argc, char **argv)
 
   bool path_debut=true;
   double path_debut_time=0;
+  int ctrlNb=3;
 
   double GainCP=1;
 
@@ -332,7 +333,7 @@ int main(int argc, char **argv)
     dAngle(0)=modulo(angle(0)-angledesir(0));
     dAngle(1)=modulo(angle(1)-angledesir(1));
     dAngle(2)=modulo(angle(2)-angledesir(2));
-
+	ctrlNb=3;
     if(path)
     {
       if(path_debut)
@@ -768,7 +769,19 @@ int main(int argc, char **argv)
             aveldesir(1)=0.34*0.35*cos(0.34*(t));
 
             angleAcceldesir(1)=-0.34*0.34*0.35*sin(0.34*(t));
-         } 
+         }
+         if(pathNb==11) // flip
+        {
+			t=ros::Time::now().toSec();
+			posdesir(0)=3.0;
+            posdesir(1)=0;
+            posdesir(2)=2.0;
+
+            zero_vel();
+            angleAcceldesir(0)=40;
+            
+            ctrlNb=4;
+         }  
         ROS_INFO("Path number %i",pathNb);
 
 
@@ -791,6 +804,7 @@ int main(int argc, char **argv)
     statedesir.maxThrust=maxThrust;
     statedesir.GainCP=GainCP;
     statedesir.noInt=noInt;
+    statedesir.ctrlNb=ctrlNb;
 
 
     State_pub.publish(statedesir);
