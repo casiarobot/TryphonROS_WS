@@ -198,6 +198,8 @@ int main(int argc, char **argv)
 
   bool path_debut=true;
   double path_debut_time=0;
+  bool rotatate_debut=true;
+  double rotatate_debut_time=0;
   int ctrlNb=3;
 
   double GainCP=1;
@@ -772,16 +774,67 @@ int main(int argc, char **argv)
          }
          if(pathNb==11) // flip
         {
-			t=ros::Time::now().toSec();
 			posdesir(0)=3.0;
             posdesir(1)=0;
-            posdesir(2)=2.0;
+            posdesir(2)=3.0;
 
             zero_vel();
             angleAcceldesir(0)=40;
             
             ctrlNb=4;
-         }  
+            if(angle(0)<-2.0){pathNb++;}
+            noInt=true;
+         }
+         if(pathNb==12) // after flip
+        {
+			posdesir(0)=3.0;
+            posdesir(1)=0;
+            posdesir(2)=3.0;
+            
+            zero_vel();
+            noInt=false;
+            
+            ctrlNb=3;
+         } 
+         if(pathNb==13) // 2 rotatate
+        {
+			if(rotatate_debut)
+			{
+				rotatate_debut_time=ros::Time::now().toSec();	
+				rotatate_debut=false;	
+			}
+			t=ros::Time::now().toSec()-rotatate_debut_time;
+			if(t<36)
+			{
+				zero_vel();
+				noInt=true;
+				double value=0.348*t;
+
+				while(value>M_PI)
+				{
+					value-=2*M_PI;
+				}
+				angledesir(0)=0;
+				angledesir(1)=0;
+				angledesir(2)=value;
+				aveldesir(2)=0.348;
+				posdesir(0)=3.0;
+				posdesir(1)=0;
+				posdesir(2)=3.0;
+				ctrlNb=3;
+		    }
+		    else
+		    {
+				zero_vel();
+				angledesir(2)=0;
+				posdesir(0)=3.0;
+				posdesir(1)=0;
+				posdesir(2)=3.0;
+				ctrlNb=3;
+			}
+         } 
+         
+          
         ROS_INFO("Path number %i",pathNb);
 
 
@@ -790,6 +843,7 @@ int main(int argc, char **argv)
     {
       step=0;
       path_debut=true;
+      rotatate_debut=true;
       zero_vel();
       maxThrust=100;
       noInt=false;

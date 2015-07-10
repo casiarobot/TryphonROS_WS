@@ -74,33 +74,26 @@ else
 
 void joycallback(const sensor_msgs::Joy::ConstPtr& Joy)
 {
-move_to.orientation.w=0; //this is the safety number
+//move_to.orientation.w=0; //this is the safety number a bit useless
 
 
-move_to.position.x = bool_input(Joy->buttons[PS3_BUTTON_CROSS_RIGHT],Joy->buttons[PS3_BUTTON_CROSS_LEFT]);
-move_to.position.y = bool_input(Joy->buttons[PS3_BUTTON_CROSS_UP],Joy->buttons[PS3_BUTTON_CROSS_DOWN]);
-move_to.position.z = bool_input(Joy->buttons[PS3_BUTTON_REAR_RIGHT_2],Joy->buttons[PS3_BUTTON_REAR_LEFT_2]);
+move_to.position.x += bool_input(Joy->buttons[PS3_BUTTON_CROSS_RIGHT],Joy->buttons[PS3_BUTTON_CROSS_LEFT])/100.00;
+move_to.position.y += bool_input(Joy->buttons[PS3_BUTTON_CROSS_UP],Joy->buttons[PS3_BUTTON_CROSS_DOWN])/100.00;
+move_to.position.z += bool_input(Joy->buttons[PS3_BUTTON_REAR_RIGHT_2],Joy->buttons[PS3_BUTTON_REAR_LEFT_2])/100.00;
 
-if (Joy->buttons[PS3_BUTTON_ACTION_CROSS])
+if (Joy->buttons[PS3_BUTTON_ACTION_CROSS]){move_to.orientation.z +=1/100.00;}
+
+if (Joy->buttons[PS3_BUTTON_ACTION_CIRCLE]){move_to.orientation.z +=-1/100.000;}
+
+if (Joy->buttons[PS3_BUTTON_START])
 {
 move_to.position.x=0;
 move_to.position.y=0;
 move_to.position.z=0;
 move_to.orientation.x=0;
 move_to.orientation.y=0;
+move_to.orientation.w=0;
 move_to.orientation.z=0;
-move_to.orientation.w=1;
-}
-
-if (Joy->buttons[PS3_BUTTON_ACTION_CIRCLE])
-{
-move_to.position.x=0;
-move_to.position.y=0;
-move_to.position.z=0;
-move_to.orientation.x=0;
-move_to.orientation.y=0;
-move_to.orientation.z=0;
-move_to.orientation.w=-1;
 }
 
 ROS_INFO("x:%f, y:%f, z:%f \n", move_to.position.x,move_to.position.y,move_to.position.z);
@@ -136,7 +129,7 @@ int main(int argc, char** argv)
   manual.torque.z = 0;
 
 
-  ros::Subscriber  joy_stick = n.subscribe<sensor_msgs::Joy>("joy",10,&joycallback);
+  ros::Subscriber  joy_stick = n.subscribe<sensor_msgs::Joy>("/joy",10,&joycallback);
 
 
   Desired_pose_node = n.advertise<controls::Commands>("commands",1);

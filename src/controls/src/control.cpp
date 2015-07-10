@@ -729,14 +729,15 @@ double x_start,y_start,z_start,tz_start;
 
       }
       
-      if(fabs(torque(2))<2.4 && fabs(torque(1))<1.2 && fabs(torque(0))<1.2 && !noInt) // increasing only if the command is not saturating //
+      if(fabs(torque(2))<2 && fabs(torque(1))<2 && fabs(torque(0))<2 && !noInt) // increasing only if the command is not saturating //
      {
-        intTX+= (dAngle(0))/10*0.01;
-        if(fabs(intTX)>1){intTX=copysign(1,intTX);}
-        intTY+= (dAngle(1))/10*0.01;
-        if(fabs(intTY)>1){intTY=copysign(1,intTY);}
-        intTZ+= (dAngle(2))/10*0.01;
-        if(fabs(intTZ)>1){intTZ=copysign(1,intTZ);}
+        intTX+= (dAngle(0))/10*0.05;
+        if(fabs(intTX)>2){intTX=copysign(2,intTX);}
+        intTY+= (dAngle(1))/10*0.05;
+        if(fabs(intTY)>2){intTY=copysign(2,intTY);}
+        intTZ=0;
+        //intTZ+= (dAngle(2))/10*0.03;
+        //if(fabs(intTZ)>2){intTZ=copysign(2,intTZ);}
 		intT<<intTX,intTY,intTZ;
       }
       
