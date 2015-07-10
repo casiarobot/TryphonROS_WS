@@ -3,6 +3,7 @@
 #include <ros/ros.h>
 #include <sensor_msgs/Joy.h>
 #include <controls/Commands.h>
+#include <std_msgs/Bool.h>
 
 // note on plain values:
 // buttons are either 0 or 1
@@ -56,6 +57,8 @@ geometry_msgs::Wrench manual;
 int mode =1;
 
 ros::Publisher Desired_pose_node;
+ros::Publisher Control_node;
+ros::Publisher Magnet;
 
 int bool_input(float a,float b)
 {
@@ -70,7 +73,20 @@ else
 	return 0;
 }
 
-
+void sendit()
+{
+  com.deltaPose.position.x=move_to.position.x+default_pose.position.x;
+  com.deltaPose.position.y=move_to.position.y+default_pose.position.y;
+  com.deltaPose.position.z=move_to.position.z+default_pose.position.z;
+  com.deltaPose.orientation.x=move_to.orientation.x+default_pose.orientation.x;
+  com.deltaPose.orientation.y=move_to.orientation.y+default_pose.orientation.y;
+  com.deltaPose.orientation.z=move_to.orientation.z+default_pose.orientation.z;
+  com.deltaPose.orientation.w=move_to.orientation.w+default_pose.orientation.w;
+  if(mode==1)
+	Desired_pose_node.publish(com);
+  else
+	Control_node.publish(manual);
+}
 
 void joycallback(const sensor_msgs::Joy::ConstPtr& Joy)
 {
@@ -80,10 +96,15 @@ void joycallback(const sensor_msgs::Joy::ConstPtr& Joy)
 move_to.position.x += bool_input(Joy->buttons[PS3_BUTTON_CROSS_RIGHT],Joy->buttons[PS3_BUTTON_CROSS_LEFT])/100.00;
 move_to.position.y += bool_input(Joy->buttons[PS3_BUTTON_CROSS_UP],Joy->buttons[PS3_BUTTON_CROSS_DOWN])/100.00;
 move_to.position.z += bool_input(Joy->buttons[PS3_BUTTON_REAR_RIGHT_2],Joy->buttons[PS3_BUTTON_REAR_LEFT_2])/100.00;
+manual.force.x += bool_input(Joy->buttons[PS3_BUTTON_CROSS_RIGHT],Joy->buttons[PS3_BUTTON_CROSS_LEFT])/100.00;
+manual.force.y += bool_input(Joy->buttons[PS3_BUTTON_CROSS_UP],Joy->buttons[PS3_BUTTON_CROSS_DOWN])/100.00;
+manual.force.z += bool_input(Joy->buttons[PS3_BUTTON_REAR_RIGHT_2],Joy->buttons[PS3_BUTTON_REAR_LEFT_2])/100.00;
 
-if (Joy->buttons[PS3_BUTTON_ACTION_CROSS]){move_to.orientation.z +=1/100.00;}
+if (Joy->buttons[PS3_BUTTON_ACTION_CROSS]){move_to.orientation.z +=1/100.00; manual.torque.z+=1/100;}
 
-if (Joy->buttons[PS3_BUTTON_ACTION_CIRCLE]){move_to.orientation.z +=-1/100.000;}
+if (Joy->buttons[PS3_BUTTON_ACTION_CIRCLE]){move_to.orientation.z +=-1/100.000; manual.torque.z+=1/100;}
+
+if (Joy->buttons[PS3_BUTTON_ACTION_TRIANGLE]){}
 
 if (Joy->buttons[PS3_BUTTON_START])
 {
@@ -94,8 +115,15 @@ move_to.orientation.x=0;
 move_to.orientation.y=0;
 move_to.orientation.w=0;
 move_to.orientation.z=0;
+manual.force.x=0;
+manual.force.y=0;
+manual.force.z=0;
+manual.torque.x=0;
+manual.torque.y=0;
+manual.torque.z=0;
 }
 
+sendit();
 ROS_INFO("x:%f, y:%f, z:%f \n", move_to.position.x,move_to.position.y,move_to.position.z);
 }
 
@@ -131,8 +159,9 @@ int main(int argc, char** argv)
 
   ros::Subscriber  joy_stick = n.subscribe<sensor_msgs::Joy>("/joy",10,&joycallback);
 
-
+  Control_node = n.advertise<geometry_msgs::Wrench>("command_control",1);
   Desired_pose_node = n.advertise<controls::Commands>("commands",1);
+  Magnet = n.advertise<std_msgs::Bool>("magnet_on",1);
 
   //ros::Publisher  to_control = n.advertise<geometry_msgs::Pose>("ps3_control",10);
   ros::Rate loop_rate(20);
@@ -152,14 +181,6 @@ int main(int argc, char** argv)
 
 while (ros::ok())
 {
-  com.deltaPose.position.x=move_to.position.x+default_pose.position.x;
-  com.deltaPose.position.y=move_to.position.y+default_pose.position.y;
-  com.deltaPose.position.z=move_to.position.z+default_pose.position.z;
-  com.deltaPose.orientation.x=move_to.orientation.x+default_pose.orientation.x;
-  com.deltaPose.orientation.y=move_to.orientation.y+default_pose.orientation.y;
-  com.deltaPose.orientation.z=move_to.orientation.z+default_pose.orientation.z;
-  com.deltaPose.orientation.w=move_to.orientation.w+default_pose.orientation.w;
-  Desired_pose_node.publish(com);
   ros::spinOnce();
   loop_rate.sleep();
 }
