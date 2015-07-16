@@ -200,6 +200,8 @@ int main(int argc, char **argv)
   double path_debut_time=0;
   bool rotatate_debut=true;
   double rotatate_debut_time=0;
+  bool flip_debut=true;
+  double flip_debut_time=0;
   int ctrlNb=3;
 
   double GainCP=1;
@@ -736,9 +738,9 @@ int main(int argc, char **argv)
         if(pathNb==9) // +- 15 yaw
         {
 			t=ros::Time::now().toSec();
-			posdesir(0)=3.0;
+			posdesir(0)=5.0;
             posdesir(1)=0;
-            posdesir(2)=3.0;
+            posdesir(2)=1.0;
             angledesir(0)=0;
             angledesir(1)=0;
 
@@ -755,9 +757,9 @@ int main(int argc, char **argv)
          if(pathNb==10) // +- 15 pitch
         {
 			t=ros::Time::now().toSec();
-			posdesir(0)=3.0;
+			posdesir(0)=5.0;
             posdesir(1)=0;
-            posdesir(2)=3.0;
+            posdesir(2)=1.0;
 
             angledesir(0)=0;
             angledesir(2)=0;
@@ -774,22 +776,29 @@ int main(int argc, char **argv)
          }
          if(pathNb==11) // flip
         {
-			posdesir(0)=3.0;
+			if(flip_debut)
+			{
+				flip_debut_time=ros::Time::now().toSec();
+				flip_debut=false;
+			}
+			
+			posdesir(0)=5.0;
             posdesir(1)=0;
-            posdesir(2)=3.0;
+            posdesir(2)=1.25;
 
             zero_vel();
-            angleAcceldesir(0)=40;
+            angleAcceldesir(1)=40;
             
             ctrlNb=4;
-            if(angle(0)<-2.0){pathNb++;}
+            t=ros::Time::now().toSec()-flip_debut_time;
+            if(t>12.0){pathNb++;}
             noInt=true;
          }
          if(pathNb==12) // after flip
         {
-			posdesir(0)=3.0;
+			posdesir(0)=5.0;
             posdesir(1)=0;
-            posdesir(2)=3.0;
+            posdesir(2)=1.0;
             
             zero_vel();
             noInt=false;
@@ -818,18 +827,18 @@ int main(int argc, char **argv)
 				angledesir(1)=0;
 				angledesir(2)=value;
 				aveldesir(2)=0.348;
-				posdesir(0)=3.0;
+				posdesir(0)=5.0;
 				posdesir(1)=0;
-				posdesir(2)=3.0;
+				posdesir(2)=1.0;
 				ctrlNb=3;
 		    }
 		    else
 		    {
 				zero_vel();
 				angledesir(2)=0;
-				posdesir(0)=3.0;
+				posdesir(0)=5.0;
 				posdesir(1)=0;
-				posdesir(2)=3.0;
+				posdesir(2)=1.0;
 				ctrlNb=3;
 			}
          } 
@@ -844,6 +853,7 @@ int main(int argc, char **argv)
       step=0;
       path_debut=true;
       rotatate_debut=true;
+      flip_debut=true;
       zero_vel();
       maxThrust=100;
       noInt=false;

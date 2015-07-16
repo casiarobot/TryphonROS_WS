@@ -107,16 +107,19 @@ double RealForce(double f)
     double force=f;
     if(f>0)
     {
-      if(fabs(force)<maxForce*0.05){force=0;}
       if(f>maxForce) {force=maxForce;}
     }
     else
     {
-      if(fabs(force)<-minForce*0.05){force=0;}
       if(f<minForce) {force=minForce;}
     }
 
   return force;
+}
+
+double AvoidNoise(double c)
+{
+	if(fabs(c)<10){c=0;}	
 }
 
 double force2command(double f)
@@ -379,7 +382,7 @@ int main(int argc, char **argv)
 
       for(int i=0; i<12;i++)
       {
-        props.commands[i]=Saturation(Nocrash(force2command(RealForce(commands[i][2])),props.commands[i]));
+        props.commands[i]=AvoidNoise(Saturation(Nocrash(force2command(RealForce(commands[i][2])),props.commands[i])));
       }
       props.header.stamp=ros::Time::now();
 

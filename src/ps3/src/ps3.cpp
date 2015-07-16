@@ -2,6 +2,7 @@
 #include <geometry_msgs/Wrench.h>
 #include <ros/ros.h>
 #include <sensor_msgs/Joy.h>
+#include <sensors/compass.h>
 #include <controls/Commands.h>
 #include <std_msgs/Bool.h>
 
@@ -55,6 +56,14 @@ geometry_msgs::Pose  default_pose;
 controls::Commands com;
 geometry_msgs::Wrench manual;
 int mode =1;
+std_msgs::Bool magnet_on;
+double temp_magn=0;
+int yaw_ref=0;
+double err_yaw_old=0;
+double vel_yaw_old=0;
+bool yaw_start=true;
+double ctrl_yaw=0;
+double t_yaw=0;
 
 ros::Publisher Desired_pose_node;
 ros::Publisher Control_node;
@@ -75,18 +84,63 @@ else
 
 void sendit()
 {
-  com.deltaPose.position.x=move_to.position.x+default_pose.position.x;
-  com.deltaPose.position.y=move_to.position.y+default_pose.position.y;
-  com.deltaPose.position.z=move_to.position.z+default_pose.position.z;
-  com.deltaPose.orientation.x=move_to.orientation.x+default_pose.orientation.x;
-  com.deltaPose.orientation.y=move_to.orientation.y+default_pose.orientation.y;
-  com.deltaPose.orientation.z=move_to.orientation.z+default_pose.orientation.z;
-  com.deltaPose.orientation.w=move_to.orientation.w+default_pose.orientation.w;
-  if(mode==1)
-	Desired_pose_node.publish(com);
-  else
-	Control_node.publish(manual);
+	com.deltaPose.position.x=move_to.position.x+default_pose.position.x;
+	com.deltaPose.position.y=move_to.position.y+default_pose.position.y;
+	com.deltaPose.position.z=move_to.position.z+default_pose.position.z;
+	com.deltaPose.orientation.x=move_to.orientation.x+default_pose.orientation.x;
+	com.deltaPose.orientation.y=move_to.orientation.y+default_pose.orientation.y;
+	com.deltaPose.orientation.z=move_to.orientation.z+default_pose.orientation.z;
+	com.deltaPose.orientation.w=move_to.orientation.w+default_pose.orientation.w;
+	if(mode==1)
+		Desired_pose_node.publish(com);
+	if(mode==2)
+		Control_node.publish(manual);
+	if(mode==3)
+	{
+		manual.torque.z=ctrl_yaw;
+		Control_node.publish(manual);
+	}
 }
+
+double modulo(double f) // not a modulo but dealing with the discontinuity around pi and -pi
+{
+  if(f>M_PI*(1+0.05)) // +0.05 to create an hysteresis
+  {
+   f=f-2*M_PI;
+  }
+  else
+  {
+    if(f<-M_PI*(1+0.05))
+    {
+      f=f+2*M_PI;
+    }
+  }
+  return f;
+}
+
+inline float IIR(float old, float in, float gain)
+{
+  return old + (1.0-gain)*(in-old);
+}
+
+void compasscallback(const sensors::compass::ConstPtr& compass)
+{
+	if(yaw_start)
+	{
+		yaw_ref=compass->rz[0];
+		yaw_start=false;
+	}
+	t_yaw=ros::Time::now().toSec()-t_yaw;
+	double err = IIR( err_yaw_old, modulo((yaw_ref-compass->rz[0])/573.5), 0.2);  // compass.rz is in degree*10 573=180*10/3.14
+	double vel = IIR( vel_yaw_old, (err-err_yaw_old)/t_yaw,0.4);
+	t_yaw=ros::Time::now().toSec();
+	
+	ctrl_yaw=1.0*err + 4*vel;
+	err_yaw_old=err;
+	vel_yaw_old=vel;
+}
+
+
 
 void joycallback(const sensor_msgs::Joy::ConstPtr& Joy)
 {
@@ -96,16 +150,24 @@ void joycallback(const sensor_msgs::Joy::ConstPtr& Joy)
 move_to.position.x += bool_input(Joy->buttons[PS3_BUTTON_CROSS_RIGHT],Joy->buttons[PS3_BUTTON_CROSS_LEFT])/100.00;
 move_to.position.y += bool_input(Joy->buttons[PS3_BUTTON_CROSS_UP],Joy->buttons[PS3_BUTTON_CROSS_DOWN])/100.00;
 move_to.position.z += bool_input(Joy->buttons[PS3_BUTTON_REAR_RIGHT_2],Joy->buttons[PS3_BUTTON_REAR_LEFT_2])/100.00;
-manual.force.x += bool_input(Joy->buttons[PS3_BUTTON_CROSS_RIGHT],Joy->buttons[PS3_BUTTON_CROSS_LEFT])/100.00;
-manual.force.y += bool_input(Joy->buttons[PS3_BUTTON_CROSS_UP],Joy->buttons[PS3_BUTTON_CROSS_DOWN])/100.00;
+manual.force.x += bool_input(Joy->buttons[PS3_BUTTON_CROSS_UP],Joy->buttons[PS3_BUTTON_CROSS_DOWN])/100.00;
+manual.force.y += bool_input(Joy->buttons[PS3_BUTTON_CROSS_LEFT],Joy->buttons[PS3_BUTTON_CROSS_RIGHT])/100.00;
 manual.force.z += bool_input(Joy->buttons[PS3_BUTTON_REAR_RIGHT_2],Joy->buttons[PS3_BUTTON_REAR_LEFT_2])/100.00;
 
-if (Joy->buttons[PS3_BUTTON_ACTION_CROSS]){move_to.orientation.z +=1/100.00; manual.torque.z+=1/100;}
+if (Joy->buttons[PS3_BUTTON_ACTION_CROSS]){move_to.orientation.z +=1/100.00; manual.torque.z+=1/100.0000000; yaw_ref= (yaw_ref +5) % 1800;}
 
-if (Joy->buttons[PS3_BUTTON_ACTION_CIRCLE]){move_to.orientation.z +=-1/100.000; manual.torque.z+=1/100;}
+if (Joy->buttons[PS3_BUTTON_ACTION_CIRCLE]){move_to.orientation.z +=-1/100.000; manual.torque.z-=1/100.000000;  yaw_ref= (yaw_ref -5) % 1800;}
 
-if (Joy->buttons[PS3_BUTTON_ACTION_TRIANGLE]){}
-
+if (Joy->buttons[PS3_BUTTON_ACTION_TRIANGLE])
+{
+	if(ros::Time::now().toSec()-temp_magn>0.25)
+	{
+		if(magnet_on.data){magnet_on.data=false;} 
+		else {magnet_on.data=true;} 
+		Magnet.publish(magnet_on);
+		temp_magn=ros::Time::now().toSec();
+	} 
+}
 if (Joy->buttons[PS3_BUTTON_START])
 {
 move_to.position.x=0;
@@ -118,6 +180,21 @@ move_to.orientation.z=0;
 manual.force.x=0;
 manual.force.y=0;
 manual.force.z=0;
+manual.torque.x=0;
+manual.torque.y=0;
+manual.torque.z=0;
+}
+
+if (Joy->buttons[PS3_BUTTON_SELECT])
+{
+move_to.position.x=0;
+move_to.position.y=0;
+move_to.orientation.x=0;
+move_to.orientation.y=0;
+move_to.orientation.w=0;
+move_to.orientation.z=0;
+manual.force.x=0;
+manual.force.y=0;
 manual.torque.x=0;
 manual.torque.y=0;
 manual.torque.z=0;
@@ -155,9 +232,12 @@ int main(int argc, char** argv)
   manual.torque.x = 0;
   manual.torque.y = 0;
   manual.torque.z = 0;
+  
+  magnet_on.data=false;
 
 
   ros::Subscriber  joy_stick = n.subscribe<sensor_msgs::Joy>("/joy",10,&joycallback);
+  ros::Subscriber  compass = n.subscribe<sensors::compass>("compass",10,&compasscallback);
 
   Control_node = n.advertise<geometry_msgs::Wrench>("command_control",1);
   Desired_pose_node = n.advertise<controls::Commands>("commands",1);
@@ -167,7 +247,9 @@ int main(int argc, char** argv)
   ros::Rate loop_rate(20);
 
     if (nh1.getParam("mode", mode))
-      ROS_INFO("Got param: %f", mode );
+      ROS_INFO("Got param: %i", mode );
+
+
 
     ///set up to send to new control node
     com.header.stamp=ros::Time::now();
