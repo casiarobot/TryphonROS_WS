@@ -1,0 +1,10 @@
+<launch>
+	
+
+	<group ns="192_168_10_243">
+	 <node name="ps3" pkg="ps3" type="ps3" respawn="false" output="screen">
+	 <param name="mode" type="int" value="1" />
+	</node>
+	</group>
+
+</launch>
