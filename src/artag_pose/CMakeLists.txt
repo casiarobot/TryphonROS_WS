@@ -11,6 +11,7 @@ REQUIRED COMPONENTS
     std_msgs
     dynamic_reconfigure
     sensor_msgs
+    tf
 # !!!Hydro doesn't require it!!!----> : cmake_modules
 )
 
@@ -34,6 +35,8 @@ catkin_package(
 	std_msgs
 	dynamic_reconfigure
 	sensor_msgs
+	ar_track_alvar_msgs
+	tf
     DEPENDS
 	eigen
 )
@@ -41,6 +44,7 @@ catkin_package(
 
 include_directories(
     include
+    include/artag_pose
     ${catkin_INCLUDE_DIRS}
     ${EIGEN_INCLUDE_DIRS}
 )
@@ -50,15 +54,29 @@ include_directories(
 ## Declare a cpp executable
 add_executable(artag_pose_node
     src/artag_pose_node.cpp
+    src/artag_subscriber.cpp
+    src/yaml_config_loader.cpp
+    src/tf_config_loader.cpp
+    src/markers_pose.cpp
 
 # PB: I added the header so they are visible in QtCreator,
 # it's *NOT* require for compiling
     include/artag_pose/artag_pose_node.h
+    include/artag_pose/artag_subscriber.h
+    include/artag_pose/config_loader.h
+    include/artag_pose/yaml_config_loader.h
+    include/artag_pose/tf_config_loader.h
+    include/artag_pose/markers_pose.h
 )
 
 add_executable(test_pose_node
     src/test_pose_node.cpp
+
+# PB: I added the header so they are visible in QtCreator,
+# it's *NOT* require for compiling
     include/artag_pose/test_pose_node.h
+
+    config/cafeteria.yaml
 )
 
 add_dependencies(artag_pose_node ${catkin_EXPORTED_TARGETS}  ${PROJECT_NAME}_gencf)

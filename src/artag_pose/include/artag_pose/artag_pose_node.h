@@ -2,10 +2,7 @@
 #define _ARTAG_POSE_NODE_H_
 
 // Standard C/C++ libraries
-#include <stdio.h>
-#include <stdlib.h>
 #include <math.h>
-#include <ctime>
 #include <string.h>
 #include <vector>
 #include <iostream>
@@ -13,18 +10,40 @@
 
 //library for ros
 #include <ros/ros.h>
-#include <ros/console.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/PolygonStamped.h>
 
+#include <ar_track_alvar/AlvarMarkers.h>
+
+// Project includes
+#include "artag_pose/artag_subscriber.h"
+#include "artag_pose/yaml_config_loader.h"
+#include "artag_pose/tf_config_loader.h"
+
 class ArtagPoseNode{
+
+	ros::NodeHandle nodeHandle;
+
+	// Ros parameter:
+	bool useYAML;
+	int frequency;
+	int numMarkers;
+
+	ConfigLoader* markerConfig;
+	MarkersPose markersPose;
+
+	std::vector<ArtagSubscriber> artagSubs;
 public:
 	ArtagPoseNode();
-	void start();
+	~ArtagPoseNode();
 
-	void createPublisherAndSubscriber();
+	void start();
 private:
-	ros::NodeHandle nodeHandle;
+	void loop();
+	void loadConfig();
+	std::vector<std::string> loadCameraTopics();
+	void createSubscribers();
+	void computePoseAndPublish();
 
 };
 
