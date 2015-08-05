@@ -36,16 +36,16 @@ The ps3 package contains  ps3 nodes which can take user commands through a ps3 c
 
 ###state_estimation.cpp
 Switch 
--quatMCPTAM,CMCAMpos,GyroOffset__
--IMU Callback function and subscriber topicname (raw_imu, imubuff)__
--In MCPTAM Callback change EulerU::getQuatFromEuler(quattf, 0,0,0);__
--For Gazebo --> q.setEulerZYX(MCPTAMpos(5), MCPTAMpos(4), MCPTAMpos(3));} for pos_src==0 && ==3__
--Other localization transformations__
--Possibly comment out unused sensor subscribers
+-quatMCPTAM,CMCAMpos,GyroOffset    
+-IMU Callback function and subscriber topicname (raw_imu, imubuff)   
+-In MCPTAM Callback change EulerU::getQuatFromEuler(quattf, 0,0,0);    
+-For Gazebo --> q.setEulerZYX(MCPTAMpos(5), MCPTAMpos(4), MCPTAMpos(3));} for pos_src==0 && ==3    
+-Other localization transformations    
+-Possibly comment out unused sensor subscribers   
 ###Launch file
-Switch__
--pos_src appropriately__
--choose sensors to be used
+Switch    
+-pos_src appropriately    
+-choose sensors to be used   
 
 ##MCPTAM
 Switch map in saved Folder (saved found in Gazebo repo) 
