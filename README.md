@@ -35,7 +35,7 @@ The ps3 package contains  ps3 nodes which can take user commands through a ps3 c
 ##State Estimation
 
 ###state_estimation.cpp
-Switch 
+Switch       
 -quatMCPTAM,CMCAMpos,GyroOffset    
 -IMU Callback function and subscriber topicname (raw_imu, imubuff)   
 -In MCPTAM Callback change EulerU::getQuatFromEuler(quattf, 0,0,0);    
