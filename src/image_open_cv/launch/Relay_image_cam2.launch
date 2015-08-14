@@ -1,4 +1,6 @@
 <launch>
-    <node pkg="topic_tools" type="relay" name="relay1" args="/camera20/image_raw/compressed /camera2/image_raw/compressed" />
-    <node pkg="topic_tools" type="relay" name="relay2" args="/camera20/camera_info /camera2/camera_info" />
+	<group ns="127_0_0_1">
+    <node pkg="topic_tools" type="relay" name="relay1" args="/camera2/image_raw/compressed /camera20/image_raw/compressed" />
+    <node pkg="topic_tools" type="relay" name="relay2" args="/camera1/image_raw/compressed /camera10/image_raw/compressed" />
+    </group>
 </launch>

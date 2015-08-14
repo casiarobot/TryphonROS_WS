@@ -201,7 +201,7 @@ void Scale(double (&vP)[12][3])
 
 void Smooth(double (&vP)[12][3],double (&vPraw)[12][3])
 {
-  for(int i=0;i<8;i++)
+  for(int i=0;i<12;i++)
   {
     vP[i][2]=1.16826*vP[i][1]-0.42411820*vP[i][0]+0.0639643*vPraw[i][2]+0.127929*vPraw[i][1]+0.0639643*vPraw[i][0];
   }
@@ -218,7 +218,7 @@ double Saturation(double command)
 
 void UpdateProps(double (&vP)[12][3])
 {
-  for(int i=0; i<8;i++)
+  for(int i=0; i<12;i++)
   {
     for(int k=0; k<2;k++)
     {
@@ -303,7 +303,7 @@ int main(int argc, char **argv)
       if(nbMotor<9)
       {
         vPraw[0][2]=((double)(input.force.x/2.000000+input.torque.z/(4.000000*L)));  // x right
-        vPraw[1][2]=((double)(input.force.x/2.000000-input.torque.z/(4.000000*L)));  // x left
+        vPraw[1][2]=((double)(input.force.x/2.000000-input.torque.z/(4.000000*L)));  // x left 
         vPraw[2][2]=((double)(input.force.y/2.000000+input.torque.z/(4.000000*L)));  // y front
         vPraw[3][2]=((double)(input.force.y/2.000000-input.torque.z/(4.000000*L)));  // y back
         vPraw[4][2]=((double)(input.force.z/4.000000+(input.torque.x-input.torque.y-(L-Cm)*((input.force.x)+(input.force.y)))/(4.000000*L)));   // z front left
@@ -396,7 +396,7 @@ int main(int argc, char **argv)
       UpdateProps(vPzraw);
       UpdateProps(vPz);
 
-      for(int i=0; i<8;i++)
+      for(int i=0; i<12;i++)
       {
           commands[i][2]=vP[i][2]+vPz[i][2];
       }
