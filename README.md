@@ -30,5 +30,25 @@ The controls package contains the "control" node which uses either a Discrete PI
 
 The ps3 package contains  ps3 nodes which can take user commands through a ps3 controller and control/move the blimp manually.  The "ps3_z" node uses the D-Pad and right and left bumbers to control the x,y,z global position of the cube by outputting a desired pose message that is interpreted by the controls node..   This package is one of the methods used in human robot interaction aspects of the Aerostabile project.
 
+#Changes for Gazebo Model to Real Tryphon
+
+##State Estimation
+
+###state_estimation.cpp
+Switch       
+-quatMCPTAM,CMCAMpos,GyroOffset    
+-IMU Callback function and subscriber topicname (raw_imu, imubuff)   
+-In MCPTAM Callback change EulerU::getQuatFromEuler(quattf, 0,0,0);    
+-For Gazebo --> q.setEulerZYX(MCPTAMpos(5), MCPTAMpos(4), MCPTAMpos(3));} for pos_src==0 && ==3    
+-Other localization transformations    
+-Possibly comment out unused sensor subscribers   
+###Launch file
+Switch    
+-pos_src appropriately    
+-choose sensors to be used   
+
+##MCPTAM
+Switch map in saved Folder (saved found in Gazebo repo) 
+
 ###### Acknowledgement
 This research is conducted by the Mobile Robotics laboratory of professor Philippe Giguere at University Laval, with the collaboration of the research groups of professor Inna Sharf and professor Gregory Dudek at McGill University and under the artistic direction of Nicolas Reeves, professor at UQAM. All the development is coordinated by David St-Onge, eng. We would like to thanks the FQRNT-Team grant for their support.
