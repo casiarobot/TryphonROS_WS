@@ -8,5 +8,8 @@
 	<node pkg="topic_tools" type="relay" name="relay2" args="/camera1/image_raw/compressed /camera10/image_raw/compressed" />
 	</group>
 	<node name="joy_node" pkg="joy" type="joy_node" respawn="false" output="screen" />
+	<node name="rosbag" pkg="rosbag" type="record" respawn="false" output="screen"
+			args="record -o /home/tryphon/Rosbags/cameras_comp_force_mot /camera10/image_raw/compressed  /camera20/image_raw/compressed 
+			/127_0_0_1/motors_info /127_0_0_1/command_control /10_42_0_244/compass /10_42_0_244/leddars" />
 
 </launch>

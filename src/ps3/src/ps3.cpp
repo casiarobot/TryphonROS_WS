@@ -137,7 +137,7 @@ void compasscallback(const sensors::compass::ConstPtr& compass)
 	double vel = IIR( vel_yaw_old, (err-err_yaw_old)/t_yaw,0.4);
 	t_yaw=ros::Time::now().toSec();
 	
-	ctrl_yaw=-1.0*err -4*vel;
+	ctrl_yaw=-0.75*err -0.0*vel;
 	if (fabs(ctrl_yaw)>0.5){ctrl_yaw=copysign(0.5,ctrl_yaw);}
 	err_yaw_old=err;
 	vel_yaw_old=vel;
