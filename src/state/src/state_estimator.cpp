@@ -18,6 +18,7 @@
 #include <net/if.h>
 #include <arpa/inet.h>
 
+
 // Eigen libraries
 #include <Eigen/Geometry>
 #include <Eigen/Dense>
@@ -30,7 +31,7 @@
 #include "geometry_msgs/Pose.h"
 #include "geometry_msgs/Twist.h"
 #include "geometry_msgs/TwistStamped.h"
-//#include <sensor_msgs/Imu.h>
+#include <sensor_msgs/Imu.h>
 
 //libraries for the sonars and the compass
 #include "sensors/sonar.h"
@@ -72,13 +73,22 @@ double rz0=0;
 
 Eigen::Vector3d SONARpos, SICKpos, angle, avel;
 Eigen::VectorXd MCPTAMpos(6);
-
 Eigen::Vector3d CMIMUpos(1,0,-1.125); // vector postion from Center of mass to IMU in tryphon frame
-Eigen::Vector3d CMCAMpos(1.125,0,1.125); // vector postion from Center of mass to IMU in tryphon frame
 Eigen::Matrix3d Rmatrix, CPCMIMUmatrix, RIMUmatrix, CPCMCmatrix;
 Eigen::Quaterniond quatIMU(0.99255, 0,0.12187, 0); // quat of the rotation matrix between the tryphon frame and the IMU frame
+
+
+///////For Real tryphon///////
+/*
 Eigen::Quaterniond quatMCPTAM(0.64,-0.755, -0.065,0.066); // quat of the rotation matrix between the tryphon frame and the IMU frame
+Eigen::Vector3d CMCAMpos(1.125,0,1.125); // vector postion from Center of mass to IMU in tryphon frame
 Eigen::Vector3d GyroOffset(-0.183,-0.124,-1.40);
+*/
+
+/////////for Gazebo////////
+Eigen::Vector3d CMCAMpos(0,0,0);
+Eigen::Quaterniond quatMCPTAM(1,0,0,0);
+Eigen::Vector3d GyroOffset(0,0,0);
 
 
 Eigen::Matrix3d CPM(Eigen::Vector3d vect) // return cross product matrix
@@ -294,7 +304,8 @@ void subComp(const sensors::compass::ConstPtr& msg)
     angle(3)=dsrtf[4];
 }
 
-//void subImu(const sensor_msgs::Imu Imu_msg)
+///////////////////For Real Tryphon////////////////////
+/*
 void subImu(const sensors::imubuff::ConstPtr& msg)
 {
   double roll, pitch;
@@ -319,14 +330,15 @@ void subImu(const sensors::imubuff::ConstPtr& msg)
 	//mx=msg->buffer[0].magn[0];
 	//my=msg->buffer[0].magn[1];
 	//mz=msg->buffer[0].magn[2];
-}
+}*/
 
-/*void subImu(const sensor_msgs::Imu Imu_msg)
+////////////For Gazebo////////////////////////
+void subImu(const sensor_msgs::Imu Imu_msg)
 {
   double roll, pitch;
   EulerU::getRollPitchIMU(Imu_msg,roll,pitch);
   angle(0)=(angle(0)+roll)/2; // low pass filter
-  angle(1)=(angle(1)+0.244+pitch)/2; // low pass filter
+  angle(1)=(angle(1)-0.244+pitch)/2; // low pass filter
 
   Eigen::Vector3d avel_temp;
   avel_temp(0)=Imu_msg.angular_velocity.x; // defined in IMU frame
@@ -342,7 +354,7 @@ void subImu(const sensors::imubuff::ConstPtr& msg)
     ROS_INFO("IMU started!");
   }
 
-}*/
+}
 
 void subMCPTAM(const geometry_msgs::PoseArray Aposes) // with MCPTAM
 {
@@ -358,8 +370,18 @@ void subMCPTAM(const geometry_msgs::PoseArray Aposes) // with MCPTAM
   //Eigen::Quaterniond quat1(Pose.orientation.w,Pose.orientation.x,Pose.orientation.y,Pose.orientation.z);
   //Eigen::Quaterniond quat2(Pose.orientation.w,Pose.orientation.x,Pose.orientation.y,Pose.orientation.z);
   //Eigen::Quaterniond quat3(Pose.orientation.w,Pose.orientation.x,Pose.orientation.y,Pose.orientation.z);
-  Eigen::Quaterniond quattf;
+  
+Eigen::Quaterniond quattf;
+
+////////////For Real tryphon//////////// 
+ /*
   EulerU::getQuatFromEuler(quattf, 0,0,-M_PI/2);
+*/
+
+///////For Gazebo////////////////
+EulerU::getQuatFromEuler(quattf, 0,0,0);
+
+
   
   
   quat=quat*quatMCPTAM.inverse()*quattf.inverse();  // compute the quaternion between the vision world and the tryphon frame
@@ -425,10 +447,16 @@ std::string pos_src_string;
 
   // Subscribers //
   /* sensors_thruster use imubuff, gazebo use raw_imu*/
-  ros::Subscriber subI = nh.subscribe("imubuff", 1, subImu); //raw_imu
+  
+  //////For Real Tryphon///////
+  //ros::Subscriber subI = nh.subscribe("imubuff", 1, subImu);
+  
+  /////////For Gazebo////////////
+ ros::Subscriber subI = nh.subscribe("raw_imu", 1, subImu); //raw_imu or imubuff
+
   ros::Subscriber subM = nh.subscribe("mcptam/tracker_pose_array",1,subMCPTAM);
-  ros::Subscriber subS = nh.subscribe("sonars", 1, subSonar);
-  ros::Subscriber subL = nh.subscribe("leddars", 1, subLeddar);
+ // ros::Subscriber subS = nh.subscribe("sonars", 1, subSonar);
+ // ros::Subscriber subL = nh.subscribe("leddars", 1, subLeddar);
  // ros::Subscriber subC = nh.subscribe("compass",1, subComp);
   ros::Subscriber subSP = nh.subscribe("/cubeA_pose",1, subposeSick);
 
@@ -525,7 +553,7 @@ if(pos_src==0){
     ros::spinOnce();
     loop_rate.sleep();
   }
-
+ROS_INFO("Initialization4");
   // Init Kalmann
   pose_received=false;
   bool accel=false;
@@ -581,12 +609,28 @@ if(pos_src==0){
 
 
 		tf::Quaternion q;
+
+      /////////   For Real Tryphon  ???????    ///////////////////
+      /*
       if(pos_src==0)
           {transform.setOrigin( tf::Vector3(MCPTAMpos(0), MCPTAMpos(1), MCPTAMpos(2)) );
       q.setEulerZYX(MCPTAMpos(3), MCPTAMpos(4), MCPTAMpos(5));}
       else if(pos_src==3)
           {transform.setOrigin( tf::Vector3(SONARpos(0), SONARpos(1), SONARpos(2)) );
       q.setEulerZYX(MCPTAMpos(3), MCPTAMpos(4), MCPTAMpos(5));}
+      else if(pos_src==1)
+          {transform.setOrigin( tf::Vector3(SICKpos(0), SICKpos(1), SONARpos(2)) );
+      q.setEulerZYX( SICKpos(2),angle(1), angle(0));}
+      */
+        
+
+      ////////For Gazebo//////////  
+      if(pos_src==0)
+          {transform.setOrigin( tf::Vector3(MCPTAMpos(0), MCPTAMpos(1), MCPTAMpos(2)) );
+      q.setEulerZYX(MCPTAMpos(5), MCPTAMpos(4), MCPTAMpos(3));}
+      else if(pos_src==3)
+          {transform.setOrigin( tf::Vector3(SONARpos(0), SONARpos(1), SONARpos(2)) );
+      q.setEulerZYX(MCPTAMpos(5), MCPTAMpos(4), MCPTAMpos(3));}
       else if(pos_src==1)
           {transform.setOrigin( tf::Vector3(SICKpos(0), SICKpos(1), SONARpos(2)) );
       q.setEulerZYX( SICKpos(2),angle(1), angle(0));}

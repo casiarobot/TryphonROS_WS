@@ -50,8 +50,8 @@ namespace KalmanU{
       Eigen::MatrixXd  Q(2*pose_size,2*pose_size);
       /*Q << I*pow (Ts,5)/20,I*pow (Ts,4)/8,
             I*pow (Ts,4)/8,I*pow (Ts,3)/3;*/
-      Q << I*Ts*0.01,I*0,
-           I*0,I*Ts*0.01;
+      Q << I*Ts*0.2,I*0, //.01,0
+           I*0,I*Ts*0.04; // 0,.01
       return Q;
 
     }

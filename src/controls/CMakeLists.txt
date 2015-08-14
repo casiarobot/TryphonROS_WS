@@ -20,6 +20,8 @@ generate_dynamic_reconfigure_options(
   cfg/control.cfg
   cfg/trajectory.cfg
   cfg/fdistribution.cfg
+  cfg/glideslope.cfg
+  cfg/formation.cfg
 )
 
 ## Declare a catkin package
@@ -51,11 +53,13 @@ target_link_libraries(ctr_fuzzy ${catkin_LIBRARIES})
 add_dependencies(ctr_fuzzy sensors_gencpp std_msgs geometry_msgs sensors state)
 
 
-
-
 add_executable(glideslope src/glideslope.cpp)
 target_link_libraries(glideslope ${catkin_LIBRARIES})
 add_dependencies(glideslope sensors_gencpp std_msgs geometry_msgs sensors)
+
+add_executable(formation src/formation.cpp)
+target_link_libraries(formation ${catkin_LIBRARIES})
+add_dependencies(formation sensors_gencpp std_msgs geometry_msgs sensors)
 
 add_executable(glideslope_test src/glideslope_test.cpp)
 target_link_libraries(glideslope_test ${catkin_LIBRARIES})

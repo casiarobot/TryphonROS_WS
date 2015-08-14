@@ -23,7 +23,7 @@ typedef unsigned char BYTE;
 
 #include <Eigen/Geometry>
 #include <Eigen/Dense>
-
+#include "geometry_msgs/PoseStamped.h"
 #include <dynamic_reconfigure/server.h>
 #include <controls/controlConfig.h>
 
@@ -34,6 +34,7 @@ typedef unsigned char BYTE;
 
 double dsz=0;
 double dsx=0;
+ 
 double dsy=0;
 double dszwant=1000;
 double errorn=0;
@@ -45,7 +46,8 @@ double rzo=0;
 double rz0=0;
 int rzpos=1; // 0 between -360 and 0; 1-> 0-360; 2->360-720
 geometry_msgs::Wrench F, FOld1, FOld2;
-geometry_msgs::Pose fPose, desirPose;
+geometry_msgs::Pose fPose;
+geometry_msgs::PoseStamped desirPose;
 geometry_msgs::TwistStamped fVel;
 
 Eigen::Vector3d force, forceOld1, forceOld2, forceGlobF, forceGfOld1, forceGfOld2, torque, torqueOld1, torqueOld2;
@@ -490,7 +492,7 @@ int main(int argc, char **argv)
   
   Forcez_node = node.advertise<geometry_msgs::Wrench>("intFz_control",1);
   //Controle_notfiltered_node = node.advertise<geometry_msgs::Wrench>("command_control_filtered",1);
-  Desired_pose_node = node.advertise<geometry_msgs::Pose>("desired_pose",1);
+  Desired_pose_node = node.advertise<geometry_msgs::PoseStamped>("desired_pose",1);
   Pose_node = node.advertise<geometry_msgs::Pose>("control/pose",1);
   Vel_node = node.advertise<geometry_msgs::TwistStamped>("control/vel",1);
   Path_node = node.advertise<geometry_msgs::Pose2D>("path_command",1);
@@ -803,7 +805,7 @@ double x_start,y_start,z_start,tz_start;
               DragTorque=DragTorque+CPCMCmatrix*Rmatrix.inverse()*DragForce;			  //CPM_CM may be already defined (Cross Product Matrix Center of mass)
 
               forceGlobF=MassM*(acceldesir-KpF*dPos-KvF*dVel)+DragForce;             // BE CAREFULL of the sign before Kp and Kv because of the definition of Dpos Dvel , etc
-              torque=InertiaM*(angleAcceldesir-KpT*dAngle-KvT*dAvel)+DragTorque+CPM(avel)*InertiaM*avel - intT;
+              torque=InertiaM*(angleAcceldesir-KpT*dAngle-KvT*dAvel)+DragTorque+CPM(avel)*InertiaM*avel; //- intT;
 
               // Addition of the g(q) reduced to the difference of buoyancy and gravity
 
@@ -897,12 +899,13 @@ double x_start,y_start,z_start,tz_start;
       fPose.orientation.y=angle(1);
       fPose.orientation.z=angle(2);
 
-      desirPose.position.x=posdesir(0);
-      desirPose.position.y=posdesir(1);
-      desirPose.position.z=posdesir(2);
-      desirPose.orientation.x=angledesir(0);
-      desirPose.orientation.y=angledesir(1);
-      desirPose.orientation.z=angledesir(2);
+      desirPose.header.stamp=ros::Time::now();
+      desirPose.pose.position.x=posdesir(0);
+      desirPose.pose.position.y=posdesir(1);
+      desirPose.pose.position.z=posdesir(2);
+      desirPose.pose.orientation.x=angledesir(0);
+      desirPose.pose.orientation.y=angledesir(1);
+      desirPose.pose.orientation.z=angledesir(2);
 
 
       fVel.twist.linear.x=vel(0);
