@@ -1,8 +1,9 @@
 #include "artag_pose/artag_pose_node.h"
 
 
+
 ArtagPoseNode::ArtagPoseNode():nodeHandle("~"){
-	nodeHandle.param<bool>("useYAML", useYAML, true);
+	nodeHandle.param<bool>("useYAML", useYAML, false);
 
 	nodeHandle.param<int>("hz", frequency, 10);
 
@@ -39,6 +40,10 @@ void ArtagPoseNode::createSubscribers(){
 	// Get topic list from parameter
 	std::vector<std::string> camera_topics = loadCameraTopics();
 
+	// Bypass the Yaml configuration for debugging
+	//std::vector<std::string> camera_topics;
+	//camera_topics.push_back("/192_168_10_243/artags/artag0/ar_pose_marker");
+
 	// for each camera topics create a subscriber
 	std::vector<std::string>::iterator topic_name;
 	for(topic_name = camera_topics.begin(); topic_name != camera_topics.end(); topic_name++){
@@ -53,7 +58,7 @@ std::vector<std::string> ArtagPoseNode::loadCameraTopics(){
 	bool parameter_provided = nodeHandle.getParam("camera_topics", camera_topics);
 
 	if(!parameter_provided){
-		ROS_WARN("Can't load list of camera's topic from parameter \"camera_topics\"");
+		ROS_ERROR("Can't load list of camera's topic from parameter \"camera_topics\"");
 		ros::shutdown();
 	}
 

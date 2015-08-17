@@ -19,6 +19,8 @@ class ArtagSubscriber{
 ros::Subscriber sub;
 MarkersPose markers;
 
+std::string topicName;
+
 bool receiveIsFirstMsg;
 ros::Timer timer;
 ros::Time lastReception;

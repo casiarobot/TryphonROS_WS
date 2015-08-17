@@ -1,6 +1,6 @@
 ---
 camera_topics:
- - /192_168_10_243/artags/artag1/ar_pose_marker
+ - /192_168_10_243/artags/artag0/ar_pose_marker
 
 markers_pose:
  - 

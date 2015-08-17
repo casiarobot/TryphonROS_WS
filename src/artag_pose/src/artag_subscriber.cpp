@@ -1,13 +1,17 @@
 #include <artag_pose/artag_subscriber.h>
+#include "ros/ros.h"
 
 ArtagSubscriber::ArtagSubscriber(const std::string& topic_name,
 								 const MarkersPose& markers,
 								 ros::NodeHandle & nh):
-timer(nh.createTimer(ros::Duration(5), &ArtagSubscriber::timerCallback, this)),
 receiveIsFirstMsg(false),
-msgReceiveSincePull(false)
+msgReceiveSincePull(false),
+topicName(topic_name),
+lastReception(ros::Time::now())
 {
 	ROS_INFO_STREAM("New ArtagSubscriber for " << topic_name);
+
+	timer = nh.createTimer(ros::Duration(5), &ArtagSubscriber::timerCallback, this);
 
 	// Subscribe to topic
 	nh.subscribe<ar_track_alvar::AlvarMarkers>(
@@ -17,6 +21,8 @@ msgReceiveSincePull(false)
 								this
 							);
 
+
+
 	lookupCameraTf();
 }
 
@@ -24,16 +30,19 @@ void ArtagSubscriber::lookupCameraTf(){
 
 }
 
+
 void ArtagSubscriber::timerCallback(const ros::TimerEvent& event){
 	ros::Duration t = ros::Time::now() - lastReception;
 	if(receiveIsFirstMsg && t > ros::Duration(5.0))
-		ROS_WARN_STREAM("Topic \"" << sub.getTopic()
+		ROS_WARN_STREAM("Topic \"" << topicName
 						<< "\" has not respond for " << t.toSec() << "s");
 }
 
 void ArtagSubscriber::artagCallback(const ar_track_alvar::AlvarMarkers::ConstPtr& msg){
 	if(!receiveIsFirstMsg)
 		receiveIsFirstMsg = true;
+
+	ROS_INFO_ONCE("Marker detected by camera");
 
 	lastReception = ros::Time::now();
 	msgReceiveSincePull = true;

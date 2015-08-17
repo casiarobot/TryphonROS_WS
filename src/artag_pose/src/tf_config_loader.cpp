@@ -20,7 +20,7 @@ void TfConfigLoader::load(int numMarkers){
 	catch (tf::TransformException &ex) {}
 
 	// The id start at 1
-	for(int i = 1; i <= numMarkers; i++){
+	for(int i = 0; i < numMarkers; i++){
 		sprintf(tfName, "/artag_%02d_link", i);
 		try{
 			listener.waitForTransform("/cafeteria", tfName, ros::Time(0), ros::Duration(1.0));
