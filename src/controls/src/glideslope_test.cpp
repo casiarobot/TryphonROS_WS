@@ -45,7 +45,7 @@ Eigen::Quaterniond quatIMU(1, 0,0, 0); // quat of the rotation matrix between th
 //Eigen::Quaterniond quatIMU(0.99255, 0,0.12187, 0); // quat of the rotation matrix between the tryphon frame and the IMU frame
 controls::State statedesirT,statedesirC; 
 
-double chaser_rotation,target_rotation; //to make sure chaser settles before begining docking
+double chaser_rotation,target_rotation,VelC, VelT; //to make sure chaser settles before begining docking
 double t=0;
 double path_debut_time=0;
 double sidelength_cube=2*1.125;
@@ -157,10 +157,12 @@ p_chaser.pose.orientation.z=angle_chaser(2);
 void subVel_chaser(const geometry_msgs::TwistStamped TwistC) 
 {	
 chaser_rotation=TwistC.twist.angular.z;
+VelC=TwistC.twist.linear.z;
 }
 void subVel_target(const geometry_msgs::TwistStamped TwistT) 
 {	
 target_rotation=TwistT.twist.angular.z;
+VelT=TwistT.twist.linear.z;
 }
 
 void pose_zero(geometry_msgs::PoseStamped &p) //set any pose msg to zero
@@ -338,10 +340,10 @@ if(!start_T && !start_C)
 			}
 		
 
-pdes_target.pose.position.z= p_chaser.pose.position.z;
+pdes_target.pose.position.z=p_chaser.pose.position.z;
 pdes_chaser.pose.position.z=p_target.pose.position.z;
-
-	
+veldes_target.twist.linear.z=VelC;
+veldes_chaser.twist.linear.z=VelT;	
 
 
 ///set up to send to new control node

@@ -22,15 +22,20 @@
 
 using namespace std;
 
-geometry_msgs::Pose PoseEKF,PoseGaz,PoseCtrl,PoseDesir;
-geometry_msgs::Twist VelEKF;
+geometry_msgs::Pose PoseEKF,PoseGaz,PoseCtrl,PoseDesir, Posetraj;
+geometry_msgs::Twist VelEKF, VelGAZ;
 geometry_msgs::Wrench CmdCtrl,CmdReal;
 sensor_msgs::Imu Imu;
 double debut;
 
-std::ofstream filePEKF;
+
+
 std::ofstream filePGAZ;
+std::ofstream fileVGAZ;
+std::ofstream filePEKF;
 std::ofstream fileVEKF;
+
+std::ofstream filetraj;
 std::ofstream fileCCtrl;
 std::ofstream fileCRl;
 std::ofstream filePCtrl;
@@ -41,13 +46,7 @@ std::ofstream fileCP;
 std::ofstream fileSICKA;
 std::ofstream fileSICKB;
 
-void subPoseEkf(const geometry_msgs::PoseStamped PoseS)
-{
-	PoseEKF=PoseS.pose;
-	double secs = ros::Time::now().toSec()-debut;
-	filePEKF <<secs << "," << PoseEKF.position.x << ","<< PoseEKF.position.y <<","<< PoseEKF.position.z <<","<< PoseEKF.orientation.x;
-	filePEKF <<","<< PoseEKF.orientation.y <<","<< PoseEKF.orientation.z << "," << PoseEKF.orientation.w <<endl;
-}
+
 
 void subPoseGaz(const geometry_msgs::PoseStamped PoseSG)
 {
@@ -57,12 +56,43 @@ void subPoseGaz(const geometry_msgs::PoseStamped PoseSG)
   filePGAZ <<","<< PoseGaz.orientation.y <<","<< PoseGaz.orientation.z << "," << PoseGaz.orientation.w <<endl;
 }
 
+void subVelGaz(const geometry_msgs::TwistStamped VelSG)
+{
+  VelGAZ=VelSG.twist;
+  double secs = ros::Time::now().toSec()-debut;
+  fileVGAZ <<secs << "," << VelGAZ.linear.x << ","<< VelGAZ.linear.y <<","<< VelGAZ.linear.z <<","<< VelGAZ.angular.x;
+  fileVGAZ <<","<< VelGAZ.angular.y <<","<< VelGAZ.angular.z <<endl;
+}
+
+void subtrajdes(const geometry_msgs::Pose Pose)
+{
+  Posetraj=Pose;
+  double secs = ros::Time::now().toSec()-debut;
+  filetraj <<secs << "," << Posetraj.position.x << ","<< Posetraj.position.y <<","<< Posetraj.position.z <<","<< Posetraj.orientation.x;
+  filetraj <<","<< Posetraj.orientation.y <<","<< Posetraj.orientation.z << "," << Posetraj.orientation.w <<endl;
+} 
+
+void subPoseEkf(const geometry_msgs::PoseStamped PoseS)
+{
+  PoseEKF=PoseS.pose;
+  double secs = ros::Time::now().toSec()-debut;
+  filePEKF <<secs << "," << PoseEKF.position.x << ","<< PoseEKF.position.y <<","<< PoseEKF.position.z <<","<< PoseEKF.orientation.x;
+  filePEKF <<","<< PoseEKF.orientation.y <<","<< PoseEKF.orientation.z << "," << PoseEKF.orientation.w <<endl;
+}
 void subVelEKF(const geometry_msgs::TwistStamped VelS)
 {
 	VelEKF=VelS.twist;
 	double secs = ros::Time::now().toSec()-debut;
 	fileVEKF <<secs << "," << VelEKF.linear.x << ","<< VelEKF.linear.y <<","<< VelEKF.linear.z <<","<< VelEKF.angular.x;
 	fileVEKF <<","<< VelEKF.angular.y <<","<< VelEKF.angular.z <<endl;
+}
+
+void subPoseDesir(const geometry_msgs::PoseStamped Pose)
+{
+  PoseDesir=Pose.pose;
+  double secs = ros::Time::now().toSec()-debut;
+  filePD <<secs << "," << PoseDesir.position.x << ","<< PoseDesir.position.y <<","<< PoseDesir.position.z <<","<< PoseDesir.orientation.x;
+  filePD <<","<< PoseDesir.orientation.y <<","<< PoseDesir.orientation.z << "," << PoseDesir.orientation.w << endl;
 }
 
 void subCommandControl(const geometry_msgs::Wrench inputMsg)
@@ -87,14 +117,6 @@ void subPoseControl(const geometry_msgs::Pose Pose)
 	double secs = ros::Time::now().toSec()-debut;
 	filePCtrl <<secs << "," << PoseCtrl.position.x << ","<< PoseCtrl.position.y <<","<< PoseCtrl.position.z <<","<< PoseCtrl.orientation.x;
 	filePCtrl <<","<< PoseCtrl.orientation.y <<","<< PoseCtrl.orientation.z << "," << PoseCtrl.orientation.w <<endl;
-}
-
-void subPoseDesir(const geometry_msgs::Pose Pose)
-{
-	PoseDesir=Pose;
-	double secs = ros::Time::now().toSec()-debut;
-	filePD <<secs << "," << PoseDesir.position.x << ","<< PoseDesir.position.y <<","<< PoseDesir.position.z <<","<< PoseDesir.orientation.x;
-	filePD <<","<< PoseDesir.orientation.y <<","<< PoseDesir.orientation.z << "," << PoseDesir.orientation.w << endl;
 }
 
 void subImu(const sensor_msgs::Imu ImuValue)
@@ -172,32 +194,39 @@ int main(int argc, char **argv)
 
  
 
-  //sprintf(rosname,"/%s/state_estimator/pose",temp_arg.c_str());
-  //ros::Subscriber subPE = node.subscribe(rosname, 100, subPoseEkf);
-  //sprintf(rosname,"/%s/state_estimator/vel",temp_arg.c_str());
-  //ros::Subscriber subV = node.subscribe(rosname, 100, subVelEKF);
+  
   sprintf(rosname,"/%s/poseStamped_gazebo",temp_arg.c_str());
   ros::Subscriber subPGaz = node.subscribe(rosname, 100, subPoseGaz);
+   sprintf(rosname,"/%s/velocity",temp_arg.c_str());
+  ros::Subscriber subVGaz = node.subscribe(rosname, 100, subVelGaz);
+  sprintf(rosname,"/%s/state_estimator/pose",temp_arg.c_str());
+  ros::Subscriber subPE = node.subscribe(rosname, 100, subPoseEkf);
+  sprintf(rosname,"/%s/state_estimator/vel",temp_arg.c_str());
+  ros::Subscriber subV = node.subscribe(rosname, 100, subVelEKF);
+  
+  sprintf(rosname,"/%s/desired_pose",temp_arg.c_str());
+  ros::Subscriber subPD = node.subscribe(rosname, 100, subPoseDesir);
+  sprintf(rosname,"/%s/traj_data",temp_arg.c_str());
+  ros::Subscriber supProp=node.subscribe(rosname,100,subtrajdes);
 
-
-  //sprintf(rosname,"/%s/command_control",temp_arg.c_str());
-  //ros::Subscriber subCC = node.subscribe(rosname, 100, subCommandControl);
-  //ros::Subscriber subCR = node.subscribe("tryphon/thrust", 100, subCommandReal);
-  //sprintf(rosname,"/%s/pose",temp_arg.c_str());
-  //ros::Subscriber subPC = node.subscribe(rosname, 100, subPoseControl);
-  //sprintf(rosname,"/%s/desired_pose",temp_arg.c_str());
-  //ros::Subscriber subPD = node.subscribe(rosname, 100, subPoseDesir);
-  //sprintf(rosname,"/%s/raw_imu",temp_arg.c_str());
-  //ros::Subscriber subI = node.subscribe(rosname, 100, subImu);
-  //sprintf(rosname,"/%s/path_info",temp_arg.c_str());
-  //ros::Subscriber subP = node.subscribe(rosname, 100, subPath);
-  //sprintf(rosname,"/%s/command_props",temp_arg.c_str());
-  //ros::Subscriber subCP = node.subscribe(rosname, 100, subCommandProps);
+  /*
+  
+  sprintf(rosname,"/%s/command_control",temp_arg.c_str());
+  ros::Subscriber subCC = node.subscribe(rosname, 100, subCommandControl);
+  ros::Subscriber subCR = node.subscribe("tryphon/thrust", 100, subCommandReal);
+  sprintf(rosname,"/%s/pose",temp_arg.c_str());
+  ros::Subscriber subPC = node.subscribe(rosname, 100, subPoseControl);
+   sprintf(rosname,"/%s/raw_imu",temp_arg.c_str());
+  ros::Subscriber subI = node.subscribe(rosname, 100, subImu);
+  sprintf(rosname,"/%s/path_info",temp_arg.c_str());
+  ros::Subscriber subP = node.subscribe(rosname, 100, subPath);
+  sprintf(rosname,"/%s/command_props",temp_arg.c_str());
+  ros::Subscriber subCP = node.subscribe(rosname, 100, subCommandProps);
   sprintf(rosname,"/%s/cubeA_pose",temp_arg.c_str());
   ros::Subscriber subSA = node.subscribe(rosname, 100, subSICKA);
   sprintf(rosname,"/%s/cubeB_pose",temp_arg.c_str());
   ros::Subscriber subSB = node.subscribe(rosname, 100, subSICKB);
-
+  */
 
 
   ros::Rate loop_rate(100);
@@ -205,17 +234,29 @@ int main(int argc, char **argv)
   temp_arg = argv[2];
   
   char buffer[100];
-  char link[100]="/home/tryphon/tryphon_data";
+  char link[100]="/home/patrick/tryphon_data";
 
-  sprintf(buffer,"%s/%s/%s_PEKF.csv",link,temp_arg.c_str(),argv[1]);
-  filePEKF.open(buffer);
-  ROS_INFO(buffer);
+  
   sprintf(buffer,"%s/%s/%s_PGAZ.csv",link,temp_arg.c_str(),argv[1]);
   filePGAZ.open(buffer);
+  ROS_INFO(buffer);
+   sprintf(buffer,"%s/%s/%s_VGAZ.csv",link,temp_arg.c_str(),argv[1]);
+  fileVGAZ.open(buffer);
+  ROS_INFO(buffer);
+  sprintf(buffer,"%s/%s/%s_PEKF.csv",link,temp_arg.c_str(),argv[1]);
+  filePEKF.open(buffer);
   ROS_INFO(buffer);
   sprintf(buffer,"%s/%s/%s_VEKF.csv",link,temp_arg.c_str(),argv[1]);
   fileVEKF.open(buffer);
   ROS_INFO(buffer);
+   sprintf(buffer,"%s/%s/%s_PD.csv",link,temp_arg.c_str(),argv[1]);
+  filePD.open(buffer);
+  ROS_INFO(buffer);
+ sprintf(buffer,"%s/%s/%s_traj.csv",link,temp_arg.c_str(),argv[1]);
+  filetraj.open(buffer);
+  ROS_INFO(buffer);
+
+  /*
   sprintf(buffer,"%s/%s/%s_CCtrl.csv",link,temp_arg.c_str(),argv[1]);
   fileCCtrl.open(buffer);
   ROS_INFO(buffer);
@@ -225,10 +266,7 @@ int main(int argc, char **argv)
   sprintf(buffer,"%s/%s/%s_PCtrl.csv",link,temp_arg.c_str(),argv[1]);
   filePCtrl.open(buffer);
   ROS_INFO(buffer);
-  sprintf(buffer,"%s/%s/%s_PD.csv",link,temp_arg.c_str(),argv[1]);
-  filePD.open(buffer);
-  ROS_INFO(buffer);
-  sprintf(buffer,"%s/%s/%s_I.csv",link,temp_arg.c_str(),argv[1]);
+   sprintf(buffer,"%s/%s/%s_I.csv",link,temp_arg.c_str(),argv[1]);
   fileI.open(buffer);
   ROS_INFO(buffer);
   sprintf(buffer,"%s/%s/%s_Path.csv",link,temp_arg.c_str(),argv[1]);
@@ -243,20 +281,24 @@ int main(int argc, char **argv)
   sprintf(buffer,"%s/%s/%s_SICKB.csv",link,temp_arg.c_str(),argv[1]);
   fileSICKB.open(buffer);
   ROS_INFO(buffer);
-
-  filePEKF   << "time,x,y,z,qx,qy,qz,qw" << endl  ;
+*/
   filePGAZ   << "time,x,y,z,qx,qy,qz,qw" << endl  ;
+  fileVGAZ   << "time,x,y,z,qx,qy,qz,qw" << endl  ;
+  filePEKF   << "time,x,y,z,qx,qy,qz,qw" << endl  ;
   fileVEKF   << "time,vx,vy,vz,wx,wy,wz" << endl  ;
+  filePD     << "time,x,y,z,qx,qy,qz,qw" << endl  ;
+  filetraj   << "time,x,y,z,qx,qy,qz,qw" << endl  ;  
+  /*
+  fileProp   << "time,x,y,z,qx,qy,qz,qw" << endl  ;
   fileCCtrl  << "time,fx,fy,fz,tx,ty,tz" << endl  ;
   fileCRl    << "time,fx,fy,fz,tx,ty,tz" << endl  ;
   filePCtrl  << "time,x,y,z,qx,qy,qz,qw" << endl  ;
-  filePD     << "time,x,y,z,qx,qy,qz,qw" << endl  ;
-  fileI      << "time,ax,ay,az,gx,gy,gz" << endl  ;
+    fileI      << "time,ax,ay,az,gx,gy,gz" << endl  ;
   filePath   << "time,pathNb,step,path"  << endl  ;
   fileCP     << "time,p0,p1,p2,p3,p4,p5,p6,p7" << endl  ;
   fileSICKA   << "time,x,y,z,qx,qy,qz,qw" << endl  ;
   fileSICKB   << "time,x,y,z,qx,qy,qz,qw" << endl  ;
-
+*/
 
 
 

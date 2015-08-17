@@ -5,10 +5,10 @@
       <!-- set a private parameter for the node -->
      
       <param name="ip" value="192_168_10_243" />
-      <param name="pos_src" type="int" value="1" />
+      <param name="pos_src" type="int" value="0" />
 
       <!-- Sensors available 0: no 1: yes-->
-      <param name="MCPTAM" value="0" />
+      <param name="MCPTAM" value="1" />
       <param name="IMU" value="1" />
       <param name="SICK" value="0" />
       <param name="COMPASS" value="0" />

@@ -167,7 +167,7 @@ int main(int argc, char **argv)
   // Publishers //
   ros::Publisher State_pub = node.advertise<controls::State>("state_trajectory",1);
   ros::Publisher Path_pub = node.advertise<geometry_msgs::Pose2D>("path_info",1);
-
+ros::Publisher data_pub = node.advertise<geometry_msgs::Pose>("traj_data",1);
 
 
   // Subscribers //
@@ -287,12 +287,12 @@ int main(int argc, char **argv)
 
   // Rotation parameters //
   double omega=0.0333333333333333333333333333333;
-  double r=2.5;
+  double r=2;
   double r1=2;
   double r2=0.5;
   double t=0;
 
-
+geometry_msgs::Pose trajp;
   //////////////////////
 
   /// Definition of the coeffs for the specials paths ///
@@ -363,7 +363,7 @@ int main(int argc, char **argv)
           t= ros::Time::now().toSec() - path_debut_time;
           ROS_INFO("t= %f; omega= %f; sin= %f", t, omega,r*sin(omega*t) );
 
-
+          /*
           posdesir(0)=r*sin(omega*t);
           posdesir(1)=r*cos(omega*t);
           posdesir(2)=2.5;
@@ -375,6 +375,20 @@ int main(int argc, char **argv)
           acceldesir(0)=-omega*omega*r*sin(omega*t);
           acceldesir(1)=-omega*omega*r*cos(omega*t);
           acceldesir(2)=0;
+          */
+
+          posdesir(0)=-3+r*sin(omega*t);
+          posdesir(1)=-3.5+r*cos(omega*t);
+          posdesir(2)=2.5;
+
+          veldesir(0)=omega*r*cos(omega*t);
+          veldesir(1)=-omega*r*sin(omega*t);
+          veldesir(2)=0;
+
+          acceldesir(0)=-omega*omega*r*sin(omega*t);
+          acceldesir(1)=-omega*omega*r*cos(omega*t);
+          acceldesir(2)=0;
+
         }
         if(pathNb==4)
         {
@@ -870,6 +884,8 @@ int main(int argc, char **argv)
     statedesir.noInt=noInt;
     statedesir.ctrlNb=ctrlNb;
 
+    trajp=vects2pose(posdesir,angledesir);
+    data_pub.publish(trajp);
 
     State_pub.publish(statedesir);
     Path_pub.publish(path_info);

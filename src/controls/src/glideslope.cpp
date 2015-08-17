@@ -17,7 +17,7 @@
 #include <signal.h>
 #include "std_msgs/Bool.h"
 #include <dynamic_reconfigure/server.h>
-#include <controls/controlConfig.h>
+#include <controls/glideslopeConfig.h>
 #include "controls/State.h"
 
 #include "controls/Commands.h"
@@ -29,6 +29,7 @@ ros::Publisher statedes_chaser;
 ros::Publisher statedes_target;
 
 ros::Publisher magnet;
+
 
 
 //tryphon 244 has docking on x-direction, confirmed
@@ -55,7 +56,15 @@ bool count_targ1=true;//this will ensure the orinal position of target is mainta
 std_msgs::Bool magnet_on;
 bool start_T=true; //this will confiRm when target pose has been acquired at least once 
 bool start_C=true;
-
+bool starting_now=false; //starts with dynamic reconfigure
+//////////glideslope parameters global for dynamic changes
+double a_factor=.01; //glideslope <0, should probably be some function of initial distance since it controls the period
+double a;
+double x_initial; //should actually be once the tryphons are alligned
+double v_max; //maximum allowed velocity upon docking
+double v_init; 
+double period; //The glideslope algorithm has a period (TBD)
+///////////end of glideslope parameters
 
 Eigen::Matrix3d CPM(Eigen::Vector3d vect) // return cross product matrix
 {
@@ -163,6 +172,17 @@ void subVel_target(const geometry_msgs::TwistStamped TwistT)
 target_rotation=TwistT.twist.angular.z;
 }
 
+void callback(controls::glideslopeConfig &config, uint32_t level) 
+{
+	ROS_INFO("Reconfigure Request: a_factor: %f, v_max: %f",
+             config.a_factor,
+             config.v_max);
+
+starting_now=config.starting;
+a_factor=config.a_factor;
+v_max=config.v_max;
+}
+
 void pose_zero(geometry_msgs::PoseStamped &p) //set any pose msg to zero
 {
 	p.pose.position.x=0;
@@ -194,7 +214,7 @@ double angle_chaser_z;
 //Eigen::Quaterniond quat(Pose.orientation.w,Pose.orientation.x,Pose.orientation.y,Pose.orientation.z);
 angle_chaser_z=Pose.pose.orientation.z;    ///atan2(2*(quat.w()*quat.z()+quat.x()*quat.y()),1-2*(quat.z()*quat.z()+quat.y()*quat.y()));
 
-if (abs(angle_chaser_z-yaw-PI/2)<=yaw_error_allowed) //abs(angle_chaser_z-yaw-PI/2) ensure last term is (-) of that added to the one on pdes_target and chaser 
+if (abs(angle_chaser_z-yaw)<=yaw_error_allowed) //abs(angle_chaser_z-yaw-PI/2) ensure last term is (-) of that added to the one on pdes_target and chaser 
 	{
 	return true;
 	}
@@ -236,7 +256,7 @@ else
     return 0;
   }
 
-ros::Rate loop_rate(10); 
+
 
 /*
 temp_arg = argv[1];
@@ -273,7 +293,13 @@ ros::Subscriber supP_targ = node.subscribe(rosname, 1 , subPose_target); //must 
 sprintf(rosname,"/%s/state_estimator/vel",rosnameT);
 ros::Subscriber supV_targ = node.subscribe(rosname, 1 , subVel_target);
 
+dynamic_reconfigure::Server<controls::glideslopeConfig> server;
+dynamic_reconfigure::Server<controls::glideslopeConfig>::CallbackType f;
 
+ f = boost::bind(&callback, _1, _2);
+ server.setCallback(f);
+
+ros::Rate loop_rate(10); 
 
 pose_zero(p_chaser);
 pose_zero(p_target);
@@ -286,21 +312,17 @@ twist_zero(veldes_target);
 
 bool path_debut=true;
 ///////////glideslope parameters
-double a; //glideslope <0, should probably be some function of initial distance since it controls the period
-double x_initial; //should actually be once the tryphons are alligned
-double v_max; //maximum allowed velocity upon docking
-double v_init; 
-double period; //The glideslope algorithm has a period (TBD)
-///////////end of glideslope parameters
-
+double temp_angle1,temp_angle2;
 double yawd_target;
 double yawd_chaser;
 double r,r_dot;
 
 while (ros::ok())
-	{
+{
 	ros::spinOnce(); 
 	
+if (starting_now)
+	{
 	if(!start_T && !start_C)
 		{
 
@@ -310,55 +332,66 @@ while (ros::ok())
 		if(count_targ1) //count arg becomes false after first loop
 			{
 			yawd_chaser=atan2(p_rel.pose.position.y,p_rel.pose.position.x); //finds yaw desired, careful for 0,0, working in -PI to PI
+			
 			if(yawd_chaser<=0)
-				
-				{ yawd_target=PI+yawd_chaser;
-					
+				{ 
+				yawd_target=PI+yawd_chaser;	
+				ROS_INFO("yawd_target: <0: %f", yawd_target);
 				} //changed from - to +     //playing around with PI to keep mcptam localized, 
 			else
-				{ yawd_target=yawd_chaser-PI;
-					
+				{ 
+				yawd_target=yawd_chaser-PI;
+				ROS_INFO("yawd_target: >0: %f", yawd_target);
 				} //finds the yawd of target, make sure >PI works out, might be wrong
 		
-
+			
 		//set initial position where chaser and target will face each other
 			p_target_initial=p_target;
 			pdes_target.pose.position.x=p_target.pose.position.x;
 			pdes_target.pose.position.y=p_target.pose.position.y;
 			pdes_target.pose.position.z=p_target.pose.position.z;
-			pdes_target.pose.orientation.z=yawd_target+PI/2; //add angle to choose face for docking
+			
+			temp_angle1=yawd_target+PI/2;
+			if (temp_angle1>PI) {temp_angle1=temp_angle1-2*PI;}
+			ROS_INFO("temp_angle1: %f, yawd:%f",temp_angle1,yawd_target);
+			pdes_target.pose.orientation.z=temp_angle1; //+PI/2; //add angle to choose face for docking
 
 			pdes_chaser.pose.position.x=p_chaser.pose.position.x;
 			pdes_chaser.pose.position.y=p_chaser.pose.position.y;
 			pdes_chaser.pose.position.z=p_target.pose.position.z; //chaser goes to height of target
-			pdes_chaser.pose.orientation.z=yawd_chaser+PI/2; //add an angle to choose a face for docking
-
+			
+			temp_angle2=yawd_chaser+PI/2;
+			if (temp_angle2>PI) {temp_angle2=temp_angle2-2*PI;}
+			ROS_INFO("temp_angle2: %f, yawc:%f",temp_angle2,yawd_chaser);
+			pdes_chaser.pose.orientation.z=temp_angle2; //add an angle to choose a face for docking
+			
 			count_targ1=false;
 			}
 
-		if (facing_error(p_target,yawd_target) && facing_error(p_chaser,yawd_chaser)) //this deteRmines whether the two tryphons are close to facing each other
+		if (facing_error(p_target,temp_angle1) && facing_error(p_chaser,temp_angle2)) //this deteRmines whether the two tryphons are close to facing each other
 			{
 
 			if(chaser_rotation<0.03 && chaser_rotation>-0.03 && target_rotation<0.03 && target_rotation>-0.03) //abs() wasn't working
-			{
+				{
 				facing_each_other=true;
-			}// compare the z angles and ensure facing each other as well as check that no overshoot is occuring
+				}// compare the z angles and ensure facing each other as well as check that no overshoot is occuring
 			} 
 
 		if (facing_each_other) //glideslope loop for which begins once tryphons are facing each other
 			{	
-		ROS_INFO("Facing each other now");
+
 			if (path_debut) // sets up the inital conditions of glideslope
 				{
-				
+				ROS_INFO("Facing each other now"); //moved slightly after to only show up once
+
     			path_debut_time=ros::Time::now().toSec();
    
-				x_initial=-sqrt(pow(p_rel.pose.position.x,2.0)+pow(p_rel.pose.position.y,2.0))+sidelength_cube; //noRm of the relative velocity vector
-				a=(.01*x_initial); //define slope as a function of x_initial, (a distance of 4 m should take more time for docking than 3m)
-				v_max=.02; //maximum allowed velocity upon docking
-				v_init=a*x_initial+v_max; 
+				x_initial=-sqrt(pow(p_rel.pose.position.x,2.0)+pow(p_rel.pose.position.y,2.0))+sidelength_cube; //add sidelength here for x initial to be distance between two faces, sidelength must be added to r later
+				a=(a_factor*x_initial); //define slope as a function of x_initial, (a distance of 4 m should take more time for docking than 3m) //maximum allowed velocity upon docking
+				//v_max=.02;
+				v_init=(a*x_initial+v_max); 
 				period=1.0/a*log(v_max/v_init); //The glideslope algorithm has a period (TBD)
-				ROS_INFO("Period=%f", period); //this must be possible with force of thrusters
+				ROS_INFO("Period=%f, V_init=%f, a=%f, x_inital=%f", period, v_init, a ,x_initial); //this must be possible with force of thrusters
 				magnet_on.data=true;
 				path_debut=false;
 				}
@@ -366,21 +399,26 @@ while (ros::ok())
 			t= ros::Time::now().toSec() - path_debut_time; 
 
 			//r is a negative number measured from the target and r_dot is positive
-			r=x_initial*exp(a*t)+v_max/a*(exp(a*t)-1); //x_initial should be defined as distance from
+			double wiggle_room=0.2; //this is to provide some adjustement so that the faces slightly overlap for docking, with 1-exponential function so starts as 0 and effect more towards end
+			r=x_initial*exp(a*t)+v_max/a*(exp(a*t)-1)-(sidelength_cube-wiggle_room*(1-exp(-t))); //x_initial should be defined as distance from //subtract sidelength from r so that final distance is fromf aces and not center of masses
 			r_dot=a*r+v_max;
 
+			ROS_INFO("r: %f,r_dot:%f",r, r_dot);
 			//calulcate desired position and velocity of chaser
-			if(abs(yawd_target)<PI/2) //Addition of r_target with r_x, r_y of glideslope decomposed using yaw of target
+			
+			if(yawd_target<PI/2 && yawd_target>-PI/2) //Addition of r_target with r_x, r_y of glideslope decomposed using yaw of target
 				{
-				pdes_chaser.pose.position.x=p_target_initial.pose.position.x-r*cos(yawd_target);//will have to play around with this to make sure its proper
-				pdes_chaser.pose.position.y=p_target_initial.pose.position.y-r*sin(yawd_target);
+				ROS_INFO("check1");
+				pdes_chaser.pose.position.x=p_target_initial.pose.position.x-(r)*cos(yawd_target);//will have to play around with this to make sure its proper
+				pdes_chaser.pose.position.y=p_target_initial.pose.position.y-(r)*sin(yawd_target);
 				veldes_chaser.twist.linear.x=r_dot*cos(yawd_chaser);
 				veldes_chaser.twist.linear.y=r_dot*sin(yawd_chaser);
 				}
 			else
 				{
-				pdes_chaser.pose.position.x=p_target_initial.pose.position.x+r*sin(yawd_target);
-				pdes_chaser.pose.position.y=p_target_initial.pose.position.y+r*cos(yawd_target);	
+					ROS_INFO("check2");
+				pdes_chaser.pose.position.x=p_target_initial.pose.position.x-(r)*sin(yawd_target);
+				pdes_chaser.pose.position.y=p_target_initial.pose.position.y-(r)*cos(yawd_target);	
 				veldes_chaser.twist.linear.x=r_dot*cos(yawd_target);
 				veldes_chaser.twist.linear.y=r_dot*sin(yawd_target);
 				}
@@ -397,67 +435,72 @@ while (ros::ok())
 
 
 ///set up to send to new control node
-posdesirT(0)=pdes_target.pose.position.x;
-posdesirT(1)=pdes_target.pose.position.y;
-posdesirT(2)=pdes_target.pose.position.z;
-posdesirC(0)=pdes_chaser.pose.position.x;
-posdesirC(1)=pdes_chaser.pose.position.y;
-posdesirC(2)=pdes_chaser.pose.position.z;
+		posdesirT(0)=pdes_target.pose.position.x;
+		posdesirT(1)=pdes_target.pose.position.y;
+		posdesirT(2)=pdes_target.pose.position.z;
+		posdesirC(0)=pdes_chaser.pose.position.x;
+		posdesirC(1)=pdes_chaser.pose.position.y;
+		posdesirC(2)=pdes_chaser.pose.position.z;
 
-angledesirT(0)=pdes_target.pose.orientation.x;
-angledesirT(1)=pdes_target.pose.orientation.y;
-angledesirT(2)=pdes_target.pose.orientation.z;
-angledesirC(0)=pdes_chaser.pose.orientation.x;
-angledesirC(1)=pdes_chaser.pose.orientation.y;
-angledesirC(2)=pdes_chaser.pose.orientation.z;
+		angledesirT(0)=pdes_target.pose.orientation.x;
+		angledesirT(1)=pdes_target.pose.orientation.y;
+		angledesirT(2)=pdes_target.pose.orientation.z;
+		angledesirC(0)=pdes_chaser.pose.orientation.x;
+		angledesirC(1)=pdes_chaser.pose.orientation.y;
+		angledesirC(2)=pdes_chaser.pose.orientation.z;
 
-veldesirT(0)=veldes_target.twist.linear.x;
-veldesirT(1)=veldes_target.twist.linear.y;
-veldesirT(2)=veldes_target.twist.linear.z;
-veldesirC(0)=veldes_chaser.twist.linear.x;
-veldesirC(1)=veldes_chaser.twist.linear.y;
-veldesirC(2)=veldes_chaser.twist.linear.z;
+		veldesirT(0)=veldes_target.twist.linear.x;
+		veldesirT(1)=veldes_target.twist.linear.y;
+		veldesirT(2)=veldes_target.twist.linear.z;
+		veldesirC(0)=veldes_chaser.twist.linear.x;
+		veldesirC(1)=veldes_chaser.twist.linear.y;
+		veldesirC(2)=veldes_chaser.twist.linear.z;
 
 
-aveldesirT(0)=veldes_target.twist.angular.x;
-aveldesirT(1)=veldes_target.twist.angular.y;
-aveldesirT(2)=veldes_target.twist.angular.z;
-aveldesirC(0)=veldes_chaser.twist.angular.x;
-aveldesirC(1)=veldes_chaser.twist.angular.y;
-aveldesirC(2)=veldes_chaser.twist.angular.z;
+		aveldesirT(0)=veldes_target.twist.angular.x;
+		aveldesirT(1)=veldes_target.twist.angular.y;
+		aveldesirT(2)=veldes_target.twist.angular.z;
+		aveldesirC(0)=veldes_chaser.twist.angular.x;
+		aveldesirC(1)=veldes_chaser.twist.angular.y;
+		aveldesirC(2)=veldes_chaser.twist.angular.z;
 
 ///end set up
 
 ////////////////
 
-    statedesirT.header.stamp=ros::Time::now();
-    statedesirT.pose=vects2pose(posdesirT,angledesirT);
-    statedesirT.vel=vects2twist(veldesirT,aveldesirT);
-    //statedesir.accel=vects2twist(acceldesir,angleAcceldesir);
-    statedesirT.maxThrust=maxThrust;
-    statedesirT.GainCP=GainCP;
-    statedesirT.noInt=noInt;
+    	statedesirT.header.stamp=ros::Time::now();
+    	statedesirT.pose=vects2pose(posdesirT,angledesirT);
+    	statedesirT.vel=vects2twist(veldesirT,aveldesirT);
+    	//statedesir.accel=vects2twist(acceldesir,angleAcceldesir);
+    	statedesirT.maxThrust=maxThrust;
+    	statedesirT.GainCP=GainCP;
+    	statedesirT.noInt=noInt;
 
 
-    statedesirC.header.stamp=ros::Time::now();
-    statedesirC.pose=vects2pose(posdesirC,angledesirC);
-    statedesirC.vel=vects2twist(veldesirC,aveldesirC);
-    //statedesir.accel=vects2twist(acceldesir,angleAcceldesir);
-    statedesirC.maxThrust=maxThrust;
-    statedesirC.GainCP=GainCP;
-    statedesirC.noInt=noInt;
+    	statedesirC.header.stamp=ros::Time::now();
+    	statedesirC.pose=vects2pose(posdesirC,angledesirC);
+    	statedesirC.vel=vects2twist(veldesirC,aveldesirC);
+    	//statedesir.accel=vects2twist(acceldesir,angleAcceldesir);
+    	statedesirC.maxThrust=maxThrust;
+    	statedesirC.GainCP=GainCP;
+    	statedesirC.noInt=noInt;
 /////////////
 
 
 
-	statedes_target.publish(statedesirT); //what is sent has orientation in euler z=yaw
-	statedes_chaser.publish(statedesirC); //what is sent has orientation in euler z=yaw
-	magnet.publish(magnet_on);
+		statedes_target.publish(statedesirT); //what is sent has orientation in euler z=yaw
+		statedes_chaser.publish(statedesirC); //what is sent has orientation in euler z=yaw
+		magnet.publish(magnet_on);
 
-	if (t>=period){break;} //break the loop after period so the desired pos,vel doesn't keep changing
-	loop_rate.sleep();
-	}	
-
+		if (t>=period && facing_each_other)
+			{
+			ROS_INFO("Algorithm ending");	 //might have to put desired velocity to zero before algo finishes
+			break;
+			} //break the loop after period so the desired pos,vel doesn't keep changing
+	
+		}
 	}
+loop_rate.sleep();
+}
 return 0;
 }

@@ -39,7 +39,7 @@ tests::props_command props;
 double maxForce=0.63;
 double minForce=-0.32;
 double L=1.115;
-double Cm=0.05;
+double Cm=0.17;
 double maxPrct;
 double nbMotor=0;
 
@@ -102,6 +102,26 @@ double Nocrash(double f1,double f0)
 }
 
 
+
+double RealForce(double f)
+{
+    double force=f;
+    if(f>0)
+    {
+      if(fabs(force)<maxForce*0.05){force=0;} 
+      if(f>maxForce) {force=maxForce;}
+    }
+    else
+    {
+      if(fabs(force)<-minForce*0.05){force=0;}
+      if(f<minForce) {force=minForce;}
+    }
+
+  return force;
+}
+
+
+/*
 double RealForce(double f)
 {
     double force=f;
@@ -116,6 +136,7 @@ double RealForce(double f)
 
   return force;
 }
+*/
 
 double AvoidNoise(double c)
 {
@@ -135,7 +156,7 @@ double force2command(double f)
         else
         {
             command=247.6222-sqrt(fabs(61316.75-92984.43*(f+0.0175878)));
-            if(command<0){command=0;}
+            if(command<0 || command==0){command=0;}
             return command;
         }
     }
@@ -148,7 +169,7 @@ double force2command(double f)
         else
         {
             command=-244.3941+sqrt(fabs(59728.499+181679.79*(f-0.00951542)));
-            if(command>0){command=0;}
+            if(command>0 || command==0){command=0;}
             return command;
         }
     }
@@ -180,7 +201,7 @@ void Scale(double (&vP)[12][3])
 
 void Smooth(double (&vP)[12][3],double (&vPraw)[12][3])
 {
-  for(int i=0;i<8;i++)
+  for(int i=0;i<12;i++)
   {
     vP[i][2]=1.16826*vP[i][1]-0.42411820*vP[i][0]+0.0639643*vPraw[i][2]+0.127929*vPraw[i][1]+0.0639643*vPraw[i][0];
   }
@@ -197,7 +218,7 @@ double Saturation(double command)
 
 void UpdateProps(double (&vP)[12][3])
 {
-  for(int i=0; i<8;i++)
+  for(int i=0; i<12;i++)
   {
     for(int k=0; k<2;k++)
     {
@@ -282,10 +303,10 @@ int main(int argc, char **argv)
       if(nbMotor<9)
       {
         vPraw[0][2]=((double)(input.force.x/2.000000+input.torque.z/(4.000000*L)));  // x right
-        vPraw[1][2]=((double)(input.force.x/2.000000-input.torque.z/(4.000000*L)));  // x left
+        vPraw[1][2]=((double)(input.force.x/2.000000-input.torque.z/(4.000000*L)));  // x left 
         vPraw[2][2]=((double)(input.force.y/2.000000+input.torque.z/(4.000000*L)));  // y front
         vPraw[3][2]=((double)(input.force.y/2.000000-input.torque.z/(4.000000*L)));  // y back
-        vPraw[4][2]=((double)(input.force.z/4.000000+(+input.torque.x-input.torque.y-(L-Cm)*((input.force.x)+(input.force.y)))/(4.000000*L)));   // z front left
+        vPraw[4][2]=((double)(input.force.z/4.000000+(input.torque.x-input.torque.y-(L-Cm)*((input.force.x)+(input.force.y)))/(4.000000*L)));   // z front left
         vPraw[5][2]=((double)(input.force.z/4.000000+(-input.torque.x-input.torque.y-(L-Cm)*((input.force.x)-(input.force.y)))/(4.000000*L)));  // z front right
         vPraw[6][2]=((double)(input.force.z/4.000000+(-input.torque.x+input.torque.y-(L-Cm)*(-(input.force.x)-(input.force.y)))/(4.000000*L)));   // z back left
         vPraw[7][2]=((double)(input.force.z/4.000000+(input.torque.x+input.torque.y-(L-Cm)*(-(input.force.x)+(input.force.y)))/(4.000000*L)));  // z back right
@@ -299,9 +320,9 @@ int main(int argc, char **argv)
         vPzraw[2][2]=((double)(fz.force.y/2.000000+fz.torque.z/(4.000000*L)));  // y front
         vPzraw[3][2]=((double)(fz.force.y/2.000000-fz.torque.z/(4.000000*L)));  // y back
         vPzraw[4][2]=((double)(fz.force.z/4.000000+(fz.torque.x-fz.torque.y-(L-Cm)*((fz.force.x)+(fz.force.y)))/(4.000000*L)));   // z front left
-        vPzraw[5][2]=((double)(fz.force.z/4.000000+(-fz.torque.x+fz.torque.y-(L-Cm)*((fz.force.x)-(fz.force.y)))/(4.000000*L)));  // z front right
+        vPzraw[5][2]=((double)(fz.force.z/4.000000+(-fz.torque.x-fz.torque.y-(L-Cm)*((fz.force.x)-(fz.force.y)))/(4.000000*L)));  // z front right
         vPzraw[6][2]=((double)(fz.force.z/4.000000+(-fz.torque.x+fz.torque.y-(L-Cm)*(-(fz.force.x)-(fz.force.y)))/(4.000000*L)));   // z back left
-        vPzraw[7][2]=((double)(fz.force.z/4.000000+(fz.torque.x-fz.torque.y-(L-Cm)*(-(fz.force.x)+(fz.force.y)))/(4.000000*L)));  // z back right
+        vPzraw[7][2]=((double)(fz.force.z/4.000000+(fz.torque.x+fz.torque.y-(L-Cm)*(-(fz.force.x)+(fz.force.y)))/(4.000000*L)));  // z back right
         vPzraw[8][2]=0;  // x top right
         vPzraw[9][2]=0;  // x top left
         vPzraw[10][2]=0;  // y top front
@@ -375,14 +396,15 @@ int main(int argc, char **argv)
       UpdateProps(vPzraw);
       UpdateProps(vPz);
 
-      for(int i=0; i<8;i++)
+      for(int i=0; i<12;i++)
       {
           commands[i][2]=vP[i][2]+vPz[i][2];
       }
 
       for(int i=0; i<12;i++)
       {
-        props.commands[i]=AvoidNoise(Saturation(Nocrash(force2command(RealForce(commands[i][2])),props.commands[i])));
+        //props.commands[i]=AvoidNoise(Saturation(Nocrash(force2command(RealForce(commands[i][2])),props.commands[i])));
+        props.commands[i]=Saturation(Nocrash(force2command(RealForce(commands[i][2])),props.commands[i]));
       }
       props.header.stamp=ros::Time::now();
 
