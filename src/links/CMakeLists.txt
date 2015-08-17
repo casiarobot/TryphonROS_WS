@@ -24,7 +24,7 @@ include_directories(include ${catkin_INCLUDE_DIRS})
 
 add_executable(link_imubuff src/link_imubuff.cpp)
 target_link_libraries(link_imubuff  ${catkin_LIBRARIES})
-add_dependencies(link_imubuff  sensor_msgs ${PROJECT_NAME}_gencf)
+add_dependencies(link_imubuff  sensor_msgs ${PROJECT_NAME}_gencpp)
 
 
 #%EndTag(FULLTEXT)%

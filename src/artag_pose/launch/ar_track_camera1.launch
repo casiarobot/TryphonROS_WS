@@ -1,0 +1,16 @@
+<launch>
+	<group ns="192_168_10_243">
+		<group ns="artags">
+			<!-- Marker tracker -->
+			<arg name="marker_size" default="100" />
+			<arg name="max_new_marker_error" default="0.08" />
+			<arg name="max_track_error" default="0.2" />
+			<arg name="cam_image_topic" default="/192_168_10_243/cameras/camera1/image_raw" />
+			<arg name="cam_info_topic" default="/192_168_10_243/cameras/camera1/camera_info" />	
+			<arg name="output_frame" default="camera1" />
+
+			<node ns="artag1" name="ar_track_alvar" pkg="ar_track_alvar" type="individualMarkersNoKinect" respawn="false" output="screen" args="$(arg marker_size) $(arg max_new_marker_error) $(arg max_track_error) $(arg cam_image_topic) $(arg cam_info_topic) $(arg output_frame)" />
+		</group>
+	</group>
+	<node pkg="tf" type="static_transform_publisher" name="mav_to_camera" output="screen" args="0 0 0 0.785398163 0 0 mav camera1 10" />
+</launch>
