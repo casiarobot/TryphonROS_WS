@@ -19,6 +19,7 @@ ArtagPoseNode::ArtagPoseNode():nodeHandle("~"){
 	}
 }
 ArtagPoseNode::~ArtagPoseNode(){
+	artagSubs.clear();
 	delete markerConfig;
 }
 
@@ -38,16 +39,17 @@ void ArtagPoseNode::loadConfig(){
 
 void ArtagPoseNode::createSubscribers(){
 	// Get topic list from parameter
-	std::vector<std::string> camera_topics = loadCameraTopics();
+	//std::vector<std::string> camera_topics = loadCameraTopics();
 
 	// Bypass the Yaml configuration for debugging
-	//std::vector<std::string> camera_topics;
-	//camera_topics.push_back("/192_168_10_243/artags/artag0/ar_pose_marker");
+	std::vector<std::string> camera_topics;
+	camera_topics.push_back("/192_168_10_243/artags/artag1/ar_pose_marker");
 
 	// for each camera topics create a subscriber
 	std::vector<std::string>::iterator topic_name;
 	for(topic_name = camera_topics.begin(); topic_name != camera_topics.end(); topic_name++){
-		artagSubs.push_back(ArtagSubscriber(*topic_name, markersPose, nodeHandle));
+		ArtagSubPtr ptr(new ArtagSubscriber(*topic_name, markersPose, nodeHandle));
+		artagSubs.push_back(ptr);
 	}
 }
 

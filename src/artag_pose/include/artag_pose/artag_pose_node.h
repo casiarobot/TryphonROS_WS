@@ -20,6 +20,8 @@
 #include "artag_pose/yaml_config_loader.h"
 #include "artag_pose/tf_config_loader.h"
 
+
+typedef boost::shared_ptr<ArtagSubscriber> ArtagSubPtr;
 class ArtagPoseNode{
 
 	ros::NodeHandle nodeHandle;
@@ -32,7 +34,7 @@ class ArtagPoseNode{
 	ConfigLoader* markerConfig;
 	MarkersPose markersPose;
 
-	std::vector<ArtagSubscriber> artagSubs;
+	std::vector<ArtagSubPtr> artagSubs;
 public:
 	ArtagPoseNode();
 	~ArtagPoseNode();

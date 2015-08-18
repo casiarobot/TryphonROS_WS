@@ -1,4 +1,5 @@
 #include <artag_pose/artag_subscriber.h>
+#include <artag_subscriber.h>
 #include "ros/ros.h"
 
 ArtagSubscriber::ArtagSubscriber(const std::string& topic_name,
@@ -11,10 +12,12 @@ lastReception(ros::Time::now())
 {
 	ROS_INFO_STREAM("New ArtagSubscriber for " << topic_name);
 
+
+
 	timer = nh.createTimer(ros::Duration(5), &ArtagSubscriber::timerCallback, this);
 
 	// Subscribe to topic
-	nh.subscribe<ar_track_alvar::AlvarMarkers>(
+	sub = nh.subscribe<ar_track_alvar::AlvarMarkers>(
 								topic_name,
 								1,
 								&ArtagSubscriber::artagCallback,
@@ -33,9 +36,14 @@ void ArtagSubscriber::lookupCameraTf(){
 
 void ArtagSubscriber::timerCallback(const ros::TimerEvent& event){
 	ros::Duration t = ros::Time::now() - lastReception;
-	if(receiveIsFirstMsg && t > ros::Duration(5.0))
-		ROS_WARN_STREAM("Topic \"" << topicName
-						<< "\" has not respond for " << t.toSec() << "s");
+	if(t > ros::Duration(5.0)){
+		if(!receiveIsFirstMsg)
+			ROS_INFO_STREAM("Topic \"" << topicName
+							<< "\" has not respond for " << t.toSec() << "s");
+		else
+			ROS_WARN_STREAM("Topic \"" << topicName
+							<< "\" still has not received is first msg");
+	}
 }
 
 void ArtagSubscriber::artagCallback(const ar_track_alvar::AlvarMarkers::ConstPtr& msg){
