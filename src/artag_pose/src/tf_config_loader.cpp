@@ -13,11 +13,11 @@ void TfConfigLoader::load(int numMarkers){
 	char tfName[100];
 
 	// The first tf is always unreachable on the first try
-	try{
+	/*try{
 		listener.waitForTransform("/cafeteria", "/cafeteria", ros::Time(0), ros::Duration(1.0));
 		listener.lookupTransform("/cafeteria", "/cafeteria", ros::Time(0), stampedTf);
 	}
-	catch (tf::TransformException &ex) {}
+	catch (tf::TransformException &ex) {}(*/
 
 	// The id start at 1
 	for(int i = 0; i < numMarkers; i++){
@@ -33,12 +33,12 @@ void TfConfigLoader::load(int numMarkers){
 			continue;
 		}
 		tf::transformStampedTFToMsg(stampedTf, stampedTfMsg);
-		m.insert(i, stampedTfMsg.transform);
+		m->insert(i, stampedTfMsg.transform);
 		ROS_INFO_STREAM("Tf retrieve for " << tfName);
 	}
 
 }
 
-MarkersPose TfConfigLoader::parse(){
+MarkersPosePtr TfConfigLoader::parse(){
 	return m;
 }

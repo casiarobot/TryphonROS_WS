@@ -36,6 +36,6 @@ void YamlConfigLoader::load(int numMarkers){
 	}*/
 }
 
-MarkersPose YamlConfigLoader::parse(){
-	return MarkersPose();
+MarkersPosePtr YamlConfigLoader::parse(){
+	return m;
 }

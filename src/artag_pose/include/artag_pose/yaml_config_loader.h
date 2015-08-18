@@ -19,7 +19,7 @@ public:
 	YamlConfigLoader(){}
 	YamlConfigLoader(ros::NodeHandle* nodeHandle);
 	void load(int numMarkers);
-	MarkersPose parse();
+	MarkersPosePtr parse();
 private:
 	ros::NodeHandle* nodeHandle;
 };

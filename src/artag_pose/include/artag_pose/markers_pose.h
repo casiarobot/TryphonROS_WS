@@ -6,6 +6,7 @@
 #include <geometry_msgs/Pose.h>
 #include <geometry_msgs/Transform.h>
 
+
 class MarkerPose
 {
 public:
@@ -80,5 +81,7 @@ public:
 private:
 	std::map<unsigned int, MarkerPose> map;
 };
+
+typedef boost::shared_ptr<MarkersPose> MarkersPosePtr;
 
 #endif // MARKERSPOSE_H

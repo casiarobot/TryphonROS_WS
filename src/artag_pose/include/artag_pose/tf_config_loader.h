@@ -17,7 +17,7 @@ class TfConfigLoader : public ConfigLoader
 public:
 	TfConfigLoader();
 	void load(int numMarkers);
-	MarkersPose parse();
+	MarkersPosePtr parse();
 };
 
 #endif // TFCONFIGLOADER_H

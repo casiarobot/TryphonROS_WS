@@ -6,12 +6,14 @@
 class ConfigLoader
 {
 protected:
-	MarkersPose m;
+	MarkersPosePtr m;
 
 public:
-	ConfigLoader(){}
+	ConfigLoader():
+		m(new MarkersPose)
+	{}
 	virtual void load(int numMarkers) = 0;
-	virtual MarkersPose parse() = 0;
+	virtual MarkersPosePtr parse() = 0;
 };
 
 #endif // CONFIGLOADER_H

@@ -32,7 +32,7 @@ class ArtagPoseNode{
 	int numMarkers;
 
 	ConfigLoader* markerConfig;
-	MarkersPose markersPose;
+	MarkersPosePtr markersPose;
 
 	std::vector<ArtagSubPtr> artagSubs;
 public:

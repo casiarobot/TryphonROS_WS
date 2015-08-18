@@ -34,7 +34,7 @@ void ArtagPoseNode::loadConfig(){
 	markersPose = markerConfig->parse();
 
 
-	ROS_INFO_STREAM("test: " << markersPose[1].getTf());
+	ROS_INFO_STREAM("test: " << (*markersPose)[1].getTf());
 }
 
 void ArtagPoseNode::createSubscribers(){
@@ -43,12 +43,16 @@ void ArtagPoseNode::createSubscribers(){
 
 	// Bypass the Yaml configuration for debugging
 	std::vector<std::string> camera_topics;
+	camera_topics.push_back("camera1");
 	camera_topics.push_back("/192_168_10_243/artags/artag1/ar_pose_marker");
 
 	// for each camera topics create a subscriber
 	std::vector<std::string>::iterator topic_name;
 	for(topic_name = camera_topics.begin(); topic_name != camera_topics.end(); topic_name++){
-		ArtagSubPtr ptr(new ArtagSubscriber(*topic_name, markersPose, nodeHandle));
+		std::string camera_name = *topic_name;
+		// The following element is the topic name
+		topic_name++;
+		ArtagSubPtr ptr(new ArtagSubscriber(camera_name, *topic_name, markersPose, nodeHandle));
 		artagSubs.push_back(ptr);
 	}
 }
