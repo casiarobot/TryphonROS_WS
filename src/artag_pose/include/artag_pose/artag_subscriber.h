@@ -7,6 +7,7 @@
 
 #include "ros/ros.h"
 #include <tf/transform_listener.h>
+#include <tf_conversions/tf_eigen.h>
 
 #include <Eigen/Geometry>
 
@@ -30,7 +31,7 @@ ros::Timer timer;
 ros::Time lastReception;
 
 
-tf::StampedTransform cameraTf;
+tf::StampedTransform cubeToCamTf;
 ar_track_alvar::AlvarMarkers oldMsg;
 unsigned int emptyCount;
 
@@ -51,11 +52,17 @@ public:
 
 	bool wasMsgReceiveSinceLastPull();
 	Eigen::Vector3d pullAveragePose();
+
 private:
 	void lookupCameraTf();
 	TrackedMarker::iterator  findMarkerInOldMsgById(unsigned int id);
 	double distanceBetweenPoint(geometry_msgs::Point A,
 								geometry_msgs::Point B);
+	tf::Pose fromRelativePoseToGlobalTf(const tf::Pose& camToTag,
+										const tf::Pose& worldToTag);
+	tf::Pose getPoseComposition(const tf::Pose& start,
+				const tf::Pose& increment);
+
 };
 
 #endif // ARTAGSUBSCRIBER_H

@@ -1,5 +1,5 @@
-
-#include <tf/transform_listener.h>
+#include <tf/tf.h>
+#include <tf_conversions/tf_eigen.h>
 #include <artag_pose/artag_subscriber.h>
 #include "ros/ros.h"
 
@@ -26,7 +26,7 @@ ArtagSubscriber::ArtagSubscriber(const std::string& camera_name,
 	// Subscribe to topic
 	sub = nh.subscribe<ar_track_alvar::AlvarMarkers>(
 								topic_name,
-								1,
+								10,
 								&ArtagSubscriber::artagCallback,
 								this
 							);
@@ -39,8 +39,8 @@ ArtagSubscriber::ArtagSubscriber(const std::string& camera_name,
 void ArtagSubscriber::lookupCameraTf(){
 	tf::TransformListener listener;
 	try{
-		listener.waitForTransform("/cube", cameraName, ros::Time(0), ros::Duration(4.0));
-		listener.lookupTransform("/cube", cameraName, ros::Time(0), cameraTf);
+		listener.waitForTransform("/cube", cameraName, ros::Time(0), ros::Duration(10.0));
+		listener.lookupTransform("/cube", cameraName, ros::Time(0), cubeToCamTf);
 	}
 	catch (tf::TransformException &ex) {
 		ROS_ERROR_STREAM("Camera tf not found : " << cameraName);
@@ -54,10 +54,10 @@ void ArtagSubscriber::timerCallback(const ros::TimerEvent& event){
 	ros::Duration t = ros::Time::now() - lastReception;
 	if(t > ros::Duration(5.0)){
 		if(!receiveIsFirstMsg)
-			ROS_INFO_STREAM("Topic \"" << topicName
+			ROS_INFO_STREAM("Cam \"" << cameraName
 							<< "\" has not respond for " << t.toSec() << "s");
 		else
-			ROS_WARN_STREAM("Topic \"" << topicName
+			ROS_WARN_STREAM("Cam \"" << cameraName
 							<< "\" still has not received is first msg");
 	}
 }
@@ -68,13 +68,10 @@ void ArtagSubscriber::artagCallback(const ar_track_alvar::AlvarMarkers::ConstPtr
 
 	ROS_INFO_ONCE("Marker detected by camera");
 
-	lastReception = ros::Time::now();
-	msgReceiveSincePull = true;
-
 	TrackedMarker trackMarkers = msg->markers;
 
 	if(trackMarkers.empty()){
-		ROS_INFO_STREAM("Topic \"" << topicName
+		ROS_INFO_STREAM("Cam \"" << cameraName
 						<< "\" no tag detected");
 		emptyCount++;
 		return;
@@ -82,7 +79,7 @@ void ArtagSubscriber::artagCallback(const ar_track_alvar::AlvarMarkers::ConstPtr
 	else
 		emptyCount = 0;
 
-	std::vector<geometry_msgs::Pose> validPosition;
+	std::vector<tf::Pose> validTagPose;
 	TrackedMarker::iterator m;
 	for(m = trackMarkers.begin(); m != trackMarkers.end(); ++m)
 	for(unsigned i = 0; i < trackMarkers.size(); i++){
@@ -92,7 +89,7 @@ void ArtagSubscriber::artagCallback(const ar_track_alvar::AlvarMarkers::ConstPtr
 			oldM = findMarkerInOldMsgById(m->id);
 			// If the tag was not in the old msg
 			if(oldM == oldMsg.markers.end()){
-				ROS_INFO_STREAM("Topic \"" << topicName
+				ROS_INFO_STREAM("Cam \"" << cameraName
 								<< "\" new tag detected id=" << m->id);
 			}
 			else{
@@ -107,13 +104,30 @@ void ArtagSubscriber::artagCallback(const ar_track_alvar::AlvarMarkers::ConstPtr
 				}
 			}
 
-			// The marker is added to pile of valid position
-			validPosition.push_back(m->pose.pose);
+			tf::Pose camToTagTf, worldToTagTf, worldToCube;
+			tf::poseMsgToTF(m->pose.pose, camToTagTf);
+			worldToTagTf = markers->get(m->id).getTf();
+
+			worldToCube = fromRelativePoseToGlobalTf(camToTagTf,
+													   worldToTagTf);
+			validTagPose.push_back(worldToCube);
 		}
 		else
-			ROS_WARN_STREAM("Topic \"" << topicName
+			ROS_WARN_STREAM("Cam \"" << cameraName
 							<< "\" invalid tag detected id=" << m->id);
 	}
+
+	// If we receive valid pose, the main loop can retrieve it
+	if(!validTagPose.empty()){
+		lastReception = ros::Time::now();
+		msgReceiveSincePull = true;
+	}
+
+	std::vector<tf::Pose>::iterator it;
+	for(it = validTagPose.begin(); it != validTagPose.end(); ++it){
+		//Average...
+	}
+
 
 	//ROS_INFO_STREAM("Valid position" << validPosition[0]);
 
@@ -149,6 +163,110 @@ double ArtagSubscriber::distanceBetweenPoint(geometry_msgs::Point A,
 
 	return fabs(mag);
 }
+
+
+tf::Pose ArtagSubscriber::fromRelativePoseToGlobalTf(const tf::Pose& camToTagTf,
+													 const tf::Pose& worldToTagTf){
+	Eigen::Affine3d camToTag, worldToTag, cubeToCam;
+	tf::poseTFToEigen(camToTagTf, camToTag);
+	tf::poseTFToEigen(worldToTagTf, worldToTag);
+	// TODO: attribute should be eigen type instead of tf
+	tf::poseTFToEigen(cubeToCamTf, cubeToCam);
+
+	// Angle correction on the camToTag frame
+	double roll, yaw, pitch;
+	roll = M_PI ; yaw = 0; pitch = M_PI;
+	Eigen::AngleAxisd rollAngle(roll, Eigen::Vector3d::UnitZ());
+	Eigen::AngleAxisd yawAngle(yaw, Eigen::Vector3d::UnitY());
+	Eigen::AngleAxisd pitchAngle(pitch, Eigen::Vector3d::UnitX());
+
+	Eigen::Quaternion<double> q = rollAngle * yawAngle * pitchAngle;
+
+	// Instead of using a rotation to fix the frame error
+	// the xyz are swap to be in the same correct frame
+	Eigen::Affine3d camToTagRect, camToTagRect2; // Rectify cam to tag tf
+	camToTagRect = camToTag * q;
+	camToTagRect(0, 3) = camToTag(2, 3); // x_r = z
+	camToTagRect(1, 3) = camToTag(0, 3); // y_r = x
+	camToTagRect(2, 3) = camToTag(1, 3); // y_r = x
+	//Eigen::Rotation3d rotationPart;
+	//rotationPart = camToTag.rotation();
+	//camToTagRect = q * camToTag;
+	//camToTagRect.s
+
+	Eigen::Affine3d cubeToTag;
+	cubeToTag = cubeToCam * camToTagRect;
+
+	Eigen::Affine3d tagToCube;
+	tagToCube = cubeToTag.inverse();
+
+	Eigen::Affine3d worldToCube, worldToCube2;
+	worldToCube = tagToCube * worldToTag;
+	worldToCube2 = worldToTag * tagToCube;
+
+	ROS_INFO_STREAM(std::endl << "cam   -> Tag: " << std::endl << camToTag.matrix());
+	//ROS_INFO_STREAM(std::endl << "cam   -> TagRect_with_swap_xyz:" << std::endl << camToTagRect.matrix());
+	ROS_INFO_STREAM(std::endl << "cam   -> TagRect_with_Quad:" << std::endl << camToTagRect.matrix());
+	ROS_INFO_STREAM(std::endl << "cube  -> Cam: " << std::endl << cubeToCam.matrix());
+	ROS_INFO_STREAM(std::endl << "cube  -> Tag: " << std::endl << cubeToTag.matrix());
+	ROS_INFO_STREAM(std::endl << "Tag   -> cube: " << std::endl << tagToCube.matrix());
+	ROS_INFO_STREAM(std::endl << "world -> Tag: " << std::endl << worldToTag.matrix());
+	ROS_INFO_STREAM(std::endl << "world -> cube: " << std::endl << worldToCube.matrix());
+	ROS_INFO_STREAM(std::endl << "world -> cube2: " << std::endl << worldToCube2.matrix());
+
+	/*tf::Pose rect;
+	rect.setOrigin(tf::Vector3(0,0,0));
+	//rect.setRotation(tf::Quaternion(0,0,0,1));// x,y,z,w
+	rect.setRotation(tf::Quaternion(M_PI / 2.0, 0, M_PI / 2.0));// ypr
+
+	// The cam->tag from the alvar_track msg is from the wrong reference
+	tf::Pose camToTagRect = rect * camToTag;
+
+	// cube->cam + cam->tag = cube->tag
+	tf::Pose cubeToTag = cubeToCamTf * camToTagRect;
+	//tf::Pose cubeToTag = getPoseComposition(camToTagRect, cubeToCamTf);
+	// (cube->tag)' = tag->cube
+	tf::Pose tagToCube = cubeToTag.inverse();
+	// world->tag + tag->cube = world->cube
+	//tf::Pose worldToCube = getPoseComposition(worldToTag, tagToCube);
+	tf::Pose worldToCube = worldToTag * tagToCube;
+	tf::Pose cubeToWorld = worldToTag.inverse() * cubeToTag;
+
+
+	geometry_msgs::Transform printableMsg;
+
+	tf::transformTFToMsg(cubeToCamTf, printableMsg);
+	ROS_INFO_STREAM("cubeToCamTf: "   << std::endl << printableMsg);
+
+	tf::transformTFToMsg(camToTag, printableMsg);
+	ROS_INFO_STREAM("camToTag: "   << std::endl << printableMsg);
+	tf::transformTFToMsg(camToTagRect, printableMsg);
+	ROS_INFO_STREAM("camToTagRect: "   << std::endl << printableMsg);///
+
+	tf::transformTFToMsg(cubeToTag, printableMsg);
+	ROS_INFO_STREAM("cubeToTag: "   << std::endl << printableMsg);
+
+	tf::transformTFToMsg(tagToCube, printableMsg);
+	ROS_INFO_STREAM("tagToCube: "   << std::endl << printableMsg);
+
+	tf::transformTFToMsg(worldToCube, printableMsg);
+	ROS_INFO_STREAM("worldToCube: " << std::endl << printableMsg);
+
+	tf::transformTFToMsg(cubeToWorld, printableMsg);
+	ROS_INFO_STREAM("cubeToWorld: " << std::endl << printableMsg);//*/
+
+	return tf::Pose(); //worldToCube;
+}
+
+// TODO Put in utility?
+tf::Pose ArtagSubscriber::getPoseComposition(const tf::Pose& start,
+											 const tf::Pose& increment) {
+		tf::Pose finalPose;
+		finalPose.setOrigin(start.getOrigin() + increment.getOrigin());
+		finalPose.setRotation(increment.getRotation()*start.getRotation());
+
+		return finalPose;
+	}
 
 bool ArtagSubscriber::wasMsgReceiveSinceLastPull(){
 	return msgReceiveSincePull;

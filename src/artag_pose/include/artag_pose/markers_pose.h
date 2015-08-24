@@ -4,7 +4,7 @@
 #include <map>
 #include <Eigen/Geometry>
 #include <geometry_msgs/Pose.h>
-#include <geometry_msgs/Transform.h>
+#include <tf/transform_listener.h>
 
 
 class MarkerPose
@@ -14,25 +14,19 @@ public:
 		position =  Eigen::Vector3d(0, 0, 0);
 		quat = Eigen::Quaterniond(0, 0, 0, 0);
 	}
-	MarkerPose(geometry_msgs::Pose pose){
-		tf.translation.x = pose.position.x;
-		tf.translation.y = pose.position.y;
-		tf.translation.z = pose.position.z;
-		tf.rotation.x = pose.orientation.x;
-		tf.rotation.y = pose.orientation.y;
-		tf.rotation.z = pose.orientation.z;
-		position =  Eigen::Vector3d(tf.translation.x,
-									tf.translation.y,
-									tf.translation.z);
-		quat = Eigen::Quaterniond(tf.rotation.w,
-								  tf.rotation.x,
-								  tf.rotation.y,
-								  tf.rotation.z);
+	MarkerPose(const geometry_msgs::Pose& pose){
+		poseMsgToTF(pose, tf);
+		position =  Eigen::Vector3d(pose.position.x,
+									pose.position.y,
+									pose.position.z);
+		quat = Eigen::Quaterniond(pose.orientation.w,
+								  pose.orientation.x,
+								  pose.orientation.y,
+								  pose.orientation.z);
 	}
 
-	MarkerPose(geometry_msgs::Transform transformation):
-		tf(transformation){
-	}
+	MarkerPose(const tf::Pose& transformation)
+		:tf(transformation){}
 /*
 	Eigen::Vector3d getEigenPosition(){
 		return position;
@@ -46,14 +40,14 @@ public:
 		return pose;
 	}*/
 
-	geometry_msgs::Transform getTf(){
+	tf::Pose getTf(){
 		return tf;
 	}
 
 private:
 	Eigen::Vector3d position;
 	Eigen::Quaterniond quat;
-	geometry_msgs::Transform tf;
+	tf::Pose tf;
 
 };
 
@@ -63,7 +57,7 @@ public:
 	void insert(const unsigned int & id, const geometry_msgs::Pose & pose){
 		map.insert(std::pair<unsigned int, MarkerPose>(id, pose));
 	}
-	void insert(const unsigned int & id, const geometry_msgs::Transform & tf){
+	void insert(const unsigned int & id, const tf::Pose & tf){
 		map.insert(std::pair<unsigned int, MarkerPose>(id, tf));
 	}
 

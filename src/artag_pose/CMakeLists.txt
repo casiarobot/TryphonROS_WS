@@ -12,6 +12,7 @@ REQUIRED COMPONENTS
     dynamic_reconfigure
     sensor_msgs
     tf
+    tf_conversions
 # !!!Hydro doesn't require it!!!----> : cmake_modules
 )
 
@@ -37,6 +38,7 @@ catkin_package(
 	sensor_msgs
 	ar_track_alvar_msgs
 	tf
+	tf_conversions
     DEPENDS
 	eigen
 )

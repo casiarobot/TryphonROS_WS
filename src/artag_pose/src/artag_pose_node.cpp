@@ -34,7 +34,6 @@ void ArtagPoseNode::loadConfig(){
 	markersPose = markerConfig->parse();
 
 
-	ROS_INFO_STREAM("test: " << (*markersPose)[1].getTf());
 }
 
 void ArtagPoseNode::createSubscribers(){
