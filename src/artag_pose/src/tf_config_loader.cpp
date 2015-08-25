@@ -9,7 +9,6 @@ TfConfigLoader::TfConfigLoader(){
 void TfConfigLoader::load(int numMarkers){
 	tf::TransformListener listener;
 	tf::StampedTransform stampedTf;
-	geometry_msgs::TransformStamped stampedTfMsg;
 	char tfName[100];
 
 	// The first tf is always unreachable on the first try
@@ -31,7 +30,7 @@ void TfConfigLoader::load(int numMarkers){
 			ROS_ERROR("%s",ex.what());
 			ros::Duration(1.0).sleep();
 
-			// After 3 attemp give up
+			// After 3 attemps give up
 			if(tries < 3){
 				tries++;
 				i--;

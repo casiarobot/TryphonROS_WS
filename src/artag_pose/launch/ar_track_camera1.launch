@@ -5,7 +5,7 @@
 			<arg name="marker_size" default="100" />
 			<arg name="max_new_marker_error" default="0.08" />
 			<arg name="max_track_error" default="0.2" />
-			<arg name="cam_image_topic" default="/192_168_10_243/cameras/camera1/image_raw" />
+			<arg name="cam_image_topic" default="/192_168_10_243/camera10/image_raw" />
 
 			<arg name="cam_info_topic" default="/192_168_10_243/camera10/camera_info" />	
 			<!--<arg name="cam_info_topic" default="/192_168_10_243/cameras/camera1/camera_info" />	-->
