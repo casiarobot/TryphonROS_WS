@@ -8,6 +8,7 @@
 #include "ros/ros.h"
 #include <tf/transform_listener.h>
 #include <tf_conversions/tf_eigen.h>
+#include <eigen_conversions/eigen_msg.h>
 #include <tf/transform_broadcaster.h>
 
 #include <Eigen/Geometry>
@@ -20,52 +21,61 @@
 
 typedef std::vector<ar_track_alvar::AlvarMarker> TrackedMarker;
 
+typedef struct {
+	Eigen::Affine3d camPose;	/* Relative pose from the camera frame */
+	Eigen::Affine3d globalPose; /* Global pose from the world frame */
+	double confidence;			/* Confidence from Alvar_track */
+	double weight;				/* Not normalize weight */
+}
+tagHandle;
+
 class ArtagSubscriber{
 
-// For debuging
-tf::TransformBroadcaster br;
+	// For debuging
+	tf::TransformBroadcaster br;
 
-ros::Subscriber sub;
+	ros::Subscriber sub;
 
-std::string cameraName, topicName;
-MarkersPosePtr markers;
+	std::string cameraName, topicName;
+	MarkersPosePtr markers;
 
-bool receiveIsFirstMsg;
-ros::Timer timer;
-ros::Time lastReception;
+	bool receiveIsFirstMsg;
+	ros::Timer timer;
+	ros::Time lastReception;
 
 
-tf::StampedTransform cubeToCamTf;
-ar_track_alvar::AlvarMarkers oldMsg;
-unsigned int emptyCount;
+	Eigen::Affine3d cubeToCam;
+	ar_track_alvar::AlvarMarkers oldMsg;
+	unsigned int emptyCount;
 
-// Configuration
-double jmpThreshold;
+	// Configuration
+	double jmpThreshold;
 
-geometry_msgs::Pose avgPose;
-bool msgReceiveSincePull;
+	geometry_msgs::Pose avgPose;
+	std::list<tagHandle> tagsDetected;
+	bool msgReceiveSincePull;
 
 public:
 	ArtagSubscriber(const std::string& camera_name,
-					const std::string& topic_name,
-					MarkersPosePtr markers,
-					ros::NodeHandle & nh);
+	                const std::string& topic_name,
+	                MarkersPosePtr markers,
+	                ros::NodeHandle & nh);
 
 	void artagCallback(const ar_track_alvar::AlvarMarkers::ConstPtr& msg);
 	void timerCallback(const ros::TimerEvent& event);
 
 	bool receivedMsgSinceLastPull();
-	geometry_msgs::Pose pullAveragePose();
+	void pullAveragePose(std::list<tagHandle>& tagList);
 
 private:
 	void lookupCameraTf();
 	TrackedMarker::iterator  findMarkerInOldMsgById(unsigned int id);
 	double distanceBetweenPoint(geometry_msgs::Point A,
-								geometry_msgs::Point B);
-	geometry_msgs::Pose fromRelativePoseToGlobalTf(const tf::Pose& camToTag,
-										const tf::Pose& worldToTag);
+	                            geometry_msgs::Point B);
+	Eigen::Affine3d fromRelativePoseToGlobalTf(const Eigen::Affine3d& camToTag,
+	                                           const Eigen::Affine3d& worldToTag);
 	tf::Pose getPoseComposition(const tf::Pose& start,
-				const tf::Pose& increment);
+	                            const tf::Pose& increment);
 
 };
 

@@ -94,7 +94,7 @@ void ArtagPoseNode::computePoseAndPublish(){
 
 	for(it = artagSubs.begin(); it != artagSubs.end(); ++it){
 		if((*it)->receivedMsgSinceLastPull()){
-			msg.pose = (*it)->pullAveragePose();
+			//msg.pose = (*it)->pullAveragePose();
 			nbrPose++;
 		}
 	}

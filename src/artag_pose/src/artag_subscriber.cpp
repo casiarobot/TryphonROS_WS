@@ -38,9 +38,11 @@ ArtagSubscriber::ArtagSubscriber(const std::string& camera_name,
 
 void ArtagSubscriber::lookupCameraTf(){
 	tf::TransformListener listener;
+	tf::StampedTransform cubeToCamTf;
 	try{
 		listener.waitForTransform("/cube", cameraName, ros::Time(0), ros::Duration(10.0));
 		listener.lookupTransform("/cube", cameraName, ros::Time(0), cubeToCamTf);
+		tf::poseTFToEigen(cubeToCamTf, cubeToCam);
 	}
 	catch (tf::TransformException &ex) {
 		ROS_ERROR_STREAM("Camera tf not found : " << cameraName);
@@ -104,14 +106,18 @@ void ArtagSubscriber::artagCallback(const ar_track_alvar::AlvarMarkers::ConstPtr
 				}
 			}
 
-			tf::Pose camToTagTf, worldToTagTf;
-			geometry_msgs::Pose pose;
-			tf::poseMsgToTF(m->pose.pose, camToTagTf);
-			worldToTagTf = markers->get(m->id).getTf();
+			Eigen::Affine3d camToTag, worldToTag;
+			tf::poseMsgToEigen(m->pose.pose, camToTag);
+			worldToTag = markers->get(m->id).getEigen();
 
-			pose = fromRelativePoseToGlobalTf(camToTagTf,
-											  worldToTagTf);
-			validTagPose.push_back(pose);
+			Eigen::Affine3d globalPose = fromRelativePoseToGlobalTf(camToTag, worldToTag);
+
+			tagHandle newTag;
+			newTag.camPose = camToTag;
+			newTag.globalPose = globalPose;
+			newTag.confidence = m->confidence;
+			newTag.weight = 1.0;
+			tagsDetected.push_back(newTag);
 		}
 		else
 			ROS_WARN_STREAM("Cam \"" << cameraName
@@ -166,13 +172,17 @@ double ArtagSubscriber::distanceBetweenPoint(geometry_msgs::Point A,
 }
 
 
-geometry_msgs::Pose ArtagSubscriber::fromRelativePoseToGlobalTf(const tf::Pose& camToTagTf,
-													 const tf::Pose& worldToTagTf){
-	Eigen::Affine3d camToTag, worldToTag, cubeToCam;
-	tf::poseTFToEigen(camToTagTf, camToTag);
-	tf::poseTFToEigen(worldToTagTf, worldToTag);
-	// TODO: attribute should be eigen type instead of tf
-	tf::poseTFToEigen(cubeToCamTf, cubeToCam);
+	Eigen::Affine3d ArtagSubscriber::fromRelativePoseToGlobalTf(const Eigen::Affine3d& camToTag,
+	                                                            const Eigen::Affine3d& worldToTag){
+
+	// The yaw is directly extracted from the rotation matrix by transforming a
+	// unit vector. Y plan seem to correspond to the yaw in simulation tests
+	Eigen::Vector3d vrot = camToTag.linear() * Eigen::Vector3d::UnitX();
+	double artagYaw = atan2(vrot(2), vrot(0));
+	// The extracted yaw is than replace the rotation provided by alvar
+	// In ros the yaw is projected on the Z plan
+	Eigen::Matrix3d yawRotationMat;
+	yawRotationMat = Eigen::AngleAxisd(artagYaw, Eigen::Vector3d::UnitZ());
 
 	// Angle correction on the camToTag frame
 	double roll, yaw, pitch;
@@ -185,12 +195,13 @@ geometry_msgs::Pose ArtagSubscriber::fromRelativePoseToGlobalTf(const tf::Pose& 
 	//Eigen::AngleAxisd pitchAngle(pitch, Eigen::Vector3d::UnitX());
 
 	Eigen::Affine3d camToTagRect, artagRect, rotationRect; // Rectify cam to tag tf
-	artagRect = Eigen::AngleAxisd(M_PI, Eigen::Vector3d::UnitX());
+	//artagRect = Eigen::AngleAxisd(M_PI, Eigen::Vector3d::UnitX());
 	rotationRect = yawAngle * rollAngle;
 
-	camToTagRect.linear() =  artagRect.linear() * camToTag.linear();
-	camToTagRect.translation() =  rotationRect.linear() * camToTag.translation();
-	camToTagRect.linear() = camToTag.linear(); // DEBUG force original rotation
+	//camToTagRect.linear() =  artagRect.linear() * camToTag.linear();
+	camToTagRect.linear() =  yawRotationMat; // Ignore the original rotation provided by alvar
+	camToTagRect.translation() =  rotationRect.linear() * camToTag.translation(); // Does xyz swap
+
 
 	Eigen::Affine3d cubeToTag;
 	cubeToTag = cubeToCam * camToTagRect;
@@ -205,11 +216,12 @@ geometry_msgs::Pose ArtagSubscriber::fromRelativePoseToGlobalTf(const tf::Pose& 
 	worldToCube3.translation() =  tagToCube.translation() + worldToTag.translation();
 
 	// Conversion from eigen to publishable ros msg
-	tf::Pose inbetween;
-	geometry_msgs::Pose output;
-	tf::poseEigenToTF(worldToCube, inbetween);
-	tf::poseTFToMsg(inbetween, output);
+	//tf::Pose inbetween;
+	//geometry_msgs::Pose output;
+	//tf::poseEigenToTF(worldToCube2, inbetween);
+	//tf::poseTFToMsg(inbetween, output);
 
+	ROS_INFO_STREAM(std::endl << "artagYaw: " << artagYaw * 180.0 / M_PI);
 	ROS_INFO_STREAM(std::endl << "rotationRect: " << std::endl << rotationRect.matrix());
 	ROS_INFO_STREAM(std::endl << "cam   -> Tag: " << std::endl << camToTag.matrix());
 	//ROS_INFO_STREAM(std::endl << "cam   -> TagRect_with_swap_xyz:" << std::endl << camToTagRect.matrix());
@@ -221,7 +233,7 @@ geometry_msgs::Pose ArtagSubscriber::fromRelativePoseToGlobalTf(const tf::Pose& 
 	ROS_INFO_STREAM(std::endl << "world -> Tag: " << std::endl << worldToTag.matrix());
 	ROS_INFO_STREAM(std::endl << "world -> cube: " << std::endl << worldToCube.matrix());
 	ROS_INFO_STREAM(std::endl << "world -> cube2: " << std::endl << worldToCube2.matrix());
-	ROS_INFO_STREAM(std::endl << "world -> cube3_transpose: " << std::endl << worldToCube3.matrix());
+	//ROS_INFO_STREAM(std::endl << "world -> cube3_transpose: " << std::endl << worldToCube3.matrix());
 	Eigen::Quaternion<double> q;
 	q = worldToCube2.linear().matrix();
 	ROS_INFO_STREAM("to Quaternion [x y z w]:" << std::endl <<
@@ -237,24 +249,26 @@ geometry_msgs::Pose ArtagSubscriber::fromRelativePoseToGlobalTf(const tf::Pose& 
 	tf::poseEigenToTF(camToTagRect, camToTagBroadcast);
 	br.sendTransform(tf::StampedTransform(camToTagBroadcast, ros::Time::now(), cameraName, "debug_artag"));
 
-	return output;
+	return worldToCube2;
 }
 
 // TODO Put in utility?
 tf::Pose ArtagSubscriber::getPoseComposition(const tf::Pose& start,
-											 const tf::Pose& increment) {
-		tf::Pose finalPose;
-		finalPose.setOrigin(start.getOrigin() + increment.getOrigin());
-		finalPose.setRotation(increment.getRotation()*start.getRotation());
+                                             const tf::Pose& increment) {
+	tf::Pose finalPose;
+	finalPose.setOrigin(start.getOrigin() + increment.getOrigin());
+	finalPose.setRotation(increment.getRotation()*start.getRotation());
 
-		return finalPose;
-	}
+	return finalPose;
+}
 
 bool ArtagSubscriber::receivedMsgSinceLastPull(){
 	return msgReceiveSincePull;
 }
 
-geometry_msgs::Pose ArtagSubscriber::pullAveragePose(){
+void ArtagSubscriber::pullAveragePose(std::list<tagHandle>& tagList){
 	msgReceiveSincePull = false;
-	return avgPose;
+
+	// Transfer objet container to the container pass has argument
+	tagList.splice(tagList.end(), tagsDetected);
 }

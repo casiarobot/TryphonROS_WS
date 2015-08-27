@@ -13,6 +13,7 @@ REQUIRED COMPONENTS
     sensor_msgs
     tf
     tf_conversions
+    eigen_conversions
 # !!!Hydro doesn't require it!!!----> : cmake_modules
 )
 

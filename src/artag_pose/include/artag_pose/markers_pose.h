@@ -6,48 +6,50 @@
 #include <geometry_msgs/Pose.h>
 #include <tf/transform_listener.h>
 
+#include <tf_conversions/tf_eigen.h>
+#include <eigen_conversions/eigen_msg.h>
+
 
 class MarkerPose
 {
 public:
-	MarkerPose(){
-		position =  Eigen::Vector3d(0, 0, 0);
-		quat = Eigen::Quaterniond(0, 0, 0, 0);
-	}
-	MarkerPose(const geometry_msgs::Pose& pose){
-		poseMsgToTF(pose, tf);
-		position =  Eigen::Vector3d(pose.position.x,
-									pose.position.y,
-									pose.position.z);
-		quat = Eigen::Quaterniond(pose.orientation.w,
-								  pose.orientation.x,
-								  pose.orientation.y,
-								  pose.orientation.z);
+	MarkerPose(){}
+	MarkerPose(const geometry_msgs::Pose& pose):
+		poseRos(pose){
+		tf::poseMsgToTF(pose, poseTf);
+		tf::poseMsgToEigen(pose, poseEigen);
 	}
 
-	MarkerPose(const tf::Pose& transformation)
-		:tf(transformation){}
-/*
-	Eigen::Vector3d getEigenPosition(){
-		return position;
+	MarkerPose(const tf::Pose& tf)
+		:poseTf(tf){
+		tf::poseTFToMsg(tf, poseRos);
+		tf::poseTFToEigen(tf, poseEigen);
+
 	}
 
-	Eigen::Quaterniond getEigenQuat(){
-		return quat;
+	MarkerPose(const Eigen::Affine3d& eigen)
+		:poseEigen(eigen){
+		tf::poseEigenToMsg(eigen, poseRos);
+		tf::poseEigenToTF(eigen, poseTf);
+
+	}
+
+	Eigen::Affine3d getEigen(){
+		return poseEigen;
 	}
 
 	geometry_msgs::Pose getRosPose(){
-		return pose;
-	}*/
+		return poseRos;
+	}
 
 	tf::Pose getTf(){
-		return tf;
+		return poseTf;
 	}
 
 private:
-	Eigen::Vector3d position;
-	Eigen::Quaterniond quat;
-	tf::Pose tf;
+	geometry_msgs::Pose poseRos;
+	Eigen::Affine3d poseEigen;
+	tf::Pose poseTf;
 
 };
 
