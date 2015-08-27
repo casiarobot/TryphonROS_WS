@@ -11,7 +11,6 @@ ArtagSubscriber::ArtagSubscriber(const std::string& camera_name,
 	topicName(topic_name),
 	markers(markers),
 	receiveIsFirstMsg(false),
-	msgReceiveSincePull(false),
 	lastReception(ros::Time::now()),
 	emptyCount(0),
 
@@ -73,15 +72,15 @@ void ArtagSubscriber::artagCallback(const ar_track_alvar::AlvarMarkers::ConstPtr
 	TrackedMarker trackMarkers = msg->markers;
 
 	if(trackMarkers.empty()){
-		ROS_INFO_STREAM("Cam \"" << cameraName
-						<< "\" no tag detected");
+		ROS_INFO_STREAM("Cam \"" << cameraName << "\" no tag detected");
+		// TODO: do something with that...
 		emptyCount++;
+
 		return;
 	}
 	else
 		emptyCount = 0;
 
-	std::vector<geometry_msgs::Pose> validTagPose;
 	TrackedMarker::iterator m;
 	for(m = trackMarkers.begin(); m != trackMarkers.end(); ++m)
 	for(unsigned i = 0; i < trackMarkers.size(); i++){
@@ -110,7 +109,7 @@ void ArtagSubscriber::artagCallback(const ar_track_alvar::AlvarMarkers::ConstPtr
 			tf::poseMsgToEigen(m->pose.pose, camToTag);
 			worldToTag = markers->get(m->id).getEigen();
 
-			Eigen::Affine3d globalPose = fromRelativePoseToGlobalTf(camToTag, worldToTag);
+			Eigen::Affine3d globalPose = fromRelativePoseToGlobalTf(camToTag, worldToTag, m->id);
 
 			tagHandle newTag;
 			newTag.camPose = camToTag;
@@ -123,22 +122,6 @@ void ArtagSubscriber::artagCallback(const ar_track_alvar::AlvarMarkers::ConstPtr
 			ROS_WARN_STREAM("Cam \"" << cameraName
 							<< "\" invalid tag detected id=" << m->id);
 	}
-
-	// If we receive valid pose, the main loop can retrieve it
-	if(!validTagPose.empty()){
-		lastReception = ros::Time::now();
-		msgReceiveSincePull = true;
-	}
-
-	std::vector<geometry_msgs::Pose>::iterator it;
-	for(it = validTagPose.begin(); it != validTagPose.end(); ++it){
-		avgPose = *it;
-	}
-
-
-	//ROS_INFO_STREAM("Valid position" << validPosition[0]);
-
-
 
 	oldMsg = *msg;
 	/*
@@ -173,7 +156,8 @@ double ArtagSubscriber::distanceBetweenPoint(geometry_msgs::Point A,
 
 
 	Eigen::Affine3d ArtagSubscriber::fromRelativePoseToGlobalTf(const Eigen::Affine3d& camToTag,
-	                                                            const Eigen::Affine3d& worldToTag){
+	                                                            const Eigen::Affine3d& worldToTag,
+	                                                            const int tagName){
 
 	// The yaw is directly extracted from the rotation matrix by transforming a
 	// unit vector. Y plan seem to correspond to the yaw in simulation tests
@@ -247,7 +231,9 @@ double ArtagSubscriber::distanceBetweenPoint(geometry_msgs::Point A,
 	// Tf broadcast for debugging:
 	tf::Transform camToTagBroadcast;
 	tf::poseEigenToTF(camToTagRect, camToTagBroadcast);
-	br.sendTransform(tf::StampedTransform(camToTagBroadcast, ros::Time::now(), cameraName, "debug_artag"));
+	char str[15];
+	sprintf(str, "artag_%d", tagName);
+	br.sendTransform(tf::StampedTransform(camToTagBroadcast, ros::Time::now(), cameraName, str));
 
 	return worldToCube2;
 }
@@ -262,13 +248,7 @@ tf::Pose ArtagSubscriber::getPoseComposition(const tf::Pose& start,
 	return finalPose;
 }
 
-bool ArtagSubscriber::receivedMsgSinceLastPull(){
-	return msgReceiveSincePull;
-}
-
-void ArtagSubscriber::pullAveragePose(std::list<tagHandle>& tagList){
-	msgReceiveSincePull = false;
-
+void ArtagSubscriber::pullTagDetected(std::list<tagHandle>& tagList){
 	// Transfer objet container to the container pass has argument
 	tagList.splice(tagList.end(), tagsDetected);
 }

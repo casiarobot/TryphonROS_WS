@@ -53,8 +53,6 @@ class ArtagSubscriber{
 
 	geometry_msgs::Pose avgPose;
 	std::list<tagHandle> tagsDetected;
-	bool msgReceiveSincePull;
-
 public:
 	ArtagSubscriber(const std::string& camera_name,
 	                const std::string& topic_name,
@@ -64,8 +62,7 @@ public:
 	void artagCallback(const ar_track_alvar::AlvarMarkers::ConstPtr& msg);
 	void timerCallback(const ros::TimerEvent& event);
 
-	bool receivedMsgSinceLastPull();
-	void pullAveragePose(std::list<tagHandle>& tagList);
+	void pullTagDetected(std::list<tagHandle>& tagList);
 
 private:
 	void lookupCameraTf();
@@ -73,7 +70,8 @@ private:
 	double distanceBetweenPoint(geometry_msgs::Point A,
 	                            geometry_msgs::Point B);
 	Eigen::Affine3d fromRelativePoseToGlobalTf(const Eigen::Affine3d& camToTag,
-	                                           const Eigen::Affine3d& worldToTag);
+	                                           const Eigen::Affine3d& worldToTag,
+	                                           const int tagName = 0);
 	tf::Pose getPoseComposition(const tf::Pose& start,
 	                            const tf::Pose& increment);
 

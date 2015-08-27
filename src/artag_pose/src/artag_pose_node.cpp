@@ -49,6 +49,8 @@ void ArtagPoseNode::createSubscribers(){
 	std::vector<std::string> camera_topics;
 	camera_topics.push_back("camera1");
 	camera_topics.push_back("/192_168_10_243/artags/artag1/ar_pose_marker");
+	camera_topics.push_back("camera3");
+	camera_topics.push_back("/192_168_10_243/artags/artag3/ar_pose_marker");
 
 	// for each camera topics create a subscriber
 	std::vector<std::string>::iterator topic_name;
@@ -90,16 +92,76 @@ void ArtagPoseNode::computePoseAndPublish(){
 	geometry_msgs::PoseStamped msg;
 	msg.header.frame_id = "cafeteria";
 
-	int nbrPose = 0;
+
+	std::list<tagHandle> tagsDetected;
 
 	for(it = artagSubs.begin(); it != artagSubs.end(); ++it){
-		if((*it)->receivedMsgSinceLastPull()){
-			//msg.pose = (*it)->pullAveragePose();
-			nbrPose++;
-		}
+		(*it)->pullTagDetected(tagsDetected);
 	}
-	if(nbrPose > 0)
-		pubPose.publish(msg);
+
+	if(tagsDetected.empty())
+		return;
+
+	Eigen::Affine3d pose = doWeightAverage(tagsDetected);
+	// Eigen -> Ros msg
+	tf::poseEigenToMsg(pose, msg.pose);
+
+	// Publish pose
+	pubPose.publish(msg);
+
+	// Broadcast tf
+	tf::Pose poseTf;
+	tf::poseEigenToTF(pose, poseTf);
+	//br.sendTransform(tf::StampedTransform(camToTagBroadcast, ros::Time::now(), "cafeteria", "cube_estimate"));
+}
+
+
+Eigen::Affine3d ArtagPoseNode::doWeightAverage(const std::list<tagHandle>& tags){
+
+	// Weight sum
+	std::list<tagHandle>::const_iterator tag;
+	double totalWeight = 0.0;
+	for(tag = tags.begin(); tag != tags.end(); ++tag){
+		totalWeight += tag->weight;
+	}
+
+	if(totalWeight < 0.0001){
+		ROS_ERROR("Total weight should be greater than zero");
+		ros::shutdown();
+	}
+
+	Eigen::Vector3d position;
+	Eigen::Quaterniond rot, q;
+	rot = tags.front().globalPose.linear().matrix();
+
+	for(tag = tags.begin(); tag != tags.end(); ++tag){
+		double normalizeWeight = tag->weight / totalWeight;
+
+		position += tag->globalPose.translation() * normalizeWeight;
+
+		q = tag->globalPose.linear().matrix();
+
+		// We need to check if the quaternion is inverted by doing a dot product
+		// If the dot product is negative we reverse the quaternion
+		if(rot.dot(q) < 0.0){
+			q = Eigen::Quaterniond(-q.w(), -q.x(), -q.y(), -q.z());
+		}
+
+		rot.w() += q.w() * normalizeWeight;
+		rot.x() += q.x() * normalizeWeight;
+		rot.y() += q.y() * normalizeWeight;
+		rot.z() += q.z() * normalizeWeight;
+	}
+
+	// The resulting quaternion need to be unitary
+	rot.normalize();
+
+
+	Eigen::Affine3d pose;
+	pose.translation() = position;
+	pose.linear() = rot.matrix();
+
+	return pose;
 }
 
 

@@ -1,0 +1,46 @@
+<launch>
+	<group ns="192_168_10_243">
+		<group ns="artags">
+			<!-- PointGrey Camera -->
+			<arg name="camera_serial" default="0" />
+			<arg name="calibrated" default="0" />
+
+			<group ns="camera">
+				<node pkg="nodelet" type="nodelet" name="camera_nodelet_manager" args="manager" />
+
+				<node pkg="nodelet" type="nodelet" name="camera_nodelet"
+				  args="load pointgrey_camera_driver/PointGreyCameraNodelet camera_nodelet_manager" >
+					<param name="frame_id" value="camera1" />
+					<param name="serial" value="$(arg camera_serial)" />
+					<param name="camera_info_url" if="$(arg calibrated)"
+						 value="file://$(env HOME)/Documents/Ete2015Stage/CubePoseEstimation/camera_calibration/calibration_lab_5_juin.yaml" />
+				</node>
+
+				<node pkg="nodelet" type="nodelet" name="image_proc_debayer"
+				  args="load image_proc/debayer camera_nodelet_manager">
+				</node>
+			</group>
+			<!-- End PointGrey Camera -->
+
+			<!-- Marker tracker -->
+			<arg name="marker_size" default="10" />
+			<arg name="max_new_marker_error" default="0.08" />
+			<arg name="max_track_error" default="0.2" />
+			<arg name="cam_image_topic" default="/192_168_10_243/camera10/image_raw" />
+
+			<arg name="cam_info_topic" default="/192_168_10_243/camera10/camera_info" />	
+			<!--<arg name="cam_info_topic" default="/192_168_10_243/cameras/camera1/camera_info" />	-->
+			<arg name="output_frame" default="camera1" />
+
+			<node ns="artag1" name="ar_track_alvar" pkg="ar_track_alvar" type="individualMarkersNoKinect" respawn="false" output="screen" args="$(arg marker_size) $(arg max_new_marker_error) $(arg max_track_error) $(arg cam_image_topic) $(arg cam_info_topic) $(arg output_frame)" />
+			<!-- End Marker tracker -->
+		</group>
+	</group>
+	<!-- Tf handling -->
+	<!-- TAGs POSITION TO THE CAFETERIA CENTER -->
+	<node pkg="tf" type="static_transform_publisher" name="mav_to_camera" output="screen" args="0 0 0 0 0 0 cafeteria artag_00_rectify_link 10" /> <!-- Artag00 -->
+
+	<!-- CAMERA POSITION FROM THE CUBE CENTER -->
+	<node pkg="tf" type="static_transform_publisher" name="mav_to_camera" output="screen" args="0 0 0 0 0 0 cube camera1 10" /> <!-- camera1 -->
+
+</launch>

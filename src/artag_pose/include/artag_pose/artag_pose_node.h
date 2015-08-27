@@ -25,6 +25,7 @@ typedef boost::shared_ptr<ArtagSubscriber> ArtagSubPtr;
 class ArtagPoseNode{
 
 	ros::NodeHandle nodeHandle;
+	tf::TransformBroadcaster br;
 
 	// Ros parameter:
 	bool useYAML;
@@ -48,6 +49,7 @@ private:
 	void createPublishers();
 	void createSubscribers();
 	void computePoseAndPublish();
+	Eigen::Affine3d doWeightAverage(const std::list<tagHandle>& t);
 
 };
 
