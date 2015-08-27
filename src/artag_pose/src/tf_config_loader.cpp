@@ -19,7 +19,7 @@ void TfConfigLoader::load(int numMarkers){
 	catch (tf::TransformException &ex) {}(*/
 	int tries = 0;
 	for(int i = 0; i < numMarkers; i++){
-		sprintf(tfName, "/artag_%02d_background_link", i);
+		sprintf(tfName, "/artag_%02d_rectify_link", i);
 		try{
 			listener.waitForTransform("/cafeteria", tfName, ros::Time(0), ros::Duration(10.0));
 			listener.lookupTransform("/cafeteria", tfName, ros::Time(0), stampedTf);

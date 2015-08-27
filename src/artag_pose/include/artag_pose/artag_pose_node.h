@@ -35,6 +35,7 @@ class ArtagPoseNode{
 	MarkersPosePtr markersPose;
 
 	std::vector<ArtagSubPtr> artagSubs;
+	ros::Publisher pubPose;
 public:
 	ArtagPoseNode();
 	~ArtagPoseNode();
@@ -44,6 +45,7 @@ private:
 	void loop();
 	void loadConfig();
 	std::vector<std::string> loadCameraTopics();
+	void createPublishers();
 	void createSubscribers();
 	void computePoseAndPublish();
 

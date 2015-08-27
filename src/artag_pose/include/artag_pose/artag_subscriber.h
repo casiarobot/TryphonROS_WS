@@ -8,6 +8,7 @@
 #include "ros/ros.h"
 #include <tf/transform_listener.h>
 #include <tf_conversions/tf_eigen.h>
+#include <tf/transform_broadcaster.h>
 
 #include <Eigen/Geometry>
 
@@ -20,6 +21,9 @@
 typedef std::vector<ar_track_alvar::AlvarMarker> TrackedMarker;
 
 class ArtagSubscriber{
+
+// For debuging
+tf::TransformBroadcaster br;
 
 ros::Subscriber sub;
 
@@ -38,7 +42,7 @@ unsigned int emptyCount;
 // Configuration
 double jmpThreshold;
 
-Eigen::Vector3d avgPose;
+geometry_msgs::Pose avgPose;
 bool msgReceiveSincePull;
 
 public:
@@ -50,8 +54,8 @@ public:
 	void artagCallback(const ar_track_alvar::AlvarMarkers::ConstPtr& msg);
 	void timerCallback(const ros::TimerEvent& event);
 
-	bool wasMsgReceiveSinceLastPull();
-	Eigen::Vector3d pullAveragePose();
+	bool receivedMsgSinceLastPull();
+	geometry_msgs::Pose pullAveragePose();
 
 private:
 	void lookupCameraTf();

@@ -126,7 +126,7 @@ void ArtagSubscriber::artagCallback(const ar_track_alvar::AlvarMarkers::ConstPtr
 
 	std::vector<geometry_msgs::Pose>::iterator it;
 	for(it = validTagPose.begin(); it != validTagPose.end(); ++it){
-
+		avgPose = *it;
 	}
 
 
@@ -176,51 +176,21 @@ geometry_msgs::Pose ArtagSubscriber::fromRelativePoseToGlobalTf(const tf::Pose& 
 
 	// Angle correction on the camToTag frame
 	double roll, yaw, pitch;
+	// yaw = pi/2 and roll -pi/2 fix the xyz swap from the artag frame to the camera frame
+	yaw =   M_PI/2; //correct artag
 	roll = -M_PI/2;
-	yaw = M_PI/2;
-	pitch = 0;
+	//pitch = M_PI/2;
 	Eigen::AngleAxisd rollAngle(roll, Eigen::Vector3d::UnitZ());
 	Eigen::AngleAxisd yawAngle(yaw, Eigen::Vector3d::UnitY());
-	Eigen::AngleAxisd pitchAngle(pitch, Eigen::Vector3d::UnitX());
+	//Eigen::AngleAxisd pitchAngle(pitch, Eigen::Vector3d::UnitX());
 
-	//::Quaternion<double> q =  yawAngle * rollAngle;
-
-
-	// Instead of using a rotation to fix the frame error
-	// the xyz are swap to be in the same correct frame
-	Eigen::Affine3d camToTagRect, rotationRect; // Rectify cam to tag tf
+	Eigen::Affine3d camToTagRect, artagRect, rotationRect; // Rectify cam to tag tf
+	artagRect = Eigen::AngleAxisd(M_PI, Eigen::Vector3d::UnitX());
 	rotationRect = yawAngle * rollAngle;
 
-	Eigen::Matrix3d rot;
-	Eigen::Vector3d transl;
-	rot = rotationRect.linear() * camToTag.linear() * rotationRect.linear().transpose();
-	transl = rotationRect.linear() * camToTag.translation();
-
-	// For test we put a identity
-	Eigen::Matrix3d i3;
-	i3 << 1, 0, 0,
-		  0, 1, 0,
-		  0, 0, 1;
-
-	// The rotation matrix provided by alvar track is always rotate by pi in roll and yaw.
-	// The solution is to multiply by a matrix that correct the (0,0) and (1,1) element.
-	Eigen::Matrix3d m;
-	m <<-1, 0, 0,
-		 0,-1, 0,
-		 0, 0, 1;
-	rot *= m;
-	//camToTagRect.linear() = i3; // DEBUG
-	camToTagRect.linear() = rot;
-
-	camToTagRect.translation() = transl;
-
-	//camToTagRect(0, 3) = camToTag(2, 3); // x_r = z
-	//camToTagRect(1, 3) = camToTag(0, 3); // y_r = x
-	//camToTagRect(2, 3) = camToTag(1, 3); // y_r = x
-	//Eigen::Rotation3d rotationPart;
-	//rotationPart = camToTag.rotation();
-	//camToTagRect = q * camToTag;
-	//camToTagRect.s
+	camToTagRect.linear() =  artagRect.linear() * camToTag.linear();
+	camToTagRect.translation() =  rotationRect.linear() * camToTag.translation();
+	camToTagRect.linear() = camToTag.linear(); // DEBUG force original rotation
 
 	Eigen::Affine3d cubeToTag;
 	cubeToTag = cubeToCam * camToTagRect;
@@ -228,67 +198,44 @@ geometry_msgs::Pose ArtagSubscriber::fromRelativePoseToGlobalTf(const tf::Pose& 
 	Eigen::Affine3d tagToCube;
 	tagToCube = cubeToTag.inverse();
 
-	Eigen::Affine3d worldToCube, worldToCube2;
+	Eigen::Affine3d worldToCube, worldToCube2, worldToCube3;
 	worldToCube = tagToCube * worldToTag;
 	worldToCube2 = worldToTag * tagToCube;
+	worldToCube3.linear() =  worldToTag.linear() * tagToCube.linear();
+	worldToCube3.translation() =  tagToCube.translation() + worldToTag.translation();
 
 	// Conversion from eigen to publishable ros msg
 	tf::Pose inbetween;
 	geometry_msgs::Pose output;
-	tf::poseEigenToTF(worldToCube2, inbetween);
+	tf::poseEigenToTF(worldToCube, inbetween);
 	tf::poseTFToMsg(inbetween, output);
 
 	ROS_INFO_STREAM(std::endl << "rotationRect: " << std::endl << rotationRect.matrix());
 	ROS_INFO_STREAM(std::endl << "cam   -> Tag: " << std::endl << camToTag.matrix());
 	//ROS_INFO_STREAM(std::endl << "cam   -> TagRect_with_swap_xyz:" << std::endl << camToTagRect.matrix());
 	ROS_INFO_STREAM(std::endl << "cam   -> TagRect_with_Quad:" << std::endl << camToTagRect.matrix());
+	//ROS_INFO_STREAM(std::endl << "cam   -> TagRect_mul: " << std::endl << camToTagRect_mul.matrix());
 	ROS_INFO_STREAM(std::endl << "cube  -> Cam: " << std::endl << cubeToCam.matrix());
 	ROS_INFO_STREAM(std::endl << "cube  -> Tag: " << std::endl << cubeToTag.matrix());
 	ROS_INFO_STREAM(std::endl << "Tag   -> cube: " << std::endl << tagToCube.matrix());
 	ROS_INFO_STREAM(std::endl << "world -> Tag: " << std::endl << worldToTag.matrix());
 	ROS_INFO_STREAM(std::endl << "world -> cube: " << std::endl << worldToCube.matrix());
 	ROS_INFO_STREAM(std::endl << "world -> cube2: " << std::endl << worldToCube2.matrix());
+	ROS_INFO_STREAM(std::endl << "world -> cube3_transpose: " << std::endl << worldToCube3.matrix());
+	Eigen::Quaternion<double> q;
+	q = worldToCube2.linear().matrix();
+	ROS_INFO_STREAM("to Quaternion [x y z w]:" << std::endl <<
+												q.x() << std::endl <<
+												q.y() << std::endl <<
+												q.z() << std::endl <<
+												q.w() << std::endl);
+	Eigen::Vector3d ea = worldToCube2.linear().matrix().eulerAngles(0, 1, 2) * 180.0/M_PI;
+	ROS_INFO_STREAM("to Euler angles:" << std::endl << ea << std::endl << std::endl);
 
-	/*tf::Pose rect;
-	rect.setOrigin(tf::Vector3(0,0,0));
-	//rect.setRotation(tf::Quaternion(0,0,0,1));// x,y,z,w
-	rect.setRotation(tf::Quaternion(M_PI / 2.0, 0, M_PI / 2.0));// ypr
-
-	// The cam->tag from the alvar_track msg is from the wrong reference
-	tf::Pose camToTagRect = rect * camToTag;
-
-	// cube->cam + cam->tag = cube->tag
-	tf::Pose cubeToTag = cubeToCamTf * camToTagRect;
-	//tf::Pose cubeToTag = getPoseComposition(camToTagRect, cubeToCamTf);
-	// (cube->tag)' = tag->cube
-	tf::Pose tagToCube = cubeToTag.inverse();
-	// world->tag + tag->cube = world->cube
-	//tf::Pose worldToCube = getPoseComposition(worldToTag, tagToCube);
-	tf::Pose worldToCube = worldToTag * tagToCube;
-	tf::Pose cubeToWorld = worldToTag.inverse() * cubeToTag;
-
-
-	geometry_msgs::Transform printableMsg;
-
-	tf::transformTFToMsg(cubeToCamTf, printableMsg);
-	ROS_INFO_STREAM("cubeToCamTf: "   << std::endl << printableMsg);
-
-	tf::transformTFToMsg(camToTag, printableMsg);
-	ROS_INFO_STREAM("camToTag: "   << std::endl << printableMsg);
-	tf::transformTFToMsg(camToTagRect, printableMsg);
-	ROS_INFO_STREAM("camToTagRect: "   << std::endl << printableMsg);///
-
-	tf::transformTFToMsg(cubeToTag, printableMsg);
-	ROS_INFO_STREAM("cubeToTag: "   << std::endl << printableMsg);
-
-	tf::transformTFToMsg(tagToCube, printableMsg);
-	ROS_INFO_STREAM("tagToCube: "   << std::endl << printableMsg);
-
-	tf::transformTFToMsg(worldToCube, printableMsg);
-	ROS_INFO_STREAM("worldToCube: " << std::endl << printableMsg);
-
-	tf::transformTFToMsg(cubeToWorld, printableMsg);
-	ROS_INFO_STREAM("cubeToWorld: " << std::endl << printableMsg);//*/
+	// Tf broadcast for debugging:
+	tf::Transform camToTagBroadcast;
+	tf::poseEigenToTF(camToTagRect, camToTagBroadcast);
+	br.sendTransform(tf::StampedTransform(camToTagBroadcast, ros::Time::now(), cameraName, "debug_artag"));
 
 	return output;
 }
@@ -303,11 +250,11 @@ tf::Pose ArtagSubscriber::getPoseComposition(const tf::Pose& start,
 		return finalPose;
 	}
 
-bool ArtagSubscriber::wasMsgReceiveSinceLastPull(){
+bool ArtagSubscriber::receivedMsgSinceLastPull(){
 	return msgReceiveSincePull;
 }
 
-Eigen::Vector3d ArtagSubscriber::pullAveragePose(){
+geometry_msgs::Pose ArtagSubscriber::pullAveragePose(){
 	msgReceiveSincePull = false;
 	return avgPose;
 }

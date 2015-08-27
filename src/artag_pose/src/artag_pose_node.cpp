@@ -26,6 +26,7 @@ ArtagPoseNode::~ArtagPoseNode(){
 
 void ArtagPoseNode::start(){
 	loadConfig();
+	createPublishers();
 	createSubscribers();
 	loop();
 }
@@ -34,6 +35,10 @@ void ArtagPoseNode::loadConfig(){
 	markersPose = markerConfig->parse();
 
 
+}
+
+void ArtagPoseNode::createPublishers(){
+	pubPose = nodeHandle.advertise<geometry_msgs::PoseStamped>("multitag_pose", 1000);
 }
 
 void ArtagPoseNode::createSubscribers(){
@@ -73,7 +78,6 @@ std::vector<std::string> ArtagPoseNode::loadCameraTopics(){
 void ArtagPoseNode::loop(){
 	ros::Rate loop_rate(frequency);
 	while(ros::ok()){
-
 		computePoseAndPublish();
 
 		ros::spinOnce();
@@ -82,7 +86,20 @@ void ArtagPoseNode::loop(){
 }
 
 void ArtagPoseNode::computePoseAndPublish(){
+	std::vector<ArtagSubPtr>::iterator it;
+	geometry_msgs::PoseStamped msg;
+	msg.header.frame_id = "cafeteria";
 
+	int nbrPose = 0;
+
+	for(it = artagSubs.begin(); it != artagSubs.end(); ++it){
+		if((*it)->receivedMsgSinceLastPull()){
+			msg.pose = (*it)->pullAveragePose();
+			nbrPose++;
+		}
+	}
+	if(nbrPose > 0)
+		pubPose.publish(msg);
 }
 
 
