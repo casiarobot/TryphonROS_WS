@@ -22,9 +22,9 @@
 typedef std::vector<ar_track_alvar::AlvarMarker> TrackedMarker;
 
 typedef struct {
+	int idTag;
 	Eigen::Affine3d camPose;	/* Relative pose from the camera frame */
 	Eigen::Affine3d globalPose; /* Global pose from the world frame */
-	double confidence;			/* Confidence from Alvar_track */
 	double weight;				/* Not normalize weight */
 }
 tagHandle;

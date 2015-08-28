@@ -49,6 +49,7 @@ private:
 	void createPublishers();
 	void createSubscribers();
 	void computePoseAndPublish();
+	void calculateWeight(std::list<tagHandle>& tags);
 	Eigen::Affine3d doWeightAverage(const std::list<tagHandle>& t);
 
 };

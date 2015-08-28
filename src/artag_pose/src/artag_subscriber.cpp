@@ -81,9 +81,10 @@ void ArtagSubscriber::artagCallback(const ar_track_alvar::AlvarMarkers::ConstPtr
 	else
 		emptyCount = 0;
 
+	tagsDetected.clear();
+
 	TrackedMarker::iterator m;
-	for(m = trackMarkers.begin(); m != trackMarkers.end(); ++m)
-	for(unsigned i = 0; i < trackMarkers.size(); i++){
+	for(m = trackMarkers.begin(); m != trackMarkers.end(); ++m){
 		// Does the id is in the list of valid markers
 		if(markers->isValidMarker(m->id)){
 			TrackedMarker::iterator oldM;
@@ -112,9 +113,9 @@ void ArtagSubscriber::artagCallback(const ar_track_alvar::AlvarMarkers::ConstPtr
 			Eigen::Affine3d globalPose = fromRelativePoseToGlobalTf(camToTag, worldToTag, m->id);
 
 			tagHandle newTag;
+			newTag.idTag = m->id;
 			newTag.camPose = camToTag;
 			newTag.globalPose = globalPose;
-			newTag.confidence = m->confidence;
 			newTag.weight = 1.0;
 			tagsDetected.push_back(newTag);
 		}
@@ -204,7 +205,7 @@ double ArtagSubscriber::distanceBetweenPoint(geometry_msgs::Point A,
 	//geometry_msgs::Pose output;
 	//tf::poseEigenToTF(worldToCube2, inbetween);
 	//tf::poseTFToMsg(inbetween, output);
-
+	/*
 	ROS_INFO_STREAM(std::endl << "artagYaw: " << artagYaw * 180.0 / M_PI);
 	ROS_INFO_STREAM(std::endl << "rotationRect: " << std::endl << rotationRect.matrix());
 	ROS_INFO_STREAM(std::endl << "cam   -> Tag: " << std::endl << camToTag.matrix());
@@ -227,7 +228,7 @@ double ArtagSubscriber::distanceBetweenPoint(geometry_msgs::Point A,
 												q.w() << std::endl);
 	Eigen::Vector3d ea = worldToCube2.linear().matrix().eulerAngles(0, 1, 2) * 180.0/M_PI;
 	ROS_INFO_STREAM("to Euler angles:" << std::endl << ea << std::endl << std::endl);
-
+	*/
 	// Tf broadcast for debugging:
 	tf::Transform camToTagBroadcast;
 	tf::poseEigenToTF(camToTagRect, camToTagBroadcast);

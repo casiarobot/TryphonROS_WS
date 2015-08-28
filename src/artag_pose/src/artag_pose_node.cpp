@@ -49,8 +49,8 @@ void ArtagPoseNode::createSubscribers(){
 	std::vector<std::string> camera_topics;
 	camera_topics.push_back("camera1");
 	camera_topics.push_back("/192_168_10_243/artags/artag1/ar_pose_marker");
-	camera_topics.push_back("camera3");
-	camera_topics.push_back("/192_168_10_243/artags/artag3/ar_pose_marker");
+	/*camera_topics.push_back("camera3");
+	camera_topics.push_back("/192_168_10_243/artags/artag3/ar_pose_marker");*/
 
 	// for each camera topics create a subscriber
 	std::vector<std::string>::iterator topic_name;
@@ -102,6 +102,9 @@ void ArtagPoseNode::computePoseAndPublish(){
 	if(tagsDetected.empty())
 		return;
 
+	calculateWeight(tagsDetected);
+
+
 	Eigen::Affine3d pose = doWeightAverage(tagsDetected);
 	// Eigen -> Ros msg
 	tf::poseEigenToMsg(pose, msg.pose);
@@ -115,6 +118,38 @@ void ArtagPoseNode::computePoseAndPublish(){
 	//br.sendTransform(tf::StampedTransform(camToTagBroadcast, ros::Time::now(), "cafeteria", "cube_estimate"));
 }
 
+void ArtagPoseNode::calculateWeight(std::list<tagHandle>& tags){
+
+	std::list<tagHandle>::iterator tag;
+	std::cout << std::endl;
+	for(tag = tags.begin(); tag != tags.end(); ++tag)
+	{
+		Eigen::Vector3d trans = tag->camPose.translation().matrix();
+		double norm = trans.norm();
+
+
+		Eigen::Vector3d vrot = tag->camPose.linear() * Eigen::Vector3d::UnitX();
+		double artagYaw = atan2(vrot(2), vrot(0));
+		Eigen::Quaterniond q;
+		q =  tag->camPose.linear();
+
+		double angle, x, y, z;
+		angle = 2 * acos(q.w());
+		x = q.x() / sqrt(1 - q.w() * q.w());
+		y = q.y() / sqrt(1 - q.w() * q.w());
+		z = q.z() / sqrt(1 - q.w() * q.w());
+		double qNorm = sqrt(x*x + y*y + z*z);
+
+
+
+		std::cout << "Tag_" << tag->idTag << std::endl;
+		ROS_INFO_STREAM("Norm: " << norm);
+		ROS_INFO_STREAM("Yaw: " << artagYaw* 180.0 / M_PI);
+		ROS_INFO_STREAM("Quat norm: " << qNorm);
+
+		tag->weight = 1.0;
+	}
+}
 
 Eigen::Affine3d ArtagPoseNode::doWeightAverage(const std::list<tagHandle>& tags){
 
