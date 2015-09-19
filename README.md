@@ -3,6 +3,9 @@
 # Aerostabile
 We aim to develop cubic blimps for artistic performances. They are entirely autonomous, based on IMU, sonars and USB cameras. Localization, control and interaction behaviors are developped in ROS. In the current state of our work, only 2 nodes run on the gumstix: one to handle the Robovero hardware (sonars, motors, battery level) and the other for the USB cameras (PointGrey). More information [here](http://robot.gmc.ulaval.ca/en/research/theme409.html).
 
+# TODO
+ADD depencies packages, update with artag working, cean MCPTAM required package folder.
+
 ## ROS Groundstation (off-board) Nodes
 
 The ROS Nodes used in the Aerostabile project are all developped to work on one individual cubic blimp or on upto four simultaneously.  Therefore the nodes must be able to communicate appropriately and avoid any interference. By using launch files with group parameters, the same node can be executed multiple times while being labeled appropriately with the IP address of the respective cublic blimp the node is run on.  Topic names are chosen to be added after the group label. ( Note: It is important to avoid an inital "/" at the beginning of any topic name for the grouping method to work)
