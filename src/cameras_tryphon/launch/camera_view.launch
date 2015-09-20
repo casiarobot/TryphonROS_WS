@@ -1,0 +1,12 @@
+<launch>
+  <group ns="cameras_viewer" >
+
+    <node name="republish1" type="republish" pkg="image_transport" output="screen" args="compressed in:=/camera1/image_raw raw out:=/camera1_img" />
+
+    <node name="republish2" type="republish" pkg="image_transport" output="screen" args="compressed in:=/camera2/image_raw raw out:=/camera2_img" />
+
+    <node name="image_view1" type="image_view" pkg="image_view" output="screen" args="image:=/camera1_img" />
+
+    <node name="image_view2" type="image_view" pkg="image_view" output="screen" args="image:=/camera2_img" />
+  </group>
+</launch>

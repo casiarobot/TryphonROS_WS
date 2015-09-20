@@ -1,0 +1,13 @@
+<launch>
+	<!-- Artag pose launch-prefix="valgrind "-->
+	<node name="artag_pose" type="artag_pose_node" pkg="artag_pose" output="screen" >
+	    <param name="hz" type="double" value="10.0" />
+	    <param name="useYAML" type="boolean" value="false" />
+
+		<!-- Load the list alvar_artag_tracker topic name (one for each camera used)-->
+		<rosparam command="load" file="$(find artag_pose)/config/cafeteria.yaml" />
+
+
+		<!--<param name="configFileName" type="string" value="$(find artag_pose)/config/cafeteria.yaml" />-->
+	</node>
+</launch>

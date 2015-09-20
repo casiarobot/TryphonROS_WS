@@ -1,0 +1,26 @@
+---
+camera_topics:
+ - camera1
+ - /192_168_10_243/artags/artag1/ar_pose_marker
+
+markers_pose:
+ - 
+   id: 1
+   pose:
+    position:
+     x: 0
+     y: 0
+     z: 0
+    orientation:
+     yaw: 0
+ - 
+   id: 2
+   pose:
+    position:
+     x: 1
+     y: 0
+     z: 8
+    orientation:
+     yaw: 0
+
+

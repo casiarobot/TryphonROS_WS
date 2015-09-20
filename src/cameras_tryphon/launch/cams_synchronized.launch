@@ -1,0 +1,9 @@
+<launch>
+    <!-- remember to hard code the serial of the two cameras into the pgrff_node_software -->
+    <node pkg="cameras_tryphon" type="pgrff_node_software" name="cameras_node" output="screen">
+      <param name="serialmaster" value="14316843" />
+      <param name="serialslave" value="14316841" />
+      <param name="camera1_info_url" value="file:///home/tryphon/ROSTryphon_groundstation/src/cameras_tryphon/launch/calibration/camera1.yaml" />
+      <param name="camera2_info_url" value="file:///home/tryphon/ROSTryphon_groundstation/src/cameras_tryphon/launch/calibration/camera2.yaml" />
+    </node>
+</launch>

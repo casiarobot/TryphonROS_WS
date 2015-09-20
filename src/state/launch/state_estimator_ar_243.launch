@@ -1,0 +1,30 @@
+<launch>
+   
+    <group ns="192_168_10_243">
+        <node pkg="state" type="state_estimator_ar" name="state_estimator_ar" output="screen">
+      <!-- set a private parameter for the node -->
+     
+      <param name="ip" value="192_168_10_243" />
+      <param name="pos_src" type="int" value="0" />
+
+      <!-- Sensors available 0: no 1: yes-->
+      <param name="MCPTAM" value="1" />
+      <param name="IMU" value="1" />
+      <param name="SICK" value="0" />
+      <param name="COMPASS" value="0" />
+      <param name="SONARS" value="0" />
+
+      <!-- All the relative pose to the centroid of the cube in the cube frame -->
+      <param name="relative_pose_CM" type="string" value="$(find state)/calibration/tryphon_CM.yaml" />
+      <param name="relative_pose_camera" type="string" value="$(find state)/calibration/tryphon_camera.yaml" />
+      <param name="relative_pose_IMU" type="string" value="$(find state)/calibration/tryphon_IMU.yaml" />
+
+      <!-- Pose of the SICK frame in MCPTAM frame -->
+      <param name="relative_pose_SICK" type="string" value="$(find state)/calibration/tryphon_SICK.yaml" />
+
+    </node>
+
+     </group>
+</launch>
+
+
