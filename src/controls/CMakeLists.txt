@@ -70,5 +70,9 @@ add_executable(force_distribution src/force_distribution.cpp)
 target_link_libraries(force_distribution ${catkin_LIBRARIES})
 add_dependencies(force_distribution sensors_gencpp std_msgs geometry_msgs sensors state)
 
+add_executable(dock_control src/dock_control.cpp)
+target_link_libraries(dock_control ${state_LIBRARIES} ${catkin_LIBRARIES})
+add_dependencies(dock_control sensors_gencpp std_msgs geometry_msgs sensors state)
+
 #%EndTag(FULLTEXT)%
 

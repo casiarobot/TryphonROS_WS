@@ -41,6 +41,19 @@ add_executable(state_estimator src/state_estimator.cpp)
 target_link_libraries(state_estimator ${catkin_LIBRARIES} yaml-cpp)
 add_dependencies(state_estimator sensors_gencpp std_msgs geometry_msgs)
 
+add_executable(state_estimator_ar src/state_estimator_ar.cpp)
+target_link_libraries(state_estimator_ar ${catkin_LIBRARIES} yaml-cpp)
+add_dependencies(state_estimator_ar sensors_gencpp std_msgs geometry_msgs)
+
+add_executable(ar_state src/ar_state.cpp)
+target_link_libraries(ar_state ${catkin_LIBRARIES} yaml-cpp)
+add_dependencies(ar_state sensors_gencpp std_msgs geometry_msgs)
+
+
+add_executable(gazebo_rel src/gazebo_rel.cpp)
+target_link_libraries(gazebo_rel ${catkin_LIBRARIES} yaml-cpp)
+add_dependencies(gazebo_rel sensors_gencpp std_msgs geometry_msgs)
+
 add_executable(state_estimator_SICK src/state_estimator_SICK.cpp)
 target_link_libraries(state_estimator_SICK ${catkin_LIBRARIES})
 add_dependencies(state_estimator_SICK sensors_gencpp std_msgs geometry_msgs)
