@@ -3,21 +3,15 @@
 
 
 ArtagPoseNode::ArtagPoseNode():nodeHandle("~"){
-	nodeHandle.param<bool>("useYAML", useYAML, false);
 
 	nodeHandle.param<int>("hz", frequency, 10);
 
-	nodeHandle.param<int>("numMarkers", numMarkers, 4);
+	nodeHandle.param<int>("numMarkers", numMarkers, 1);
 
-	if(useYAML){
-		ROS_INFO("Using YAML for markers pose");
-		markerConfig = new YamlConfigLoader(&nodeHandle);
-	}
-	else{
-		ROS_INFO("Using TF for markers pose");
-		markerConfig = new TfConfigLoader;
-	}
+	ROS_INFO("Using TF for markers pose");
+	markerConfig = new TfConfigLoader;
 }
+
 ArtagPoseNode::~ArtagPoseNode(){
 	artagSubs.clear();
 	delete markerConfig;
@@ -33,8 +27,6 @@ void ArtagPoseNode::start(){
 void ArtagPoseNode::loadConfig(){
 	markerConfig->load(numMarkers);
 	markersPose = markerConfig->parse();
-
-
 }
 
 void ArtagPoseNode::createPublishers(){
@@ -115,7 +107,12 @@ void ArtagPoseNode::computePoseAndPublish(){
 	// Broadcast tf
 	tf::Pose poseTf;
 	tf::poseEigenToTF(pose, poseTf);
-	//br.sendTransform(tf::StampedTransform(camToTagBroadcast, ros::Time::now(), "cafeteria", "cube_estimate"));
+	/*br.sendTransform(
+	            tf::StampedTransform(camToTagBroadcast,
+	                                      ros::Time::now(),
+	                                      "cafeteria",
+	                                      "cube_estimate")
+	            );*/
 }
 
 void ArtagPoseNode::calculateWeight(std::list<tagHandle>& tags){
@@ -127,19 +124,19 @@ void ArtagPoseNode::calculateWeight(std::list<tagHandle>& tags){
 		Eigen::Vector3d trans = tag->camPose.translation().matrix();
 		double norm = trans.norm();
 
-
+		// The yaw is extracted by rotating a unit vector and doing the atan2 of two of his axis
 		Eigen::Vector3d vrot = tag->camPose.linear() * Eigen::Vector3d::UnitX();
 		double artagYaw = atan2(vrot(2), vrot(0));
+
+		// Calculation of the quaternion norm
+		double angle, x, y, z;
 		Eigen::Quaterniond q;
 		q =  tag->camPose.linear();
-
-		double angle, x, y, z;
 		angle = 2 * acos(q.w());
 		x = q.x() / sqrt(1 - q.w() * q.w());
 		y = q.y() / sqrt(1 - q.w() * q.w());
 		z = q.z() / sqrt(1 - q.w() * q.w());
 		double qNorm = sqrt(x*x + y*y + z*z);
-
 
 
 		std::cout << "Tag_" << tag->idTag << std::endl;
@@ -160,11 +157,13 @@ Eigen::Affine3d ArtagPoseNode::doWeightAverage(const std::list<tagHandle>& tags)
 		totalWeight += tag->weight;
 	}
 
+	// Edge case where weight is zero
 	if(totalWeight < 0.0001){
 		ROS_ERROR("Total weight should be greater than zero");
 		ros::shutdown();
 	}
 
+	// Calculation of the average pose baise on the multiple pose weight
 	Eigen::Vector3d position;
 	Eigen::Quaterniond rot, q;
 	rot = tags.front().globalPose.linear().matrix();
@@ -174,6 +173,8 @@ Eigen::Affine3d ArtagPoseNode::doWeightAverage(const std::list<tagHandle>& tags)
 
 		position += tag->globalPose.translation() * normalizeWeight;
 
+		// The averaging of the quaternion is based on Unity average function:
+		// http://wiki.unity3d.com/index.php/Averaging_Quaternions_and_Vectors
 		q = tag->globalPose.linear().matrix();
 
 		// We need to check if the quaternion is inverted by doing a dot product

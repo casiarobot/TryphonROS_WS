@@ -58,7 +58,6 @@ include_directories(
 add_executable(artag_pose_node
     src/artag_pose_node.cpp
     src/artag_subscriber.cpp
-    src/yaml_config_loader.cpp
     src/tf_config_loader.cpp
     src/markers_pose.cpp
 
@@ -67,7 +66,6 @@ add_executable(artag_pose_node
     include/artag_pose/artag_pose_node.h
     include/artag_pose/artag_subscriber.h
     include/artag_pose/config_loader.h
-    include/artag_pose/yaml_config_loader.h
     include/artag_pose/tf_config_loader.h
     include/artag_pose/markers_pose.h
 )

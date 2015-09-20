@@ -17,7 +17,6 @@
 
 // Project includes
 #include "artag_pose/artag_subscriber.h"
-#include "artag_pose/yaml_config_loader.h"
 #include "artag_pose/tf_config_loader.h"
 
 
@@ -28,7 +27,6 @@ class ArtagPoseNode{
 	tf::TransformBroadcaster br;
 
 	// Ros parameter:
-	bool useYAML;
 	int frequency;
 	int numMarkers;
 

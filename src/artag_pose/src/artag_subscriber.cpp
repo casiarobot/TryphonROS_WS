@@ -23,7 +23,7 @@ ArtagSubscriber::ArtagSubscriber(const std::string& camera_name,
 	timer = nh.createTimer(ros::Duration(5), &ArtagSubscriber::timerCallback, this);
 
 	// Subscribe to topic
-	sub = nh.subscribe<ar_track_alvar::AlvarMarkers>(
+	sub = nh.subscribe<ar_track_alvar_msgs::AlvarMarkers>(
 								topic_name,
 								10,
 								&ArtagSubscriber::artagCallback,
@@ -63,7 +63,7 @@ void ArtagSubscriber::timerCallback(const ros::TimerEvent& event){
 	}
 }
 
-void ArtagSubscriber::artagCallback(const ar_track_alvar::AlvarMarkers::ConstPtr& msg){
+void ArtagSubscriber::artagCallback(const ar_track_alvar_msgs::AlvarMarkers::ConstPtr& msg){
 	if(!receiveIsFirstMsg)
 		receiveIsFirstMsg = true;
 
@@ -137,7 +137,7 @@ void ArtagSubscriber::artagCallback(const ar_track_alvar::AlvarMarkers::ConstPtr
 }
 
 TrackedMarker::iterator ArtagSubscriber::findMarkerInOldMsgById(unsigned int id){
-	std::vector<ar_track_alvar::AlvarMarker>::iterator it;
+	std::vector<ar_track_alvar_msgs::AlvarMarker>::iterator it;
 	for(it = oldMsg.markers.begin(); it != oldMsg.markers.end(); ++it){
 		if(id == it->id)
 			return it;
@@ -156,7 +156,7 @@ double ArtagSubscriber::distanceBetweenPoint(geometry_msgs::Point A,
 }
 
 
-	Eigen::Affine3d ArtagSubscriber::fromRelativePoseToGlobalTf(const Eigen::Affine3d& camToTag,
+Eigen::Affine3d ArtagSubscriber::fromRelativePoseToGlobalTf(const Eigen::Affine3d& camToTag,
 	                                                            const Eigen::Affine3d& worldToTag,
 	                                                            const int tagName){
 

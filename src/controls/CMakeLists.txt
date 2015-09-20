@@ -5,7 +5,7 @@ project(controls)
 
 ## Find catkin and any catkin packages
 find_package(catkin REQUIRED COMPONENTS geometry_msgs roscpp rospy std_msgs sensors state dynamic_reconfigure message_generation 
-#cmake_modules
+cmake_modules
 )
 find_package(Eigen REQUIRED)
 

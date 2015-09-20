@@ -15,11 +15,15 @@
 
 #include <geometry_msgs/Transform.h>
 #include <geometry_msgs/Pose.h>
-#include <ar_track_alvar/AlvarMarkers.h>
+
+#include <ar_track_alvar_msgs/AlvarMarkers.h>
 
 #include "artag_pose/markers_pose.h"
 
-typedef std::vector<ar_track_alvar::AlvarMarker> TrackedMarker;
+
+
+
+typedef std::vector<ar_track_alvar_msgs::AlvarMarker> TrackedMarker;
 
 typedef struct {
 	int idTag;
@@ -45,7 +49,7 @@ class ArtagSubscriber{
 
 
 	Eigen::Affine3d cubeToCam;
-	ar_track_alvar::AlvarMarkers oldMsg;
+	ar_track_alvar_msgs::AlvarMarkers oldMsg;
 	unsigned int emptyCount;
 
 	// Configuration
@@ -59,7 +63,7 @@ public:
 	                MarkersPosePtr markers,
 	                ros::NodeHandle & nh);
 
-	void artagCallback(const ar_track_alvar::AlvarMarkers::ConstPtr& msg);
+	void artagCallback(const ar_track_alvar_msgs::AlvarMarkers::ConstPtr& msg);
 	void timerCallback(const ros::TimerEvent& event);
 
 	void pullTagDetected(std::list<tagHandle>& tagList);

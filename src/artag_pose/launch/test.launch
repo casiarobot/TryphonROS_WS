@@ -2,7 +2,6 @@
 	<!-- Artag pose launch-prefix="valgrind "-->
 	<node name="artag_pose" type="artag_pose_node" pkg="artag_pose" output="screen" >
 	    <param name="hz" type="double" value="10.0" />
-	    <param name="useYAML" type="boolean" value="false" />
 	    <param name="numMarkers" type="int" value="1" />
 
 

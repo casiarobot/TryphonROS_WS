@@ -2,7 +2,7 @@
 	<group ns="192_168_10_243">
 					<!-- PointGrey Camera -->
 		<arg name="camera_serial" default="0" />
-		<arg name="calibrated" default="0" />
+		<arg name="calibrated" default="1" />
 
 		<group ns="camera10">
 			<node pkg="nodelet" type="nodelet" name="camera_nodelet_manager" args="manager" />
@@ -23,7 +23,7 @@
 		<group ns="artags">
 
 			<!-- Marker tracker -->
-			<arg name="marker_size" default="10" />
+			<arg name="marker_size" default="100" />
 			<arg name="max_new_marker_error" default="0.08" />
 			<arg name="max_track_error" default="0.2" />
 			<arg name="cam_image_topic" default="/192_168_10_243/camera10/image_raw" />
@@ -38,7 +38,7 @@
 	</group>
 	<!-- Tf handling -->
 	<!-- TAGs POSITION TO THE CAFETERIA CENTER -->
-	<node pkg="tf" type="static_transform_publisher" name="artag00_tf_pub" output="screen" args="1 0 0 0 0 0 cafeteria artag_00_rectify_link 100" /> <!-- Artag00 -->
+	<node pkg="tf" type="static_transform_publisher" name="artag00_tf_pub" output="screen" args="0 0 0 0 0 0 cafeteria artag_00_rectify_link 100" /> <!-- Artag00 -->
 
 	<!-- CAMERA POSITION FROM THE CUBE CENTER -->
 	<node pkg="tf" type="static_transform_publisher" name="camera1_tf_pub" output="screen" args="0 0 0 0 0 0 cube camera1 100" /> <!-- camera1 -->
