@@ -6,6 +6,9 @@ We aim to develop cubic blimps for artistic performances. They are entirely auto
 # TODO
 ADD depencies packages, update with artag working, cean MCPTAM required package folder.
 
+## Installation
+first install flycapture and its required packages : libgtkglextmm-x11-1.2-dev libgtkmm-2.4-1c2a libglademm-2.4-1c2a, then install TooN, libcvd and gvars following the readme in MCPTAM_REQUIRED_PACKAGE
+
 ## ROS Groundstation (off-board) Nodes
 
 The ROS Nodes used in the Aerostabile project are all developped to work on one individual cubic blimp or on upto four simultaneously.  Therefore the nodes must be able to communicate appropriately and avoid any interference. By using launch files with group parameters, the same node can be executed multiple times while being labeled appropriately with the IP address of the respective cublic blimp the node is run on.  Topic names are chosen to be added after the group label. ( Note: It is important to avoid an inital "/" at the beginning of any topic name for the grouping method to work)
