@@ -1,0 +1,11 @@
+<launch>
+	
+
+	<group ns="192_168_10_243">
+	 <node name="links_imubuff" pkg="links" type="links_imubuff" respawn="false" output="screen">
+	 <param name="ip" type="string" value="192_168_10_243" />
+	
+	</node>
+	</group>
+
+</launch>

@@ -112,29 +112,29 @@ ros::Publisher  netwrench_pub = nh.advertise<geometry_msgs::Wrench>("/192_168_10
 ros::Rate loop_rate(10);
 
 
-KpP[0]=.3;
+KpP[0]=.2;
 KpP[1]=.1;
-KpP[2]=.3;
-KpT[0]=.1;
-KpT[1]=.1;
-KpT[2]=.1;
+KpP[2]=.2;
+KpT[0]=.25;
+KpT[1]=.8;
+KpT[2]=.25;
 
-
+/*
 KdP[0]=0;
 KdP[1]=0;
 KdP[2]=0;
 KdT[0]=0;
 KdT[1]=0;
 KdT[2]=0;
-
-/*
-KdP[0]=.1;
-KdP[1]=.05;
-KdP[2]=.1;
-KdT[0]=.05;
-KdT[1]=.05;
-KdT[2]=.05;
 */
+
+KdP[0]=.5;
+KdP[1]=.5;
+KdP[2]=.5;
+KdT[0]=.2;
+KdT[1]=.2;
+KdT[2]=.2;
+
 
 
 while (ros::ok())
@@ -154,6 +154,16 @@ force_2(i)=KpP[i]*rel_pos_2(i)+KdP[i]*rel_vel_2(i);
 torque_1(i)=0;
 torque_2(i)=0;
 }
+
+
+//torque_1(0)=KpT[0]/2*-(rel_pos_2(2)+rel_pos_1(2)) 
+torque_1(1)=KpT[1]*-(rel_pos_2(2)-rel_pos_1(2));
+torque_1(2)=KpT[2]*(rel_pos_1(1)-rel_pos_2(1));
+//torque_2(0)=
+torque_2(1)=KpT[1]*-(rel_pos_2(2)-rel_pos_1(2));
+torque_2(2)=KpT[2]*(rel_pos_2(1)-rel_pos_1(1));
+
+
 
 wrench_1.header.stamp=ros::Time::now();
 wrench_2.header.stamp=ros::Time::now();
