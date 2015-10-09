@@ -39,8 +39,10 @@ void ArtagPoseNode::createSubscribers(){
 
 	// Bypass the Yaml configuration for debugging
 	std::vector<std::string> camera_topics;
-	camera_topics.push_back("camera1");
-	camera_topics.push_back("/192_168_10_243/artags/artag1/ar_pose_marker");
+	camera_topics.push_back("camera3");
+	camera_topics.push_back("/192_168_10_243/artags1/artag1/ar_pose_marker");
+	camera_topics.push_back("camera4");
+	camera_topics.push_back("/192_168_10_243/artags2/artag1/ar_pose_marker");
 	/*camera_topics.push_back("camera3");
 	camera_topics.push_back("/192_168_10_243/artags/artag3/ar_pose_marker");*/
 
@@ -138,11 +140,11 @@ void ArtagPoseNode::calculateWeight(std::list<tagHandle>& tags){
 		z = q.z() / sqrt(1 - q.w() * q.w());
 		double qNorm = sqrt(x*x + y*y + z*z);
 
-
+		/*
 		std::cout << "Tag_" << tag->idTag << std::endl;
 		ROS_INFO_STREAM("Norm: " << norm);
 		ROS_INFO_STREAM("Yaw: " << artagYaw* 180.0 / M_PI);
-		ROS_INFO_STREAM("Quat norm: " << qNorm);
+		ROS_INFO_STREAM("Quat norm: " << qNorm);*/
 
 		tag->weight = 1.0;
 	}

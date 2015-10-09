@@ -155,10 +155,76 @@ double ArtagSubscriber::distanceBetweenPoint(geometry_msgs::Point A,
 	return fabs(mag);
 }
 
+Eigen::Affine3d ArtagSubscriber::fromRelativePoseToGlobalTf(Eigen::Affine3d& camToTag,
+                                                            Eigen::Affine3d worldToTag,
+                                                            const int tagName){
+	/****
+	 * WARMING!!!!
+	 * For some reason Eigen Quaternion representation (w,x,y,z) doesn't correspond to SpinCalc lib
+	 * So we reverse the w: (-w,x,y,z)
+	 */
+	// TODO hardcoded of september residency
+	if(tagName == 0 ){ // Front
+		Eigen::Quaterniond q1(-0.5, -0.5, 0.5, 0.5);
+		worldToTag.linear() = q1.toRotationMatrix();
+		worldToTag.translation() = Eigen::Vector3d(0.67, 0.55, 0);
 
-Eigen::Affine3d ArtagSubscriber::fromRelativePoseToGlobalTf(const Eigen::Affine3d& camToTag,
-	                                                            const Eigen::Affine3d& worldToTag,
-	                                                            const int tagName){
+		Eigen::Quaterniond q2(-0.5, 0.5, -0.5, 0.5);
+		cubeToCam.linear() = q2.toRotationMatrix();
+		cubeToCam.translation() = Eigen::Vector3d(0, 0.55, 0);
+	}// Side tag
+	else{
+		//Eigen::Quaterniond q1(0.7071, -0.7071, 0, 0);
+		Eigen::Quaterniond q90(0.707, 0, 0, -0.707);
+		Eigen::Quaterniond q1(-0.5, -0.5, 0.5, 0.5);
+		worldToTag.linear() = q90.toRotationMatrix() * q1.toRotationMatrix();
+		worldToTag.translation() = Eigen::Vector3d(0, -1.12, -0.16);
+
+		//Eigen::Quaterniond q2(-0.7, 0, 0, 0.7);
+		Eigen::Quaterniond q2(-0.5, 0.5, -0.5, 0.5);
+		Eigen::Quaterniond q3;
+		q3 = q90 * q2;
+		cubeToCam.linear() = q3.toRotationMatrix();
+		cubeToCam.translation() = Eigen::Vector3d(-0.04, -0.55, 0.04);
+	}
+
+	Eigen::Affine3d cubeToTag, worldToCube;
+	cubeToTag.linear() = cubeToCam.linear() * camToTag.linear();
+	worldToCube.linear() = worldToTag.linear() * cubeToTag.linear().transpose();
+	worldToCube.translation() =  worldToTag.translation()
+	        - (
+	            worldToCube.linear() * cubeToCam.linear() * camToTag.translation()
+	           + worldToCube.linear() * cubeToCam.translation()
+	            );
+	/*
+	ROS_INFO_STREAM(std::endl << "q2: " << std::endl << q2.w() << " x"<< q2.x() << " y"<< q2.y() << " z"<< q2.z() << " ");
+
+	ROS_INFO_STREAM(std::endl << "cam -> Tag: " << std::endl << camToTag.matrix());
+	ROS_INFO_STREAM(std::endl << "cube -> Cam: " << std::endl << cubeToCam.matrix());
+	ROS_INFO_STREAM(std::endl << "world -> Tag: " << std::endl << worldToTag.matrix());
+	ROS_INFO_STREAM(std::endl << "cube -> Tag: " << std::endl << cubeToTag.matrix());*/
+
+	ROS_INFO_STREAM(std::endl << "================ TAG " << tagName << " ================" << std::endl );
+	ROS_INFO_STREAM(std::endl << "world -> Cube:[TF]" << std::endl << worldToCube.matrix());
+	ROS_INFO_STREAM(std::endl << "world -> Cube [translation]: " << std::endl << worldToCube.translation());
+
+	Eigen::Vector3d d;
+	Eigen::Quaterniond quat(worldToCube.linear());
+	d(0) = atan2(2*(quat.w()*quat.x()+quat.y()*quat.z()),1-2*(quat.x()*quat.x()+quat.y()*quat.y()));
+    d(1) = asin(2*(quat.w()*quat.y()-quat.z()*quat.x()));
+    d(2) = atan2(2*(quat.w()*quat.z()+quat.x()*quat.y()),1-2*(quat.z()*quat.z()+quat.y()*quat.y()));
+	d *= 180.0 / M_PI;
+	ROS_INFO_STREAM(std::endl << "RPY:" << std::endl << d);
+
+
+	return worldToCube;
+}
+
+Eigen::Affine3d ArtagSubscriber::fromRelativePoseToGlobalTfold(const Eigen::Affine3d& camToTag,
+	                                                           const Eigen::Affine3d& worldToTag,
+	                                                           const int tagName){
+
+
 
 	// The yaw is directly extracted from the rotation matrix by transforming a
 	// unit vector. Y plan seem to correspond to the yaw in simulation tests

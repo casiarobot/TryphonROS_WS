@@ -73,7 +73,10 @@ private:
 	TrackedMarker::iterator  findMarkerInOldMsgById(unsigned int id);
 	double distanceBetweenPoint(geometry_msgs::Point A,
 	                            geometry_msgs::Point B);
-	Eigen::Affine3d fromRelativePoseToGlobalTf(const Eigen::Affine3d& camToTag,
+	Eigen::Affine3d fromRelativePoseToGlobalTf(Eigen::Affine3d& camToTag,
+	                                           Eigen::Affine3d worldToTag,
+	                                           const int tagName = 0);
+	Eigen::Affine3d fromRelativePoseToGlobalTfold(const Eigen::Affine3d& camToTag,
 	                                           const Eigen::Affine3d& worldToTag,
 	                                           const int tagName = 0);
 	tf::Pose getPoseComposition(const tf::Pose& start,
