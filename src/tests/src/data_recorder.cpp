@@ -23,13 +23,14 @@
 
 using namespace std;
 
-geometry_msgs::Pose PoseEKF,PoseGaz,PoseCtrl,PoseDesir, Posetraj, PoseAR1, PoseIacc, PoseIgyr,PoseRP,PoseARconv;
+geometry_msgs::Pose PoseEKF,PoseGaz,PoseCtrl,PoseDesir, Posetraj, PoseAR1, PoseAR3, PoseIacc, PoseIgyr,PoseRP,PoseARconv;
 geometry_msgs::Twist VelEKF, VelGAZ;
 geometry_msgs::Wrench CmdCtrl,CmdReal;
 sensor_msgs::Imu Imu;
 double debut;
 
 std::ofstream filePAR1;
+std::ofstream filePAR3;
 std::ofstream fileIMUB;
 std::ofstream fileIMUPOSE;
 std::ofstream fileARC;
@@ -89,7 +90,16 @@ void subARtag1(const ar_track_alvar_msgs::AlvarMarkers Alvar1)
   double secs = ros::Time::now().toSec()-debut;
   filePAR1 <<secs << "," << PoseAR1.position.x << ","<< PoseAR1.position.y <<","<< PoseAR1.position.z <<","<< PoseAR1.orientation.x;
   filePAR1 <<","<< PoseAR1.orientation.y <<","<< PoseAR1.orientation.z << "," << PoseAR1.orientation.w <<endl;
+
+  ar_track_alvar_msgs::AlvarMarker alvartemp2;
+  alvartemp2=Alvar1.markers[1];
+  PoseAR3=alvartemp2.pose.pose ; 
+  double secs2 = ros::Time::now().toSec()-debut;
+  filePAR3 <<secs << "," << PoseAR3.position.x << ","<< PoseAR3.position.y <<","<< PoseAR3.position.z <<","<< PoseAR3.orientation.x;
+  filePAR3 <<","<< PoseAR3.orientation.y <<","<< PoseAR3.orientation.z << "," << PoseAR3.orientation.w <<endl;
+
 }
+
 
 void subPoseGaz(const geometry_msgs::PoseStamped PoseSG)
 {
@@ -300,6 +310,9 @@ sprintf(rosname,"/%s/artags1/artag1/ar_pose_marker",temp_arg.c_str());
  sprintf(buffer,"%s/%s/%s_PAR1.csv",link,temp_arg.c_str(),argv[1]);
   filePAR1.open(buffer);
   ROS_INFO(buffer);
+  sprintf(buffer,"%s/%s/%s_PAR3.csv",link,temp_arg.c_str(),argv[1]);
+  filePAR3.open(buffer);
+  ROS_INFO(buffer);
    sprintf(buffer,"%s/%s/%s_IMUB.csv",link,temp_arg.c_str(),argv[1]);
   fileIMUB.open(buffer);
   ROS_INFO(buffer);
@@ -368,6 +381,7 @@ sprintf(rosname,"/%s/artags1/artag1/ar_pose_marker",temp_arg.c_str());
 
 /////////////////////////////////////////////////ArTag Recording
 filePAR1   << "time,x,y,z,qx,qy,qz,qw" << endl  ;
+filePAR3   << "time,x,y,z,qx,qy,qz,qw" << endl  ;
 fileIMUB   << "time,roll,pitch" << endl  ;
 fileIMUPOSE   << "time,x,y,z,qx,qy,qz,qw" << endl  ;
 fileARC   << "time,x,y,z,qx,qy,qz,qw" << endl  ;

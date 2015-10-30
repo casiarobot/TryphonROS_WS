@@ -34,7 +34,7 @@ typedef unsigned char BYTE;
 #include "vects2geoMsgs.cpp"
 
 
-
+//using namespace Eigen;
 Eigen::Vector3d rel_pos_1,rel_ang_1, rel_vel_1, rel_avel_1;
 Eigen::Vector3d rel_pos_2,rel_ang_2, rel_vel_2, rel_avel_2;
 Eigen::Vector3d force_1,force_2,torque_1,torque_2;
@@ -42,6 +42,10 @@ Eigen::Vector3d force_1,force_2,torque_1,torque_2;
 Eigen::Vector3d r1(-1.05,1.128,0); //cm to camera 1 
 Eigen::Vector3d r2(1.05,1.128,0);  //cm to camera 2
 
+
+Eigen::MatrixXd Kgain(6,18);
+Eigen::VectorXd statevect(18);
+Eigen::VectorXd forcevect(6);
 
 geometry_msgs::WrenchStamped wrench_1, wrench_2;
 geometry_msgs::Wrench netwrench;
@@ -59,6 +63,7 @@ void p1_callback(const geometry_msgs::PoseStamped p1)
 void p2_callback(const geometry_msgs::PoseStamped p2)
 {
 	rel_pos_2=pose2vect_pos(p2.pose);
+	rel_pos_2(1)=rel_pos_2(1)-0.25; 
     rel_ang_2=pose2vect_angle(p2.pose);
 
 }
@@ -112,28 +117,14 @@ ros::Publisher  netwrench_pub = nh.advertise<geometry_msgs::Wrench>("/192_168_10
 ros::Rate loop_rate(10);
 
 
-KpP[0]=.2;
-KpP[1]=.1;
-KpP[2]=.2;
-KpT[0]=.25;
-KpT[1]=.8;
-KpT[2]=.25;
+Kgain<<             .92,0,0,.92,0,0,0,0,0,6.9,0,0,6.9,0,0,0,0,0,
+					0,5.0255,0,0,5.0255,0,0,0,0,0,24.495,0,0,24.395,0,0,0,0,
+					0,0,4.025,0,0,4.025,0,0,0,0,0,13.8,0,0,13.8,0,0,0,
+					0,0,0,0,0,0,.945,0,0,0,0,0,0,0,0,7.65,0,0,
+					0,0,1,0,0,-1,0,1,0,0,0,6,0,0,-6,0,6,0,
+					0,-.6,0,0,.6,0,0,0,.6,0,-3.5,0,0,3.5,0,0,0,3.5;
 
-/*
-KdP[0]=0;
-KdP[1]=0;
-KdP[2]=0;
-KdT[0]=0;
-KdT[1]=0;
-KdT[2]=0;
-*/
 
-KdP[0]=.5;
-KdP[1]=.5;
-KdP[2]=.5;
-KdT[0]=.2;
-KdT[1]=.2;
-KdT[2]=.2;
 
 
 
@@ -142,29 +133,39 @@ while (ros::ok())
 
 ros::spinOnce();
 
+
+statevect<<rel_pos_1,rel_pos_2,rel_ang_1,rel_vel_1,rel_vel_2,rel_avel_1;
+forcevect=Kgain*statevect;
+
+
 for (int i=0; i<3 ; i++)
 {
-force_1(i)=KpP[i]*rel_pos_1(i)+KdP[i]*rel_vel_1(i); //think about (-)
-force_2(i)=KpP[i]*rel_pos_2(i)+KdP[i]*rel_vel_2(i);
-
+//force_1(i)=KpP[i]*rel_pos_1(i)+KdP[i]*rel_vel_1(i); //think about (-)
+//force_2(i)=KpP[i]*rel_pos_2(i)+KdP[i]*rel_vel_2(i);
+force_1(i)=forcevect(i);
 
 //torque_1(i)=-KpT[i]*rel_ang_1(i)-KdT[i]*rel_avel_1(i); //think about (-)  <---
 //torque_2(i)=-KpT[i]*rel_ang_2(i)-KdT[i]*rel_avel_2(i);
 
-torque_1(i)=0;
-torque_2(i)=0;
+//torque_1(i)=0;
+//torque_2(i)=0;
 }
+for (int i=3; i<6 ; i++)
+{
 
 
-//torque_1(0)=KpT[0]/2*-(rel_pos_2(2)+rel_pos_1(2)) 
-torque_1(1)=KpT[1]*-(rel_pos_2(2)-rel_pos_1(2));
-torque_1(2)=KpT[2]*(rel_pos_1(1)-rel_pos_2(1));
-//torque_2(0)=
-torque_2(1)=KpT[1]*-(rel_pos_2(2)-rel_pos_1(2));
-torque_2(2)=KpT[2]*(rel_pos_2(1)-rel_pos_1(1));
+torque_1(i-3)=forcevect(i);
+
+}
+//torque_1(0)=KpT[0]/2*-(rel_pos_2(2)+rel_pos_1(2)) ;
+//torque_1(1)=KpT[1]*-(rel_pos_2(2)-rel_pos_1(2));
+//torque_1(2)=KpT[2]*(rel_pos_2(1)-rel_pos_1(1));//+KdT[2]*(rel_vel_2(1)-rel_vel_1(1));
+//torque_2(0)=KpT[0]/2*-(rel_pos_2(2)+rel_pos_1(2));
+//torque_2(1)=KpT[1]*-(rel_pos_2(2)-rel_pos_1(2));
+//torque_2(2)=KpT[2]*(rel_pos_2(1)-rel_pos_1(1));//+KdT[2]*(rel_vel_2(1)-rel_vel_1(1));
 
 
-
+/*
 wrench_1.header.stamp=ros::Time::now();
 wrench_2.header.stamp=ros::Time::now();
 wrench_1.wrench=vects2wrench(force_1,torque_1); //wrench before CM change
@@ -177,14 +178,14 @@ wrench_2.wrench=vects2wrench(force_2,torque_2);
 //sharing functions
 
 netwrench=vects2wrench(.5*force_1+.5*force_2,.5*torque_1+.5*torque_2);
+*/
 
 
 
+netwrench=vects2wrench(force_1,torque_1);
 
-
-
-wrench1_pub.publish(wrench_1); //wrench at camera frame origin
-wrench2_pub.publish(wrench_2);
+//wrench1_pub.publish(wrench_1); //wrench at camera frame origin
+//wrench2_pub.publish(wrench_2);
 netwrench_pub.publish(netwrench);
  }
 

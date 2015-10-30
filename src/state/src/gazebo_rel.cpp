@@ -175,8 +175,8 @@ void subgazv1_243(const geometry_msgs::TwistStamped Twist)
 //quat=quat*quatang.inverse();  
 //Gaz1position=Rmatrix1*Gaz1position;
 
-  Gaz1avel_243(0)=Twist.twist.angular.x;
-  Gaz1avel_243(1)=Twist.twist.angular.y;
+  Gaz1avel_243(0)=-Twist.twist.angular.x;
+  Gaz1avel_243(1)=-Twist.twist.angular.y;
   Gaz1avel_243(2)=Twist.twist.angular.z;
  
   Gaz1vel_243(0)=Gazvel(0); 
@@ -201,8 +201,8 @@ void subgazv2_243(const geometry_msgs::TwistStamped Twist)
 //quat=quat*quatang.inverse();  
 //Gaz1position=Rmatrix1*Gaz1position;
 
-  Gaz2avel_243(0)=Twist.twist.angular.x;
-  Gaz2avel_243(1)=Twist.twist.angular.y;
+  Gaz2avel_243(0)=-Twist.twist.angular.x;
+  Gaz2avel_243(1)=-Twist.twist.angular.y;
   Gaz2avel_243(2)=Twist.twist.angular.z;
 
 
@@ -227,8 +227,8 @@ void subgazv1_244(const geometry_msgs::TwistStamped Twist)
 //quat=quat*quatang.inverse();  
 //Gaz1position=Rmatrix1*Gaz1position;
 
-  Gaz1avel_244(0)=Twist.twist.angular.x;
-  Gaz1avel_244(1)=Twist.twist.angular.y;
+  Gaz1avel_244(0)=-Twist.twist.angular.x;
+  Gaz1avel_244(1)=-Twist.twist.angular.y;
   Gaz1avel_244(2)=Twist.twist.angular.z;
  
 //Gaz1avel_244=RvelM*Gaz1avel_244;
@@ -255,8 +255,8 @@ void subgazv2_244(const geometry_msgs::TwistStamped Twist)
 //quat=quat*quatang.inverse();  
 //Gaz1position=Rmatrix1*Gaz1position;
 
-  Gaz2avel_244(0)=Twist.twist.angular.x;
-  Gaz2avel_244(1)=Twist.twist.angular.y;
+  Gaz2avel_244(0)=-Twist.twist.angular.x;
+  Gaz2avel_244(1)=-Twist.twist.angular.y;
   Gaz2avel_244(2)=Twist.twist.angular.z;
  
 //Gaz2avel_244=RvelM*Gaz2avel_244;
@@ -341,15 +341,15 @@ ros::spinOnce();
 
 Gazp1.header.stamp=ros::Time::now();
 Gazp2.header.stamp=ros::Time::now();
-Gazp1.pose=vects2pose(Rmatrix1_243*(Gaz2pos_244-Gaz1pos_243),(Gaz2angle_244-Gaz1angle_243));
-Gazp2.pose=vects2pose(Rmatrix2_243*(Gaz1pos_244-Gaz2pos_243),(Gaz1angle_244-Gaz2angle_243));
+Gazp1.pose=vects2pose(Rmatrix1_243*(Gaz2pos_244-Gaz1pos_243),(Gaz1angle_244-Gaz2angle_243));
+Gazp2.pose=vects2pose(Rmatrix2_243*(Gaz1pos_244-Gaz2pos_243),(Gaz2angle_244-Gaz1angle_243));
 
 
 
 Gazv1.header.stamp=ros::Time::now();
 Gazv2.header.stamp=ros::Time::now();
-Gazv1.twist=vects2twist(Rmatrix1_243*(Gaz2vel_244-Gaz1vel_243),(Gaz2avel_244-Gaz1avel_243));
-Gazv2.twist=vects2twist(Rmatrix2_243*(Gaz1vel_244-Gaz2vel_243),(Gaz1avel_244-Gaz2avel_243));
+Gazv1.twist=vects2twist(Rmatrix1_243*(Gaz2vel_244-Gaz1vel_243),(Gaz1avel_244-Gaz2avel_243));
+Gazv2.twist=vects2twist(Rmatrix2_243*(Gaz1vel_244-Gaz2vel_243),(Gaz2avel_244-Gaz1avel_243));
 
 
 
