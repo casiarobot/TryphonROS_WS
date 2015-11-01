@@ -39,10 +39,10 @@ void ArtagPoseNode::createSubscribers(){
 
 	// Bypass the Yaml configuration for debugging
 	std::vector<std::string> camera_topics;
-	camera_topics.push_back("camera3");
-	camera_topics.push_back("/192_168_10_243/artags1/artag1/ar_pose_marker");
-	camera_topics.push_back("camera4");
-	camera_topics.push_back("/192_168_10_243/artags2/artag1/ar_pose_marker");
+	camera_topics.push_back("camera1");
+	camera_topics.push_back("/192_168_10_242/artags/artag1/ar_pose_marker");
+	//camera_topics.push_back("camera4");
+	//camera_topics.push_back("/192_168_10_243/artags2/artag1/ar_pose_marker");
 	/*camera_topics.push_back("camera3");
 	camera_topics.push_back("/192_168_10_243/artags/artag3/ar_pose_marker");*/
 
@@ -250,9 +250,66 @@ int main(int argc, char **argv){
 
 	ros::init(argc, argv, "artag_pose_node");
 
-	ArtagPoseNode mw;
 
-	mw.start();
+	//ArtagPoseNode mw;
+
+	//mw.start();
+
+	// Test for particle filter...
+	// TODO remove this:
+
+	Eigen::MatrixXd forces(8,8);
+	forces << 1, 0, 0, 0, 1, 0, 0, 0,
+	          0, 1, 0, 0, 0, 1, 0, 0,
+	          0, 0, 1, 0, 0, 0, 1, 0,
+	          0, 0, 0, 1, 0, 0, 0, 1,
+	          0, 0, 0, 0, 1, 0, 0, 0,
+	          0, 0, 0, 0, 0, 1, 0, 0,
+	          0, 0, 0, 0, 0, 0, 1, 0,
+	          0, 0, 0, 0, 0, 0, 0, 1;
+	// Range zero => zero at initiation
+	Eigen::VectorXd range(8);
+	range << 20, 20, 20, 60, 0, 0, 0, 0;
+    int nbr_particles = 10;
+    double std_pose = 1.0;
+    double std_R = 0.25;
+    double std_T = 0.1;
+
+	Eigen::Vector3d cube2Cam_T(0,0,0);
+	Eigen::Vector3d world2Tag_T(12.25, 0, -0.5);
+	Eigen::Matrix3d world2Tag_R_mat, cube2Cam_R_mat;
+	world2Tag_R_mat << 0, 0, -1,
+				      -1, 0,  0,
+				       0, 1,  0;
+	Eigen::Quaterniond world2Tag_R(world2Tag_R_mat);
+	cube2Cam_R_mat << 0, -1,  0,
+				      0,  0, -1,
+				      1,  0,  0;
+	//Eigen::AngleAxisd test;
+	//test.fromRotationMatrix(cube2Cam_R_mat);
+	Eigen::Quaterniond cube2Cam_R(cube2Cam_R_mat);
+
+	ROS_INFO_STREAM(std::endl << "cube2Cam_R: " << std::endl << cube2Cam_R.toRotationMatrix());
+
+	ParticleFilter p(forces, range, nbr_particles, std_pose, std_R, std_T,
+	                 cube2Cam_T, cube2Cam_R, world2Tag_T, world2Tag_R);
+
+	// TODO load a csv
+	Eigen::MatrixXd data(4,7);
+	// tx, ty, tz, rx, ry, rz, rw
+	data << 0.131816708409,0.763523402815,12.9119347279,0.997427140486,-0.00453556586724,-0.00616969498657,0.0712773661727,
+	        0.131931847866,0.763413953575,12.9100207,0.997298885456,-0.00455192282082,-0.00803591208295,0.0728672572854,
+	        0.131973728663,0.763381963781,12.909917379,0.997402676848,-0.00421134000945,-0.00476821825192,0.0717455847183,
+	        0.13227620295,0.762760021493,12.9041169895,0.997132343074,-0.00376080959683,0.00331893837823,0.0755111339748;
+	Eigen::Vector3d cam2Tag_T;
+	Eigen::Quaterniond cam2Tag_R;
+	int nbr_iter = 2;
+	for(int  i = 0; i < nbr_iter; i++){
+			cam2Tag_T = Eigen::Vector3d(data(i, 0), data(i, 1), data(i, 2));
+			cam2Tag_R = Eigen::Quaterniond(data(i, 6), data(i, 3), data(i, 4), data(i, 5)); // Eigen is q(w, x, y, z)
+			p.update(cam2Tag_T, cam2Tag_R);
+	}
+
 
 	return 0;
 }

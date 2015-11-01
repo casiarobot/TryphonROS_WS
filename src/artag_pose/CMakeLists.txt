@@ -60,6 +60,7 @@ add_executable(artag_pose_node
     src/artag_subscriber.cpp
     src/tf_config_loader.cpp
     src/markers_pose.cpp
+    src/particle_filter.cpp
 
 # PB: I added the header so they are visible in QtCreator,
 # it's *NOT* require for compiling
@@ -68,6 +69,7 @@ add_executable(artag_pose_node
     include/artag_pose/config_loader.h
     include/artag_pose/tf_config_loader.h
     include/artag_pose/markers_pose.h
+    include/artag_pose/particle_filter.h
 )
 
 add_executable(test_pose_node

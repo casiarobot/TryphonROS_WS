@@ -18,6 +18,7 @@
 // Project includes
 #include "artag_pose/artag_subscriber.h"
 #include "artag_pose/tf_config_loader.h"
+#include "artag_pose/particle_filter.h"
 
 
 typedef boost::shared_ptr<ArtagSubscriber> ArtagSubPtr;
