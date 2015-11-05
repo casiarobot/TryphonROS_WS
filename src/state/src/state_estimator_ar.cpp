@@ -405,7 +405,7 @@ EulerU::getQuatFromEuler(quattf, 0,0,0);
   MCPTAMpos(4)=asin(2*(quat.w()*quat.y()-quat.z()*quat.x()));
   MCPTAMpos(5)=atan2(2*(quat.w()*quat.z()+quat.x()*quat.y()),1-2*(quat.z()*quat.z()+quat.y()*quat.y()));
   Rmatrix=quat.toRotationMatrix();
-  MCPTAMposition=MCPTAMposition-Rmatrix*CMCAMpos;  // offset due to the fact that the pose is the one of the IMU
+  MCPTAMposition=MCPTAMposition-Rmatrix*CMCAMpos;  // offset due to the fact that the pose is the one of the Camera
   MCPTAMpos(0)=MCPTAMposition(0);
   MCPTAMpos(1)=MCPTAMposition(1);
   MCPTAMpos(2)=MCPTAMposition(2);

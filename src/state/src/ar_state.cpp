@@ -132,9 +132,9 @@ void subALVAR2(const ar_track_alvar_msgs::AlvarMarkers Aposes2) //camera frame o
   geometry_msgs::Pose Pose=alvartemp.pose.pose ; //Pose=Aposes.pose;
   Eigen::Vector3d ALVAR2position;
 
-  ALVAR2position(0)=-Pose.position.x; //  switch direction of vector
-  ALVAR2position(1)=-Pose.position.y;
-  ALVAR2position(2)=-Pose.position.z;
+  ALVAR2position(0)=Pose.position.x; //  switch direction of vector
+  ALVAR2position(1)=Pose.position.y;
+  ALVAR2position(2)=Pose.position.z;
   Eigen::Quaterniond quat(Pose.orientation.w,Pose.orientation.x,Pose.orientation.y,Pose.orientation.z);
   
 Eigen::Quaterniond quatpos(0, 0, .7071, .7071); //to make x y z of camera/artag output alligned with tryphon body frame
