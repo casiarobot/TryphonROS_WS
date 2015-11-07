@@ -6,7 +6,8 @@
 ArtagSubscriber::ArtagSubscriber(const std::string& camera_name,
 								 const std::string& topic_name,
 								 MarkersPosePtr markers,
-								 ros::NodeHandle & nh):
+								 ros::NodeHandle & nh,
+                                 ParticleFilterPtr pf):
 	cameraName(camera_name),
 	topicName(topic_name),
 	markers(markers),
@@ -41,7 +42,15 @@ void ArtagSubscriber::lookupCameraTf(){
 	try{
 		listener.waitForTransform("/cube", cameraName, ros::Time(0), ros::Duration(10.0));
 		listener.lookupTransform("/cube", cameraName, ros::Time(0), cubeToCamTf);
-		tf::poseTFToEigen(cubeToCamTf, cubeToCam);
+		//tf::poseTFToEigen(cubeToCamTf, cubeToCam);
+
+		// TODO: Harcoded
+		Eigen::Matrix3d cube2Cam_R_mat;
+		/*cube2Cam_R_mat << 0, -1,  0,
+					      0,  0, -1,
+					      1,  0,  0;*/
+		cubeToCam.linear() = cube2Cam_R_mat;
+
 	}
 	catch (tf::TransformException &ex) {
 		ROS_ERROR_STREAM("Camera tf not found : " << cameraName);
@@ -73,9 +82,8 @@ void ArtagSubscriber::artagCallback(const ar_track_alvar_msgs::AlvarMarkers::Con
 
 	if(trackMarkers.empty()){
 		ROS_INFO_STREAM("Cam \"" << cameraName << "\" no tag detected");
-		// TODO: do something with that...
+		// TODO: do something when too large
 		emptyCount++;
-
 		return;
 	}
 	else
@@ -107,17 +115,31 @@ void ArtagSubscriber::artagCallback(const ar_track_alvar_msgs::AlvarMarkers::Con
 			}
 
 			Eigen::Affine3d camToTag, worldToTag;
+			// Convert in Eigen
 			tf::poseMsgToEigen(m->pose.pose, camToTag);
+			// Get tag's transformation
 			worldToTag = markers->get(m->id).getEigen();
 
-			Eigen::Affine3d globalPose = fromRelativePoseToGlobalTf(camToTag, worldToTag, m->id);
+			// TODO: Harcoded
+			Eigen::Matrix3d world2Tag_R_mat;
+			world2Tag_R_mat << 0, 0, -1,
+						      -1, 0,  0,
+						       0, 1,  0;
 
-			tagHandle newTag;
-			newTag.idTag = m->id;
-			newTag.camPose = camToTag;
-			newTag.globalPose = globalPose;
-			newTag.weight = 1.0;
-			tagsDetected.push_back(newTag);
+			// Set all required constant for the particle filter
+			tagHandle_t t;
+			t.ref.cube2Cam_T = cubeToCam.translation();
+			t.ref.cube2Cam_R = cubeToCam.linear();
+			t.ref.world2Tag_T = worldToTag.translation();
+			t.ref.world2Tag_R = world2Tag_R_mat;
+			t.cam2Tag_T = camToTag.translation();
+			t.cam2Tag_R = camToTag.linear();
+			tagsDetected.push_back(t);
+			// Calcul likelihood for particle
+
+			/*pf->calcLogLikelihood(camToTag.translation(),
+			                     Eigen::Quaterniond(camToTag.linear()),
+			                     ref);*/
 		}
 		else
 			ROS_WARN_STREAM("Cam \"" << cameraName
@@ -125,15 +147,6 @@ void ArtagSubscriber::artagCallback(const ar_track_alvar_msgs::AlvarMarkers::Con
 	}
 
 	oldMsg = *msg;
-	/*
-	 * Add emptyCounter for setting the oldMsg when too much time has pass?
-	*		2) Check for invalid tag, print WARN in consequence; Samething for no tag
-	*		3) If no timeout, compare the last tag to see if we look at new tags
-	*		4a) If old tag are found, check if the position did move more from certain threshold and warn
-	*		4b) If new tag, we could add warn or maybe a security to prevent a jump?
-	*		5) Do the reverse transformation from the camera relative to global position
-	*		6) Get the average pose and print the average deviation (maybe add warning when too large)
-	*/
 }
 
 TrackedMarker::iterator ArtagSubscriber::findMarkerInOldMsgById(unsigned int id){
@@ -155,174 +168,8 @@ double ArtagSubscriber::distanceBetweenPoint(geometry_msgs::Point A,
 	return fabs(mag);
 }
 
-Eigen::Affine3d ArtagSubscriber::fromRelativePoseToGlobalTf(Eigen::Affine3d& camToTag,
-                                                            Eigen::Affine3d worldToTag,
-                                                            const int tagName){
-	/****
-	 * WARMING!!!!
-	 * For some reason Eigen Quaternion representation (w,x,y,z) doesn't correspond to SpinCalc lib
-	 * So we reverse the w: (-w,x,y,z)
-	 */
-	// TODO hardcoded for simple test
-	//Eigen::Quaterniond q1(0.7071, -0.7071, 0, 0);
-	//Eigen::Affine3d rot10deg;
-	//rot10deg = Eigen::AngleAxisd(-10.0 * M_PI / 180.0, Eigen::Vector3d::UnitZ());
-	if(true){
 
-		Eigen::Quaterniond q1(-0.5, -0.5, 0.5, 0.5);
-		worldToTag.linear() = q1.toRotationMatrix();
-		worldToTag.translation() = Eigen::Vector3d(1.0, 0.55, 0);
-
-		Eigen::Quaterniond q2(-0.5, 0.5, -0.5, 0.5);
-		cubeToCam.linear() = q2.toRotationMatrix();
-		cubeToCam.translation() = Eigen::Vector3d(0, 0.55, 0);
-	}
-	else{
-		Eigen::Quaterniond q90(0.707, 0, 0, -0.707);
-		Eigen::Quaterniond q1(-0.5, -0.5, 0.5, 0.5);
-		worldToTag.linear() = q90.toRotationMatrix() * q1.toRotationMatrix();
-		worldToTag.translation() = Eigen::Vector3d(0, -1.55, 0.06);
-
-		//Eigen::Quaterniond q2(-0.7, 0, 0, 0.7);
-		Eigen::Quaterniond q2(-0.5, 0.5, -0.5, 0.5);
-		Eigen::Quaterniond q3;
-		q3 = q90 * q2;
-		cubeToCam.linear() = q3.toRotationMatrix();
-		cubeToCam.translation() = Eigen::Vector3d(0, -0.55, 0.02);
-	}
-
-	Eigen::Affine3d cubeToTag, worldToCube;
-	cubeToTag.linear() = cubeToCam.linear() * camToTag.linear();
-	worldToCube.linear() = worldToTag.linear() * cubeToTag.linear().transpose();
-	worldToCube.translation() =  worldToTag.translation()
-	        - (
-	            worldToCube.linear() * cubeToCam.linear() * camToTag.translation()
-	           + worldToCube.linear() * cubeToCam.translation()
-	            );
-
-	//ROS_INFO_STREAM(std::endl << "q2: " << std::endl << q2.w() << " x"<< q2.x() << " y"<< q2.y() << " z"<< q2.z() << " ");
-
-	/*ROS_INFO_STREAM(std::endl << "cam -> Tag: " << std::endl << camToTag.matrix());
-	//ROS_INFO_STREAM(std::endl << "cube -> Cam: " << std::endl << cubeToCam.matrix());
-	ROS_INFO_STREAM(std::endl << "world -> Tag: " << std::endl << worldToTag.matrix());
-	ROS_INFO_STREAM(std::endl << "cube -> Tag: " << std::endl << cubeToTag.matrix());
-	//ROS_INFO_STREAM(std::endl << "================ TAG " << tagName << " ================" << std::endl );
-	ROS_INFO_STREAM(std::endl << "world -> Cube:[TF]" << std::endl << worldToCube.matrix());
-	ROS_INFO_STREAM(std::endl << "world -> Cube [translation]: " << std::endl << worldToCube.translation());
-	*/
-
-	Eigen::Vector3d d;
-	Eigen::Quaterniond quat(worldToCube.linear());
-	Eigen::Quaterniond quat2(camToTag.linear());
-	d(0) = atan2(2*(quat.w()*quat.x()+quat.y()*quat.z()),1-2*(quat.x()*quat.x()+quat.y()*quat.y()));
-    d(1) = asin(2*(quat.w()*quat.y()-quat.z()*quat.x()));
-    d(2) = atan2(2*(quat.w()*quat.z()+quat.x()*quat.y()),1-2*(quat.z()*quat.z()+quat.y()*quat.y()));
-	d *= 180.0 / M_PI;
-	//ROS_INFO_STREAM(std::endl << "RPY:" << std::endl << d);
-
-	std::cout << quat2.x() << "," << quat2.y() << "," << quat2.z() << "," << quat2.w() << "," << camToTag.translation().transpose() << "," << worldToCube.translation().transpose() << "," <<
-	             quat.x() << "," << quat.y() << "," << quat.z() << "," << quat.w() << std::endl;
-
-
-	return worldToCube;
-}
-
-Eigen::Affine3d ArtagSubscriber::fromRelativePoseToGlobalTfold(const Eigen::Affine3d& camToTag,
-	                                                           const Eigen::Affine3d& worldToTag,
-	                                                           const int tagName){
-
-
-
-	// The yaw is directly extracted from the rotation matrix by transforming a
-	// unit vector. Y plan seem to correspond to the yaw in simulation tests
-	Eigen::Vector3d vrot = camToTag.linear() * Eigen::Vector3d::UnitX();
-	double artagYaw = atan2(vrot(2), vrot(0));
-	// The extracted yaw is than replace the rotation provided by alvar
-	// In ros the yaw is projected on the Z plan
-	Eigen::Matrix3d yawRotationMat;
-	yawRotationMat = Eigen::AngleAxisd(artagYaw, Eigen::Vector3d::UnitZ());
-
-	// Angle correction on the camToTag frame
-	double roll, yaw, pitch;
-	// yaw = pi/2 and roll -pi/2 fix the xyz swap from the artag frame to the camera frame
-	yaw =   M_PI/2; //correct artag
-	roll = -M_PI/2;
-	//pitch = M_PI/2;
-	Eigen::AngleAxisd rollAngle(roll, Eigen::Vector3d::UnitZ());
-	Eigen::AngleAxisd yawAngle(yaw, Eigen::Vector3d::UnitY());
-	//Eigen::AngleAxisd pitchAngle(pitch, Eigen::Vector3d::UnitX());
-
-	Eigen::Affine3d camToTagRect, artagRect, rotationRect; // Rectify cam to tag tf
-	//artagRect = Eigen::AngleAxisd(M_PI, Eigen::Vector3d::UnitX());
-	rotationRect = yawAngle * rollAngle;
-
-	//camToTagRect.linear() =  artagRect.linear() * camToTag.linear();
-	camToTagRect.linear() =  yawRotationMat; // Ignore the original rotation provided by alvar
-	camToTagRect.translation() =  rotationRect.linear() * camToTag.translation(); // Does xyz swap
-
-
-	Eigen::Affine3d cubeToTag;
-	cubeToTag = cubeToCam * camToTagRect;
-
-	Eigen::Affine3d tagToCube;
-	tagToCube = cubeToTag.inverse();
-
-	Eigen::Affine3d worldToCube, worldToCube2, worldToCube3;
-	worldToCube = tagToCube * worldToTag;
-	worldToCube2 = worldToTag * tagToCube;
-	worldToCube3.linear() =  worldToTag.linear() * tagToCube.linear();
-	worldToCube3.translation() =  tagToCube.translation() + worldToTag.translation();
-
-	// Conversion from eigen to publishable ros msg
-	//tf::Pose inbetween;
-	//geometry_msgs::Pose output;
-	//tf::poseEigenToTF(worldToCube2, inbetween);
-	//tf::poseTFToMsg(inbetween, output);
-	/*
-	ROS_INFO_STREAM(std::endl << "artagYaw: " << artagYaw * 180.0 / M_PI);
-	ROS_INFO_STREAM(std::endl << "rotationRect: " << std::endl << rotationRect.matrix());
-	ROS_INFO_STREAM(std::endl << "cam   -> Tag: " << std::endl << camToTag.matrix());
-	//ROS_INFO_STREAM(std::endl << "cam   -> TagRect_with_swap_xyz:" << std::endl << camToTagRect.matrix());
-	ROS_INFO_STREAM(std::endl << "cam   -> TagRect_with_Quad:" << std::endl << camToTagRect.matrix());
-	//ROS_INFO_STREAM(std::endl << "cam   -> TagRect_mul: " << std::endl << camToTagRect_mul.matrix());
-	ROS_INFO_STREAM(std::endl << "cube  -> Cam: " << std::endl << cubeToCam.matrix());
-	ROS_INFO_STREAM(std::endl << "cube  -> Tag: " << std::endl << cubeToTag.matrix());
-	ROS_INFO_STREAM(std::endl << "Tag   -> cube: " << std::endl << tagToCube.matrix());
-	ROS_INFO_STREAM(std::endl << "world -> Tag: " << std::endl << worldToTag.matrix());
-	ROS_INFO_STREAM(std::endl << "world -> cube: " << std::endl << worldToCube.matrix());
-	ROS_INFO_STREAM(std::endl << "world -> cube2: " << std::endl << worldToCube2.matrix());
-	//ROS_INFO_STREAM(std::endl << "world -> cube3_transpose: " << std::endl << worldToCube3.matrix());
-	Eigen::Quaternion<double> q;
-	q = worldToCube2.linear().matrix();
-	ROS_INFO_STREAM("to Quaternion [x y z w]:" << std::endl <<
-												q.x() << std::endl <<
-												q.y() << std::endl <<
-												q.z() << std::endl <<
-												q.w() << std::endl);
-	Eigen::Vector3d ea = worldToCube2.linear().matrix().eulerAngles(0, 1, 2) * 180.0/M_PI;
-	ROS_INFO_STREAM("to Euler angles:" << std::endl << ea << std::endl << std::endl);
-	*/
-	// Tf broadcast for debugging:
-	tf::Transform camToTagBroadcast;
-	tf::poseEigenToTF(camToTagRect, camToTagBroadcast);
-	char str[15];
-	sprintf(str, "artag_%d", tagName);
-	br.sendTransform(tf::StampedTransform(camToTagBroadcast, ros::Time::now(), cameraName, str));
-
-	return worldToCube2;
-}
-
-// TODO Put in utility?
-tf::Pose ArtagSubscriber::getPoseComposition(const tf::Pose& start,
-                                             const tf::Pose& increment) {
-	tf::Pose finalPose;
-	finalPose.setOrigin(start.getOrigin() + increment.getOrigin());
-	finalPose.setRotation(increment.getRotation()*start.getRotation());
-
-	return finalPose;
-}
-
-void ArtagSubscriber::pullTagDetected(std::list<tagHandle>& tagList){
+void ArtagSubscriber::pullTagDetected(std::list<tagHandle_t>& tagList){
 	// Transfer objet container to the container pass has argument
 	tagList.splice(tagList.end(), tagsDetected);
 }

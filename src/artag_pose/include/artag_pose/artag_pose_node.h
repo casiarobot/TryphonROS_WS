@@ -6,14 +6,18 @@
 #include <string.h>
 #include <vector>
 #include <iostream>
+#include <ctime>
 
 
 //library for ros
 #include <ros/ros.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/PolygonStamped.h>
+#include <dynamic_reconfigure/server.h>
 
 #include <ar_track_alvar/AlvarMarkers.h>
+
+#include <artag_pose/ArtagPoseConfig.h> // Auto-generate by a configuration file
 
 // Project includes
 #include "artag_pose/artag_subscriber.h"
@@ -34,13 +38,22 @@ class ArtagPoseNode{
 	ConfigLoader* markerConfig;
 	MarkersPosePtr markersPose;
 
+	ParticleFilterPtr pf;
 	std::vector<ArtagSubPtr> artagSubs;
 	ros::Publisher pubPose;
+	ros::Publisher pubParticles;
+	ros::Publisher pubBestLLParticles;
+
+	dynamic_reconfigure::Server<artag_pose::ArtagPoseConfig> dynamicReconfigServer;
+    dynamic_reconfigure::Server<artag_pose::ArtagPoseConfig>::CallbackType dynamicReconfigCallback;
+
 public:
-	ArtagPoseNode();
+	ArtagPoseNode(ParticleFilter* ppf);
 	~ArtagPoseNode();
 
 	void start();
+
+	void dynamicParametersCallback(artag_pose::ArtagPoseConfig &config, uint32_t level);
 private:
 	void loop();
 	void loadConfig();
@@ -48,8 +61,8 @@ private:
 	void createPublishers();
 	void createSubscribers();
 	void computePoseAndPublish();
-	void calculateWeight(std::list<tagHandle>& tags);
-	Eigen::Affine3d doWeightAverage(const std::list<tagHandle>& t);
+	void calculateWeight(std::list<tagHandle_t>& tags);
+	Eigen::Affine3d doWeightAverage(const std::list<tagHandle_t>& t);
 
 };
 

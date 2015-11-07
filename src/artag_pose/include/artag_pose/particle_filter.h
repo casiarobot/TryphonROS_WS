@@ -4,10 +4,31 @@
 #include <string>
 #include <math.h>
 #include <limits.h>
+#include <list>
 
 #include "ros/ros.h"
+#include <geometry_msgs/PoseArray.h>
+#include <geometry_msgs/PoseStamped.h>
+
 #include <Eigen/Geometry>
 #include <unsupported/Eigen/MatrixFunctions>
+
+
+typedef struct{
+	Eigen::Vector3d cube2Cam_T;
+	Eigen::Matrix3d cube2Cam_R;
+	Eigen::Vector3d world2Tag_T;
+	Eigen::Matrix3d world2Tag_R;
+}
+tagRef_t;
+
+typedef struct {
+	Eigen::Vector3d cam2Tag_T;
+	Eigen::Matrix3d  cam2Tag_R;
+	tagRef_t ref;
+}
+tagHandle_t;
+
 
 class ParticleFilter
 {
@@ -24,38 +45,38 @@ class ParticleFilter
 	/* Likelihood */
 	Eigen::VectorXd ll;
 
+	int indexMaxLikelihood;
+
 	// TODO use a struct
 	// Camera and tag reference
-	Eigen::Vector3d cube2Cam_T;
-	Eigen::Quaterniond cube2Cam_R;
-	Eigen::Vector3d world2Tag_T;
-	Eigen::Quaterniond world2Tag_R;
+	//Eigen::Vector3d cube2Cam_T;
+	//Eigen::Quaterniond cube2Cam_R;
+	//Eigen::Vector3d world2Tag_T;
+	//Eigen::Quaterniond world2Tag_R;
 
 public:
-	ParticleFilter(Eigen::MatrixXd forces,
-	               Eigen::VectorXd range,
+	ParticleFilter(const Eigen::MatrixXd& forces,
+	               const Eigen::VectorXd& range,
 	               int nbr_particles,
 	               double std_pose,
 	               double std_R,
-	               double std_T,
-	               Eigen::Vector3d pCube2Cam_T,
-				   Eigen::Quaterniond pCube2Cam_R,
-	               Eigen::Vector3d pWorld2Tag_T,
-	               Eigen::Quaterniond pWorld2Tag_R);
+	               double std_T);
 	void createParticles();
-	void update(const  Eigen::Vector3d &translation,
-	            const Eigen::Quaterniond &rotation);
-private:
-	void updateParticle(const  Eigen::Vector3d &translation,
-	                    const Eigen::Quaterniond &rotation);
-	void calcLogLikelihood(const  Eigen::Vector3d &translation,
-	                       const Eigen::Quaterniond &rotation);
+	void update();
+	void updateParticle();
+	void calcLogLikelihood(const  std::list<tagHandle_t> &tags);
 	void resampleParticles();
+
+	geometry_msgs::PoseArray getParticleMsg();
+	geometry_msgs::PoseStamped getBestLikelihoodMsg();
+	void setStdPose(double s);
+private:
 
 	void printQuaternion(const std::string title, const Eigen::Quaterniond &quat) const;
 
 	const static int NBR_PARAMETERS = 8;
 
 };
+
 
 #endif // PARTICLE_FILTER_H

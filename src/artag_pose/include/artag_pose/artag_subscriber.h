@@ -19,24 +19,16 @@
 #include <ar_track_alvar_msgs/AlvarMarkers.h>
 
 #include "artag_pose/markers_pose.h"
+#include "artag_pose/particle_filter.h"
 
 
-
-
+typedef boost::shared_ptr<ParticleFilter> ParticleFilterPtr;
 typedef std::vector<ar_track_alvar_msgs::AlvarMarker> TrackedMarker;
 
-typedef struct {
-	int idTag;
-	Eigen::Affine3d camPose;	/* Relative pose from the camera frame */
-	Eigen::Affine3d globalPose; /* Global pose from the world frame */
-	double weight;				/* Not normalize weight */
-}
-tagHandle;
 
 class ArtagSubscriber{
 
-	// For debuging
-	tf::TransformBroadcaster br;
+	ParticleFilterPtr pf;
 
 	ros::Subscriber sub;
 
@@ -56,31 +48,25 @@ class ArtagSubscriber{
 	double jmpThreshold;
 
 	geometry_msgs::Pose avgPose;
-	std::list<tagHandle> tagsDetected;
+	std::list<tagHandle_t> tagsDetected;
 public:
 	ArtagSubscriber(const std::string& camera_name,
 	                const std::string& topic_name,
 	                MarkersPosePtr markers,
-	                ros::NodeHandle & nh);
+	                ros::NodeHandle& nh,
+	                ParticleFilterPtr pf);
 
 	void artagCallback(const ar_track_alvar_msgs::AlvarMarkers::ConstPtr& msg);
 	void timerCallback(const ros::TimerEvent& event);
 
-	void pullTagDetected(std::list<tagHandle>& tagList);
+	void pullTagDetected(std::list<tagHandle_t>& tagList);
 
 private:
 	void lookupCameraTf();
 	TrackedMarker::iterator  findMarkerInOldMsgById(unsigned int id);
 	double distanceBetweenPoint(geometry_msgs::Point A,
 	                            geometry_msgs::Point B);
-	Eigen::Affine3d fromRelativePoseToGlobalTf(Eigen::Affine3d& camToTag,
-	                                           Eigen::Affine3d worldToTag,
-	                                           const int tagName = 0);
-	Eigen::Affine3d fromRelativePoseToGlobalTfold(const Eigen::Affine3d& camToTag,
-	                                           const Eigen::Affine3d& worldToTag,
-	                                           const int tagName = 0);
-	tf::Pose getPoseComposition(const tf::Pose& start,
-	                            const tf::Pose& increment);
+
 
 };
 

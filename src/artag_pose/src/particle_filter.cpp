@@ -3,29 +3,22 @@
 using namespace std;
 
 ParticleFilter::ParticleFilter(
-				Eigen::MatrixXd pForces,
-				Eigen::VectorXd pRange,
+				const Eigen::MatrixXd& pForces,
+				const Eigen::VectorXd& pRange,
                 int pNbrParticles,
                 double pStdPose,
                 double pStdR,
-                double pStdT,
-				Eigen::Vector3d pCube2Cam_T,
-				Eigen::Quaterniond pCube2Cam_R,
-				Eigen::Vector3d pWorld2Tag_T,
-				Eigen::Quaterniond pWorld2Tag_R):
+                double pStdT):
     forces(pForces),
     range(pRange),
     nbr_particles(pNbrParticles),
 	std_pose(pStdPose),
 	std_R(pStdR),
 	std_T(pStdT),
-    cube2Cam_T(pCube2Cam_T),
-    cube2Cam_R(pCube2Cam_R),
-    world2Tag_T(pWorld2Tag_T),
-    world2Tag_R(pWorld2Tag_R)
+    indexMaxLikelihood(0)
 {
 	//init standard librairy seed initiation
-	//srand((unsigned int) time(0));
+	srand((unsigned int) time(0));
 
 	createParticles();
 }
@@ -41,24 +34,25 @@ void ParticleFilter::createParticles(){
 	for(int i = 0; i < NBR_PARAMETERS; ++i){
 		particles.row(i) *= range(i);
 	}
-	ROS_INFO_STREAM(std::endl << "Particles initiation value: " << std::endl << particles);
+	//ROS_INFO_STREAM(std::endl << "Particles initiation value: " << std::endl << particles);
 
 	// Create likelihood vector
 	ll = Eigen::VectorXd(nbr_particles);
 }
 
+/*
 void ParticleFilter::update(const Eigen::Vector3d &translation, const Eigen::Quaterniond &rotation){
 	ROS_INFO_STREAM(std::endl << "cam2tag translation: " << std::endl << translation);
 	printQuaternion(string("cam2tag rotation: "), rotation);
 
-	updateParticle(translation, rotation);
+	updateParticle();
 	ROS_INFO_STREAM(std::endl << "Particles updated value: " << std::endl << particles);
 	calcLogLikelihood(translation, rotation);
 	resampleParticles();
 	ROS_INFO_STREAM(std::endl << "Particle end: " << std::endl << particles);
-}
+}*/
 
-void ParticleFilter::updateParticle(const Eigen::Vector3d &translation, const Eigen::Quaterniond &rotation){
+void ParticleFilter::updateParticle(){
 	// Apply the forces
 	particles = forces * particles;
 
@@ -74,11 +68,16 @@ void ParticleFilter::updateParticle(const Eigen::Vector3d &translation, const Ei
 
 }
 
-void ParticleFilter::calcLogLikelihood(const  Eigen::Vector3d &cam2Tag_T, const Eigen::Quaterniond &cam2Tag_R){
+void ParticleFilter::calcLogLikelihood(const  std::list<tagHandle_t> &tags){
 	double A = -log(sqrt(2* M_PI) * std_pose);
 	double B = -0.5 / (std_pose * std_pose);
+	std::list<tagHandle_t>::const_iterator it;
+
 
 	for(int k = 0; k < nbr_particles; ++k){
+		// Hardcoded particle
+		//particles.col(k).topRows(4) = Eigen::Vector4d(1, 2, 3, 0);
+
 		bool inRange = true;
 		for(int p = 0; p < 4; ++p){
 			if(abs(particles(p, k)) > range(p)){
@@ -89,22 +88,49 @@ void ParticleFilter::calcLogLikelihood(const  Eigen::Vector3d &cam2Tag_T, const 
 		// If 4 first parameters are in range
 		if(inRange){
 			double yaw = particles(3, k);
-			Eigen::Matrix3d world2Cube_R_guess;
+			Eigen::Matrix3d world2Cube_R_guess, test_noise;
 			world2Cube_R_guess = Eigen::AngleAxisd(-yaw * M_PI/ 180.0, Eigen::Vector3d::UnitZ());
+			//world2Cube_R_guess = Eigen::AngleAxisd(-0 * M_PI/ 180.0, Eigen::Vector3d::UnitZ());
+
+			test_noise <<
+					  0, -1,  0,
+					  0,  0, -1,
+					  1,  0,  0;
 			const Eigen::Vector3d T_guess = particles.col(k).topRows(3);
 
+			ll(k) = A;
+			for(it = tags.begin(); it != tags.end(); ++it){
+				// Note: the transpose on cube2Cam_R is because of weird rotation convention
+				// it->ref.cube2Cam_R.matrix().transpose()
+//				ROS_INFO_STREAM(std::endl << "it->ref.world2Tag_T: " << std::endl << it->ref.world2Tag_T);
+//				ROS_INFO_STREAM(std::endl << "T_guess: " << std::endl << T_guess);
+//				ROS_INFO_STREAM(std::endl << "it->ref.cube2Cam_T: " << std::endl << it->ref.cube2Cam_T);
+//				ROS_INFO_STREAM(std::endl << "other part: " << std::endl << (it->ref.world2Tag_T -T_guess -world2Cube_R_guess * it->ref.cube2Cam_T));
+				//ROS_INFO_STREAM(std::endl << "it->cam2Tag_T: " << std::endl << it->cam2Tag_T);
+				Eigen::Vector3d error =
+						(world2Cube_R_guess * it->ref.cube2Cam_R).inverse()
+						* (it->ref.world2Tag_T -T_guess) -it->ref.cube2Cam_R * it->ref.cube2Cam_T
+						-it->cam2Tag_T;
+				//Eigen::Vector3d error = it->ref.cube2Cam_R*(it->ref.world2Tag_T -T_guess) -it->cam2Tag_T;
+				//ROS_INFO_STREAM(std::endl << "D: " << std::endl << error);
 
+				double D = error.transpose() * error;
+				ll(k) += B * D;
+			}
+			/*tagHandle_t it = *(tags.begin());
 			Eigen::Vector3d error =
-			        (world2Cube_R_guess * cube2Cam_R.matrix().transpose()).inverse()
-			        * (world2Tag_T -T_guess -world2Cube_R_guess * cube2Cam_T)
-			        -cam2Tag_T;
-			double D2 = error.transpose() * error;
+					(world2Cube_R_guess * it.ref.cube2Cam_R.matrix().transpose()).inverse()
+					* (it.ref.world2Tag_T -T_guess -world2Cube_R_guess * it.ref.cube2Cam_T)
+					-it.cam2Tag_T;
 
-			ll(k) = A + B * D2;
+			double D = error.transpose() * error;
+			ll(k) += B * D;*/
+
+			//Eigen::Vector3d error = T_guess -cam2Tag_T;
+
 
 
 			//ROS_INFO_STREAM(std::endl << "yaw: " << std::endl << yaw);
-			//ROS_INFO_STREAM(std::endl << "world2Cube_R_guess: " << std::endl << world2Cube_R_guess);;
 			//ROS_INFO_STREAM(std::endl << "cube2Cam_R: " << std::endl << cube2Cam_R.matrix().transpose());
 			//ROS_INFO_STREAM(std::endl << "(world2Cube_R_guess * cube2Cam_R).inverse(): " << std::endl << (world2Cube_R_guess * cube2Cam_R.matrix().transpose()).inverse());
 			//ROS_INFO_STREAM(std::endl << "ll(k) " << std::endl << ll(k));
@@ -115,11 +141,9 @@ void ParticleFilter::calcLogLikelihood(const  Eigen::Vector3d &cam2Tag_T, const 
 			ll(k) = -std::numeric_limits<double>::max();// = -inf
 		}
 	}
-
-
 }
 
-// From https://github.com/libigl/libigl/blob/89a8257d152165218fc514e4e35a5aa56dfeca10/include/igl/histc.cpp
+// Shameless copy from https://github.com/libigl/libigl/blob/89a8257d152165218fc514e4e35a5aa56dfeca10/include/igl/histc.cpp
 inline void histc(
   const Eigen::VectorXd & X,
   const Eigen::VectorXd & E,
@@ -190,8 +214,9 @@ inline void histc(
 void ParticleFilter::resampleParticles(){
 	//ROS_INFO_STREAM(std::endl << "max:" << std::endl << ll.maxCoeff() );
 
-	//ROS_INFO_STREAM(std::endl << "llorigi:" << std::endl << ll);
-	ll = ll - ll.maxCoeff() * Eigen::VectorXd::Ones(nbr_particles);
+	ROS_INFO_STREAM(std::endl << "ll" << std::endl << ll);
+
+	ll = ll - ll.maxCoeff(&indexMaxLikelihood) * Eigen::VectorXd::Ones(nbr_particles);
 	ll = ll.array().exp();
 	Eigen::VectorXd Q = ll / ll.sum();
 	Eigen::VectorXd R = Q;
@@ -199,9 +224,9 @@ void ParticleFilter::resampleParticles(){
 	for(int i = 1; i < nbr_particles; ++i)
 		R(i) += R(i - 1);
 
-	//Eigen::VectorXd T = Eigen::VectorXd::Random(nbr_particles);
-	Eigen::VectorXd T(nbr_particles);
-	T <<  0.146637, 0.511162, -0.896122, -0.684386, 0.999987, -0.591343, 0.779911, -0.749063, 0.995598, -0.891885;
+	Eigen::VectorXd T = Eigen::VectorXd::Random(nbr_particles);
+	//Eigen::VectorXd T(nbr_particles);
+	//T <<  0.146637, 0.511162, -0.896122, -0.684386, 0.999987, -0.591343, 0.779911, -0.749063, 0.995598, -0.891885;
 
 	Eigen::VectorXd ignore(nbr_particles), I(nbr_particles);
 	histc(T, R, ignore, I);
@@ -221,6 +246,54 @@ void ParticleFilter::resampleParticles(){
 	ROS_INFO_STREAM(std::endl << "Y:" << std::endl << Y);*/
 
 }
+
+geometry_msgs::PoseArray ParticleFilter::getParticleMsg(){
+	// TODO init at resize this array
+	geometry_msgs::PoseArray msgArray;
+	geometry_msgs::Pose m;
+
+	// Let's not draw all the particles...
+	unsigned int n = nbr_particles;
+	if(nbr_particles > 100)
+		n = 100;
+	msgArray.poses.reserve(n);
+	for(int i = 0; i < n; ++i){
+		m.position.x = particles(0, i);
+		m.position.y = particles(1, i);
+		m.position.z = particles(2, i);
+		msgArray.poses.push_back(m);
+	}
+
+	return msgArray;
+}
+
+geometry_msgs::PoseStamped  ParticleFilter::getBestLikelihoodMsg(){
+	// TODO init at resize this array
+	geometry_msgs::PoseStamped m;
+	double bllRange = particles(3, indexMaxLikelihood);
+	double maxRange = range(3)/10.0;
+	int n = 0;
+	for(int i = 0; i < nbr_particles; ++i){
+		// Check if the particle's angle is not far from the best likelihood's angle
+		if(abs(bllRange - particles(3, i)) < maxRange){
+			m.pose.position.x += particles(0, i);
+			m.pose.position.y += particles(1, i);
+			m.pose.position.z += particles(2, i);
+			n++;
+		}
+	}
+	ROS_INFO_STREAM(n);
+	m.pose.position.x /= (double)n;
+	m.pose.position.y /= (double)n;
+	m.pose.position.z /= (double)n;
+
+	return m;
+}
+
 void ParticleFilter::printQuaternion(const std::string title, const Eigen::Quaterniond &quat) const{
 	 ROS_INFO_STREAM(std::endl << title << std::endl << quat.x() << std::endl  << quat.y() << std::endl  << quat.z() << std::endl  << quat.w());
+}
+
+void ParticleFilter::setStdPose(double s){
+	std_pose = s;
 }
