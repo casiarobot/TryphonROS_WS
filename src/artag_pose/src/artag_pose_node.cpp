@@ -97,14 +97,40 @@ void ArtagPoseNode::computePoseAndPublish(){
 
 	std::list<tagHandle_t> tagsDetected;
 
+	unsigned int nbrCamera1Tag = 0, nbrCamera2Tag = 0;
+	nbrCamera1Tag = artagSubs[0]->getNumberTagsDetected();
+
 	for(it = artagSubs.begin(); it != artagSubs.end(); ++it){
 		(*it)->pullTagDetected(tagsDetected);
 	}
-
-	if(tagsDetected.empty())
+	//nbrCamera2Tag = artagSubs[1]->getNumberTagsDetected();
+	if(nbrCamera1Tag + nbrCamera2Tag < 1)
 		return;
 
+	hardcodeValue1cam(tagsDetected);
 
+	struct timeval tm1, tm2;
+	gettimeofday(&tm1, NULL);
+
+	pf->updateParticle();
+	pf->calcLogLikelihood(tagsDetected, false);
+	pf->resampleParticles();
+
+	gettimeofday(&tm2, NULL);
+	unsigned long long timel = 1000 * (tm2.tv_sec - tm1.tv_sec) + (tm2.tv_usec - tm1.tv_usec) / 1000;
+
+	ROS_INFO_STREAM("Time for the particle update: " << timel << "ms, n =" << nbrCamera1Tag + nbrCamera2Tag);
+
+	// Publish visualization of the particle for Rviz
+	geometry_msgs::PoseArray msg = pf->getParticleMsg();
+	geometry_msgs::PoseStamped  msgBestLL = pf->getBestLikelihoodMsg();
+	msg.header.frame_id = "cafeteria";
+	msgBestLL.header.frame_id = "cafeteria";
+	pubParticles.publish(msg);
+	pubBestLLParticles.publish(msgBestLL);
+}
+
+void ArtagPoseNode::hardcodeValue1cam(std::list<tagHandle_t> &tagsDetected){
 	// Hard coded fake camera, with different reference
 	std::list<tagHandle_t>::iterator t = tagsDetected.begin();
 	tagHandle_t tag = *t;
@@ -143,29 +169,6 @@ void ArtagPoseNode::computePoseAndPublish(){
 	        0,  0,  1,
 	        0,  1,  0;
 	tagsDetected.push_back(tag);
-	//tagsDetected.erase(tagsDetected.begin());
-	struct timeval tm1;
-	gettimeofday(&tm1, NULL);
-
-	pf->updateParticle();
-	//tagHandle_t t = *tagsDetected.begin();
-	pf->calcLogLikelihood(tagsDetected);
-	pf->resampleParticles();
-	struct timeval tm2;
-	gettimeofday(&tm2, NULL);
-
-
-	unsigned long long timel = 1000 * (tm2.tv_sec - tm1.tv_sec) + (tm2.tv_usec - tm1.tv_usec) / 1000;
-
-	ROS_INFO_STREAM("Time for the particle update: " << timel << "ms");
-
-	// Publish visualization of the particle for Rviz
-	geometry_msgs::PoseArray msg = pf->getParticleMsg();
-	geometry_msgs::PoseStamped  msgBestLL = pf->getBestLikelihoodMsg();
-	msg.header.frame_id = "cafeteria";
-	msgBestLL.header.frame_id = "cafeteria";
-	pubParticles.publish(msg);
-	pubBestLLParticles.publish(msgBestLL);
 }
 
 

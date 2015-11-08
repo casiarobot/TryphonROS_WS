@@ -61,8 +61,7 @@ private:
 	void createPublishers();
 	void createSubscribers();
 	void computePoseAndPublish();
-	void calculateWeight(std::list<tagHandle_t>& tags);
-	Eigen::Affine3d doWeightAverage(const std::list<tagHandle_t>& t);
+	void hardcodeValue1cam(std::list<tagHandle_t> &tagsDetected);
 
 };
 

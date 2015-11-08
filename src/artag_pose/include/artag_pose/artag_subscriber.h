@@ -60,7 +60,7 @@ public:
 	void timerCallback(const ros::TimerEvent& event);
 
 	void pullTagDetected(std::list<tagHandle_t>& tagList);
-
+	unsigned int getNumberTagsDetected();
 private:
 	void lookupCameraTf();
 	TrackedMarker::iterator  findMarkerInOldMsgById(unsigned int id);

@@ -173,3 +173,7 @@ void ArtagSubscriber::pullTagDetected(std::list<tagHandle_t>& tagList){
 	// Transfer objet container to the container pass has argument
 	tagList.splice(tagList.end(), tagsDetected);
 }
+
+unsigned int ArtagSubscriber::getNumberTagsDetected(){
+	return tagsDetected.size();
+}
