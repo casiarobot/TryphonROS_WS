@@ -49,6 +49,8 @@ void ArtagPoseNode::createSubscribers(){
 	std::vector<std::string> camera_topics;
 	camera_topics.push_back("camera1");
 	camera_topics.push_back("/192_168_10_243/artags/artag1/ar_pose_marker");
+	//camera_topics.push_back("camera2");
+	//camera_topics.push_back("/192_168_10_242/artags/artag2/ar_pose_marker");
 	//camera_topics.push_back("camera4");
 	//camera_topics.push_back("/192_168_10_243/artags2/artag1/ar_pose_marker");
 	/*camera_topics.push_back("camera3");
@@ -97,48 +99,72 @@ void ArtagPoseNode::computePoseAndPublish(){
 
 	std::list<tagHandle_t> tagsDetected;
 
-	for(it = artagSubs.begin(); it != artagSubs.end(); ++it){
-		(*it)->pullTagDetected(tagsDetected);
-	}
-
-	if(tagsDetected.empty())
+	//for(it = artagSubs.begin(); it != artagSubs.end(); ++it){
+	//	(*it)->pullTagDetected(tagsDetected);
+	//}
+	int nbrCamera1Tag = 0, nbrCamera2Tag = 0;
+	nbrCamera1Tag = artagSubs[0]->getNumberTagsDetected();
+	//nbrCamera2Tag = artagSubs[1]->getNumberTagsDetected();
+	if(nbrCamera1Tag + nbrCamera2Tag < 1)
 		return;
+
+	artagSubs[0]->pullTagDetected(tagsDetected);
+	//artagSubs[1]->pullTagDetected(tagsDetected);
+
 
 
 	// Hard coded fake camera, with different reference
 	std::list<tagHandle_t>::iterator t = tagsDetected.begin();
+	for(int i = 0; i < nbrCamera1Tag; i++){
+		// First tag
+		//t->cam2Tag_T = Eigen::Vector3d(1, 1, 0);
+		t->ref.cube2Cam_T = Eigen::Vector3d(0, 0, 0);
+		t->ref.cube2Cam_R <<
+				0,  0,  1,
+			   -1,  0,  0,
+				0, -1,  0;
+		t->ref.world2Tag_T = Eigen::Vector3d(1, 0, 0);
+		t->ref.world2Tag_R <<
+				0,  0, -1,
+			   -1,  0,  0,
+				0,  1,  0;
+		//++t; // Incremente iterator
+	}
+
+	/*for(int i = 0; i < nbrCamera2Tag; i++){
+		//tag.cam2Tag_T = Eigen::Vector3d(1, 1, 0);
+		t->ref.cube2Cam_T = Eigen::Vector3d(0.7, -0.14, 0.15);
+		t->ref.cube2Cam_R <<
+		         0,  0,  1,
+		        -1,  0,  0,
+				 0, -1,  0;
+	//	       -1,  0,  0,
+	//	        0,  0, -1,
+	//	        0, -1,  0;
+		t->ref.world2Tag_T = Eigen::Vector3d(1, 0, 0);
+		t->ref.world2Tag_R <<
+			    0,  0, -1,
+			   -1,  0,  0,
+			    0,  1,  0;
+	//	       -1,  0,  0,
+	//	        0,  0,  1,
+	//	        0,  1,  0;
+		++t; // Incremente iterator
+	}*/
 	tagHandle_t tag = *t;
-	// First tag
-	//t->cam2Tag_T = Eigen::Vector3d(1, 1, 0);
-	t->ref.cube2Cam_T = Eigen::Vector3d(0, 0, 0);
-	t->ref.cube2Cam_R <<
-	        0,  0,  1,
-	       -1,  0,  0,
-	        0, -1,  0;
-	// inverse
-//		0, -1,  0,
-//		0,  0, -1,
-//		1,  0,  0;
-	//t->ref.world2Tag_T = Eigen::Vector3d(12.25, 0, -0.5);
-	t->ref.world2Tag_T = Eigen::Vector3d(1, 0, 0);
-	t->ref.world2Tag_R <<
-	        0,  0, -1,
-	       -1,  0,  0,
-	        0,  1,  0;
-	//Second tag
-	//tag.cam2Tag_T = Eigen::Vector3d(1, 1, 0);
-	tag.ref.cube2Cam_T = Eigen::Vector3d(0, 0, 0);
+	tag.cam2Tag_T = Eigen::Vector3d(0, 0, 0);
 	tag.ref.cube2Cam_R <<
-	       -1,  0,  0,
+//	         0,  0,  1, // front
+//	        -1,  0,  0,
+//			 0, -1,  0;
+	       -1,  0,  0, // Left side
 	        0,  0, -1,
 	        0, -1,  0;
-	// inversed
-//	-1,  0,  0,
-//     0,  0, -1,
-//     0, -1,  0;
-	//tag.ref.world2Tag_T = Eigen::Vector3d(0, -12.25, -0.5);
 	tag.ref.world2Tag_T = Eigen::Vector3d(0, -1, 0);
 	tag.ref.world2Tag_R <<
+//		    0,  0, -1,
+//		   -1,  0,  0,
+//		    0,  1,  0;
 	       -1,  0,  0,
 	        0,  0,  1,
 	        0,  1,  0;
@@ -149,7 +175,7 @@ void ArtagPoseNode::computePoseAndPublish(){
 
 	pf->updateParticle();
 	//tagHandle_t t = *tagsDetected.begin();
-	pf->calcLogLikelihood(tagsDetected);
+	pf->calcLogLikelihood(tagsDetected, false);
 	pf->resampleParticles();
 	struct timeval tm2;
 	gettimeofday(&tm2, NULL);
@@ -157,7 +183,8 @@ void ArtagPoseNode::computePoseAndPublish(){
 
 	unsigned long long timel = 1000 * (tm2.tv_sec - tm1.tv_sec) + (tm2.tv_usec - tm1.tv_usec) / 1000;
 
-	ROS_INFO_STREAM("Time for the particle update: " << timel << "ms");
+	ROS_INFO_STREAM("Time for the particle update: " << timel
+	                << "ms, with n=" << nbrCamera1Tag + nbrCamera2Tag);
 
 	// Publish visualization of the particle for Rviz
 	geometry_msgs::PoseArray msg = pf->getParticleMsg();
@@ -197,7 +224,7 @@ int main(int argc, char **argv){
 	// Range zero => zero at initiation
 	Eigen::VectorXd range(8);
 	range << 20, 20, 20, 60, 0, 0, 0, 0;
-    int nbr_particles = 300;
+    int nbr_particles = 300; // 300
     double std_pose = 0.1;
     double std_R = 0.25;
     double std_T = 0.1;

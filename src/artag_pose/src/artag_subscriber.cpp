@@ -63,12 +63,12 @@ void ArtagSubscriber::lookupCameraTf(){
 void ArtagSubscriber::timerCallback(const ros::TimerEvent& event){
 	ros::Duration t = ros::Time::now() - lastReception;
 	if(t > ros::Duration(5.0)){
-		if(!receiveIsFirstMsg)
-			ROS_INFO_STREAM("Cam \"" << cameraName
-							<< "\" has not respond for " << t.toSec() << "s");
-		else
+		if(!this->receiveIsFirstMsg)
 			ROS_WARN_STREAM("Cam \"" << cameraName
 							<< "\" still has not received is first msg");
+		else
+			ROS_INFO_STREAM("Cam \"" << cameraName
+							<< "\" has not respond for " << t.toSec() << "s");
 	}
 }
 
@@ -147,6 +147,7 @@ void ArtagSubscriber::artagCallback(const ar_track_alvar_msgs::AlvarMarkers::Con
 	}
 
 	oldMsg = *msg;
+	lastReception = ros::Time::now();
 }
 
 TrackedMarker::iterator ArtagSubscriber::findMarkerInOldMsgById(unsigned int id){
@@ -172,4 +173,8 @@ double ArtagSubscriber::distanceBetweenPoint(geometry_msgs::Point A,
 void ArtagSubscriber::pullTagDetected(std::list<tagHandle_t>& tagList){
 	// Transfer objet container to the container pass has argument
 	tagList.splice(tagList.end(), tagsDetected);
+}
+
+unsigned int ArtagSubscriber::getNumberTagsDetected(){
+	return tagsDetected.size();
 }

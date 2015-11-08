@@ -68,11 +68,15 @@ void ParticleFilter::updateParticle(){
 
 }
 
-void ParticleFilter::calcLogLikelihood(const  std::list<tagHandle_t> &tags){
+void ParticleFilter::calcLogLikelihood(const  std::list<tagHandle_t> &tags,
+                                       const bool recursive_flag){
 	double A = -log(sqrt(2* M_PI) * std_pose);
 	double B = -0.5 / (std_pose * std_pose);
 	std::list<tagHandle_t>::const_iterator it;
 
+	bool oneParticleInRange = false;
+	if(recursive_flag)
+		oneParticleInRange = true;
 
 	for(int k = 0; k < nbr_particles; ++k){
 		// Hardcoded particle
@@ -87,59 +91,35 @@ void ParticleFilter::calcLogLikelihood(const  std::list<tagHandle_t> &tags){
 
 		// If 4 first parameters are in range
 		if(inRange){
+			oneParticleInRange = true;
 			double yaw = particles(3, k);
-			Eigen::Matrix3d world2Cube_R_guess, test_noise;
+			Eigen::Matrix3d world2Cube_R_guess;
 			world2Cube_R_guess = Eigen::AngleAxisd(-yaw * M_PI/ 180.0, Eigen::Vector3d::UnitZ());
 			//world2Cube_R_guess = Eigen::AngleAxisd(-0 * M_PI/ 180.0, Eigen::Vector3d::UnitZ());
-
-			test_noise <<
-					  0, -1,  0,
-					  0,  0, -1,
-					  1,  0,  0;
-			const Eigen::Vector3d T_guess = particles.col(k).topRows(3);
+			const Eigen::Vector3d world2Cube_T_guess = particles.col(k).topRows(3);
 
 			ll(k) = A;
 			for(it = tags.begin(); it != tags.end(); ++it){
-				// Note: the transpose on cube2Cam_R is because of weird rotation convention
-				// it->ref.cube2Cam_R.matrix().transpose()
-//				ROS_INFO_STREAM(std::endl << "it->ref.world2Tag_T: " << std::endl << it->ref.world2Tag_T);
-//				ROS_INFO_STREAM(std::endl << "T_guess: " << std::endl << T_guess);
-//				ROS_INFO_STREAM(std::endl << "it->ref.cube2Cam_T: " << std::endl << it->ref.cube2Cam_T);
-//				ROS_INFO_STREAM(std::endl << "other part: " << std::endl << (it->ref.world2Tag_T -T_guess -world2Cube_R_guess * it->ref.cube2Cam_T));
-				//ROS_INFO_STREAM(std::endl << "it->cam2Tag_T: " << std::endl << it->cam2Tag_T);
 				Eigen::Vector3d error =
 						(world2Cube_R_guess * it->ref.cube2Cam_R).inverse()
-						* (it->ref.world2Tag_T -T_guess) -it->ref.cube2Cam_R * it->ref.cube2Cam_T
+						* (it->ref.world2Tag_T -world2Cube_T_guess) -it->ref.cube2Cam_R.inverse() * it->ref.cube2Cam_T
 						-it->cam2Tag_T;
-				//Eigen::Vector3d error = it->ref.cube2Cam_R*(it->ref.world2Tag_T -T_guess) -it->cam2Tag_T;
-				//ROS_INFO_STREAM(std::endl << "D: " << std::endl << error);
+
 
 				double D = error.transpose() * error;
 				ll(k) += B * D;
 			}
-			/*tagHandle_t it = *(tags.begin());
-			Eigen::Vector3d error =
-					(world2Cube_R_guess * it.ref.cube2Cam_R.matrix().transpose()).inverse()
-					* (it.ref.world2Tag_T -T_guess -world2Cube_R_guess * it.ref.cube2Cam_T)
-					-it.cam2Tag_T;
-
-			double D = error.transpose() * error;
-			ll(k) += B * D;*/
-
-			//Eigen::Vector3d error = T_guess -cam2Tag_T;
-
-
-
-			//ROS_INFO_STREAM(std::endl << "yaw: " << std::endl << yaw);
-			//ROS_INFO_STREAM(std::endl << "cube2Cam_R: " << std::endl << cube2Cam_R.matrix().transpose());
-			//ROS_INFO_STREAM(std::endl << "(world2Cube_R_guess * cube2Cam_R).inverse(): " << std::endl << (world2Cube_R_guess * cube2Cam_R.matrix().transpose()).inverse());
-			//ROS_INFO_STREAM(std::endl << "ll(k) " << std::endl << ll(k));
-
 
 		}
 		else{
 			ll(k) = -std::numeric_limits<double>::max();// = -inf
 		}
+	}
+	// Every particles is of infinite likelihood
+	if(!oneParticleInRange && false){
+		createParticles();
+		updateParticle();
+		calcLogLikelihood(tags, true);
 	}
 }
 
@@ -261,6 +241,12 @@ geometry_msgs::PoseArray ParticleFilter::getParticleMsg(){
 		m.position.x = particles(0, i);
 		m.position.y = particles(1, i);
 		m.position.z = particles(2, i);
+		Eigen::Quaterniond q;
+		q = Eigen::AngleAxisd(-particles(3, i) * M_PI/ 180.0, Eigen::Vector3d::UnitZ());
+		m.orientation.x = q.x();
+		m.orientation.y = q.y();
+		m.orientation.z = q.z();
+		m.orientation.w = q.w();
 		msgArray.poses.push_back(m);
 	}
 
@@ -270,15 +256,17 @@ geometry_msgs::PoseArray ParticleFilter::getParticleMsg(){
 geometry_msgs::PoseStamped  ParticleFilter::getBestLikelihoodMsg(){
 	// TODO init at resize this array
 	geometry_msgs::PoseStamped m;
-	double bllRange = particles(3, indexMaxLikelihood);
+	double bllAngle = particles(3, indexMaxLikelihood);
 	double maxRange = range(3)/10.0;
+	double angle;
 	int n = 0;
 	for(int i = 0; i < nbr_particles; ++i){
 		// Check if the particle's angle is not far from the best likelihood's angle
-		if(abs(bllRange - particles(3, i)) < maxRange){
+		if(abs(bllAngle - particles(3, i)) < maxRange){
 			m.pose.position.x += particles(0, i);
 			m.pose.position.y += particles(1, i);
 			m.pose.position.z += particles(2, i);
+			angle += particles(3, i);
 			n++;
 		}
 	}
@@ -286,6 +274,14 @@ geometry_msgs::PoseStamped  ParticleFilter::getBestLikelihoodMsg(){
 	m.pose.position.x /= (double)n;
 	m.pose.position.y /= (double)n;
 	m.pose.position.z /= (double)n;
+	angle /= (double)n;
+
+	Eigen::Quaterniond q;
+	q = Eigen::AngleAxisd(-angle * M_PI/ 180.0, Eigen::Vector3d::UnitZ());
+	m.pose.orientation.x = q.x();
+	m.pose.orientation.y = q.y();
+	m.pose.orientation.z = q.z();
+	m.pose.orientation.w = q.w();
 
 	return m;
 }

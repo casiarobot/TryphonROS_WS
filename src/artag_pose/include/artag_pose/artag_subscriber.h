@@ -61,6 +61,7 @@ public:
 
 	void pullTagDetected(std::list<tagHandle_t>& tagList);
 
+	unsigned int getNumberTagsDetected();
 private:
 	void lookupCameraTf();
 	TrackedMarker::iterator  findMarkerInOldMsgById(unsigned int id);
