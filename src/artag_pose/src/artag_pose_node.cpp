@@ -4,11 +4,14 @@
 
 ArtagPoseNode::ArtagPoseNode(ParticleFilter* ppf):
     nodeHandle("~"),
+	startNode(ros::Time::now()),
 	pf(ppf){
 
-	nodeHandle.param<int>("hz", frequency, 10);
+	nodeHandle.param<int>("hz", frequency, 8);
 
-	nodeHandle.param<int>("numMarkers", numMarkers, 1);
+	//nodeHandle.param<int>("", numMarkers, 2);
+	numMarkers = 2;
+	ROS_INFO_STREAM("Number markers: " << numMarkers);
 
 	markerConfig = new TfConfigLoader;
 
@@ -16,6 +19,9 @@ ArtagPoseNode::ArtagPoseNode(ParticleFilter* ppf):
 	dynamic_reconfigure::Server<artag_pose::ArtagPoseConfig>::CallbackType dynamicReconfigCallback;
 	dynamicReconfigCallback = boost::bind(&ArtagPoseNode::dynamicParametersCallback, this, _1, _2);
 	dynamicReconfigServer.setCallback(dynamicReconfigCallback);
+
+
+	srand (time(NULL));
 }
 
 ArtagPoseNode::~ArtagPoseNode(){
@@ -48,9 +54,9 @@ void ArtagPoseNode::createSubscribers(){
 	// Bypass the Yaml configuration for debugging
 	std::vector<std::string> camera_topics;
 	camera_topics.push_back("camera1");
-	camera_topics.push_back("/192_168_10_243/artags/artag1/ar_pose_marker");
-	//camera_topics.push_back("camera4");
-	//camera_topics.push_back("/192_168_10_243/artags2/artag1/ar_pose_marker");
+	camera_topics.push_back("/192_168_10_242/artags/artag1/ar_pose_marker");
+	camera_topics.push_back("camera2");
+	camera_topics.push_back("/192_168_10_242/artags/artag2/ar_pose_marker");
 	/*camera_topics.push_back("camera3");
 	camera_topics.push_back("/192_168_10_243/artags/artag3/ar_pose_marker");*/
 
@@ -99,6 +105,7 @@ void ArtagPoseNode::computePoseAndPublish(){
 
 	unsigned int nbrCamera1Tag = 0, nbrCamera2Tag = 0;
 	nbrCamera1Tag = artagSubs[0]->getNumberTagsDetected();
+	nbrCamera2Tag = artagSubs[1]->getNumberTagsDetected();
 
 	for(it = artagSubs.begin(); it != artagSubs.end(); ++it){
 		(*it)->pullTagDetected(tagsDetected);
@@ -107,7 +114,8 @@ void ArtagPoseNode::computePoseAndPublish(){
 	if(nbrCamera1Tag + nbrCamera2Tag < 1)
 		return;
 
-	hardcodeValue1cam(tagsDetected);
+	//hardcodeValue1cam(tagsDetected);
+	hardcodeValue2cam(tagsDetected, nbrCamera1Tag, nbrCamera2Tag);
 
 	struct timeval tm1, tm2;
 	gettimeofday(&tm1, NULL);
@@ -119,7 +127,7 @@ void ArtagPoseNode::computePoseAndPublish(){
 	gettimeofday(&tm2, NULL);
 	unsigned long long timel = 1000 * (tm2.tv_sec - tm1.tv_sec) + (tm2.tv_usec - tm1.tv_usec) / 1000;
 
-	ROS_INFO_STREAM("Time for the particle update: " << timel << "ms, n =" << nbrCamera1Tag + nbrCamera2Tag);
+	ROS_INFO_STREAM("Time for the particle update: " << timel << "ms, n =" << tagsDetected.size());
 
 	// Publish visualization of the particle for Rviz
 	geometry_msgs::PoseArray msg = pf->getParticleMsg();
@@ -128,6 +136,49 @@ void ArtagPoseNode::computePoseAndPublish(){
 	msgBestLL.header.frame_id = "cafeteria";
 	pubParticles.publish(msg);
 	pubBestLLParticles.publish(msgBestLL);
+}
+
+void ArtagPoseNode::hardcodeValue2cam(std::list<tagHandle_t> &tagsDetected, unsigned nb1, unsigned nb2){
+	// Hard coded fake camera, with different reference
+	std::list<tagHandle_t>::iterator t = tagsDetected.begin();
+	// First tag
+	for(int i = 0; i < nb1; i++){
+		//t->cam2Tag_T = Eigen::Vector3d(1, 1, 0);
+		t->ref.cube2Cam_T = Eigen::Vector3d(0, 0, 0);
+		t->ref.cube2Cam_R <<
+		        0,  0,  1,
+		       -1,  0,  0,
+		        0, -1,  0;
+		//t->ref.world2Tag_T = Eigen::Vector3d(12.25, 0, -0.5);
+		t->ref.world2Tag_T = Eigen::Vector3d(0.42, 0, 0);
+//		t->ref.world2Tag_R <<
+//		        0,  0, -1,
+//		       -1,  0,  0,
+//		        0,  1,  0;
+
+		++t;
+	}
+
+	//Second tag
+	for(int i = 0; i < nb2; i++){
+		t->ref.cube2Cam_T = Eigen::Vector3d(-0.1, -0.1, 0);
+		t->ref.cube2Cam_R <<
+			   -1,  0,  0,
+				0,  0, -1,
+				0, -1,  0;
+//			 1,  0,  0, // Facing right side
+//			 0,  0,  1,
+//			 0, -1,  0;
+
+		//tag.ref.world2Tag_T = Eigen::Vector3d(0, -12.25, -0.5);
+		t->ref.world2Tag_T = Eigen::Vector3d(-0.1, -0.63, 0);
+//		t->ref.world2Tag_R <<
+//			   -1,  0,  0,
+//				0,  0,  1,
+//				0,  1,  0;
+
+		++t;
+	}
 }
 
 void ArtagPoseNode::hardcodeValue1cam(std::list<tagHandle_t> &tagsDetected){
@@ -168,6 +219,12 @@ void ArtagPoseNode::hardcodeValue1cam(std::list<tagHandle_t> &tagsDetected){
 	       -1,  0,  0,
 	        0,  0,  1,
 	        0,  1,  0;
+
+	//Add random camera lost after 10 secondes
+	//if(ros::Time::now() - startNode > ros::Duration(10.0)
+	//   && rand() % 2 == 0)
+	//	return;
+
 	tagsDetected.push_back(tag);
 }
 
@@ -175,7 +232,11 @@ void ArtagPoseNode::hardcodeValue1cam(std::list<tagHandle_t> &tagsDetected){
 void ArtagPoseNode::dynamicParametersCallback(artag_pose::ArtagPoseConfig &config, uint32_t level){
 	ROS_INFO("Parameters changed");
 
-	pf->setStdPose(config.std_pose);
+	pf->updateParameters(config.std_pose,
+	                     config.std_T,
+	                     config.std_R,
+	                     config.std_DT,
+	                     config.std_DR);
 }
 
 
@@ -202,7 +263,7 @@ int main(int argc, char **argv){
 	range << 20, 20, 20, 60, 0, 0, 0, 0;
     int nbr_particles = 300;
     double std_pose = 0.1;
-    double std_R = 0.25;
+    double std_R = 0.1;
     double std_T = 0.1;
 
 	//Eigen::Vector3d cube2Cam_T(0,0,0);

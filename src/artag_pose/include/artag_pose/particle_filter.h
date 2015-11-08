@@ -41,7 +41,7 @@ class ParticleFilter
 	Eigen::MatrixXd particles;
 	int nbr_particles;
 	/* Standard deviation */
-	double std_pose, std_R, std_T;
+	double std_pose, std_R, std_T, std_DT, std_DR;
 	/* Likelihood */
 	Eigen::VectorXd ll;
 
@@ -70,7 +70,7 @@ public:
 
 	geometry_msgs::PoseArray getParticleMsg();
 	geometry_msgs::PoseStamped getBestLikelihoodMsg();
-	void setStdPose(double s);
+	void updateParameters(double p, double r, double t, double dt, double dr);
 private:
 
 	void printQuaternion(const std::string title, const Eigen::Quaterniond &quat) const;

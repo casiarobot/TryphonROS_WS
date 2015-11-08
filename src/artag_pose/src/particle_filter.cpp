@@ -62,9 +62,9 @@ void ParticleFilter::updateParticle(){
 	particles.row(3) += std_R * Eigen::MatrixXd::Random(1, nbr_particles);
 
 	// Update rows 5 to 7
-	particles.bottomRows(4).topRows(3) += std_T / 5.0 * Eigen::MatrixXd::Random(3, nbr_particles);
+	particles.bottomRows(4).topRows(3) += std_DT * Eigen::MatrixXd::Random(3, nbr_particles);
 	// 8th row
-	particles.row(7) += std_R / 5.0 * Eigen::MatrixXd::Random(1, nbr_particles);
+	particles.row(7) += std_DR * Eigen::MatrixXd::Random(1, nbr_particles);
 
 }
 
@@ -278,6 +278,10 @@ void ParticleFilter::printQuaternion(const std::string title, const Eigen::Quate
 	 ROS_INFO_STREAM(std::endl << title << std::endl << quat.x() << std::endl  << quat.y() << std::endl  << quat.z() << std::endl  << quat.w());
 }
 
-void ParticleFilter::setStdPose(double s){
-	std_pose = s;
+void ParticleFilter::updateParameters(double p, double r, double t, double dt, double dr){
+	std_pose = p;
+	std_T = t;
+	std_R = r;
+	std_DT = dt;
+	std_DR = dr;
 }
