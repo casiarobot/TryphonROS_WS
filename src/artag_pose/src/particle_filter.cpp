@@ -15,7 +15,8 @@ ParticleFilter::ParticleFilter(
 	std_pose(pStdPose),
 	std_R(pStdR),
 	std_T(pStdT),
-    indexMaxLikelihood(0)
+    indexMaxLikelihood(0),
+    iterated(0)
 {
 	//init standard librairy seed initiation
 	srand((unsigned int) time(0));
@@ -78,10 +79,12 @@ void ParticleFilter::calcLogLikelihood(const  std::list<tagHandle_t> &tags,
 	if(reculsive_flag)
 		oneParticleInRange  = true;
 
+	Eigen::Matrix3d world2Cube_R_guess;
 	for(int k = 0; k < nbr_particles; ++k){
 
 		bool inRange = true;
-		for(int p = 0; p < 4; ++p){
+		world2Cube_R_guess = Eigen::AngleAxisd(-0 * M_PI/ 180.0, Eigen::Vector3d::UnitZ());
+		for(int p = 0; p < 3; ++p){
 			if(abs(particles(p, k)) > range(p)){
 				inRange = false;
 			}
@@ -91,23 +94,47 @@ void ParticleFilter::calcLogLikelihood(const  std::list<tagHandle_t> &tags,
 		if(inRange){
 			oneParticleInRange = true;
 			double yaw = particles(3, k);
-			Eigen::Matrix3d world2Cube_R_guess;
-			world2Cube_R_guess = Eigen::AngleAxisd(-yaw * M_PI/ 180.0, Eigen::Vector3d::UnitZ());
-			//world2Cube_R_guess = Eigen::AngleAxisd(-0 * M_PI/ 180.0, Eigen::Vector3d::UnitZ());
+			//world2Cube_R_guess = Eigen::AngleAxisd(-yaw * M_PI/ 180.0, Eigen::Vector3d::UnitZ());
 
 			const Eigen::Vector3d T_guess = particles.col(k).topRows(3);
 
+			ll(k) = 0;
 			for(it = tags.begin(); it != tags.end(); ++it){
-				Eigen::Vector3d error =
-						(world2Cube_R_guess * it->ref.cube2Cam_R).inverse()
-						* (it->ref.world2Tag_T -T_guess) -it->ref.cube2Cam_R * it->ref.cube2Cam_T
-						-it->cam2Tag_T;
-				double D = error.transpose() * error;
 
-				double stdPose = it->cam2Tag_T.norm() * std_pose;
-				double A = -log(sqrt(2* M_PI) * stdPose);
-				double B = -0.5 / (stdPose * stdPose);
-				ll(k) += A + B * D;
+				Eigen::Vector2d  center(0,0);
+				for(int i = 0; i < 4; ++i){
+					Eigen::Vector4d cam2Cube_guest(0, 0, 0, 1);
+					cam2Cube_guest.topRows(3) = it->ref.cube2Cam_R * (it->ref.world2Tag_T_corners[i] -  T_guess) ;
+//					cam2Cube_guest.topRows(3) =
+//							(world2Cube_R_guess * it->ref.cube2Cam_R).inverse()
+//							* (it->ref.world2Tag_T_corners[i] -T_guess)
+//					        -it->ref.cube2Cam_R * it->ref.cube2Cam_T;
+					Eigen::Vector3d  cam2Cube_guest_proj;
+					cam2Cube_guest_proj = it->ref.proj * cam2Cube_guest;
+					Eigen::Vector2d  error = cam2Cube_guest_proj.topRows(2) / cam2Cube_guest_proj(2);
+					error -= it->ref.corners[i];
+					//center += it->ref.corners[i];
+
+					double D = error.transpose() * error;
+
+					double stdPose = it->cam2Tag_T.norm() * std_pose;
+					double A = -log(sqrt(2* M_PI) * stdPose);
+					double B = -0.5 / (stdPose * stdPose);
+					ll(k) += A + B * D;
+
+					if(iterated == 500){
+						ROS_INFO_STREAM(std::endl << "cam2Cube_guest_proj" << std::endl << cam2Cube_guest_proj.topRows(2) / cam2Cube_guest_proj(2));
+						ROS_INFO_STREAM(std::endl << "it->ref.corners[i]" << std::endl << it->ref.corners[i]);
+					}
+				}
+				if(iterated == 500)exit(0);
+//				center /= 4;
+//				Eigen::Vector4d cam2Cube_guest(0, 0, 0, 1);
+//				cam2Cube_guest.topRows(3) = T_guess;
+
+//				Eigen::Vector3d projec = it->ref.proj * cam2Cube_guest;
+//				error = center - (projec.topRows(2) / projec(2)).topRows(2);
+				//exit(0);
 			}
 
 
@@ -116,6 +143,7 @@ void ParticleFilter::calcLogLikelihood(const  std::list<tagHandle_t> &tags,
 			ll(k) = -std::numeric_limits<double>::max();// = -inf
 		}
 	}
+	iterated++;
 	// Every particles is of infinite likelihood
 	if(!oneParticleInRange){
 		createParticles();
@@ -258,7 +286,7 @@ geometry_msgs::PoseStamped  ParticleFilter::getBestLikelihoodMsg(){
 			n++;
 		}
 	}
-	ROS_INFO_STREAM(n);
+	//ROS_INFO_STREAM(n);
 	m.pose.position.x /= (double)n;
 	m.pose.position.y /= (double)n;
 	m.pose.position.z /= (double)n;
@@ -270,6 +298,17 @@ geometry_msgs::PoseStamped  ParticleFilter::getBestLikelihoodMsg(){
 	m.pose.orientation.y = q.y();
 	m.pose.orientation.z = q.z();
 	m.pose.orientation.w = q.w();
+
+
+//	Eigen::Matrix<double, 3, 4> proj; //Projection matrixs
+//	proj <<  407.072082519531, 0.0, 320.173417532595, 0.0,
+//	         0.0, 448.358703613281, 251.148861613055, 0.0,
+//		     0.0, 				0.0, 			1.0,  0.0;
+//	Eigen::Vector4d tmp(0,0,0,1);
+//	tmp.topRows(3) = particles.col(indexMaxLikelihood).topRows(3);
+//	Eigen::Vector3d	imgPx =  proj * tmp;
+//	m.pose.position.x = imgPx(0) / imgPx(2) / 640;
+//	m.pose.position.y = imgPx(1) / imgPx(2) / 480;
 
 	return m;
 }

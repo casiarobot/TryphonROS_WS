@@ -91,6 +91,20 @@ void ArtagSubscriber::artagCallback(const ar_track_alvar_msgs::AlvarMarkers::Con
 
 	tagsDetected.clear();
 
+	Eigen::Matrix<double, 3, 4> cameraMatrixP;
+	cameraMatrixP(0, 0) = msg->P[0];
+	cameraMatrixP(0, 1) = msg->P[1];
+    cameraMatrixP(0, 2) = msg->P[2];
+    cameraMatrixP(0, 3) = msg->P[3];
+    cameraMatrixP(1, 0) = msg->P[4];
+    cameraMatrixP(1, 1) = msg->P[5];
+    cameraMatrixP(1, 2) = msg->P[6];
+    cameraMatrixP(1, 3) = msg->P[7];
+    cameraMatrixP(2, 0) = msg->P[8];
+    cameraMatrixP(2, 1) = msg->P[9];
+    cameraMatrixP(2, 2) = msg->P[10];
+    cameraMatrixP(2, 3) = msg->P[11];
+
 	TrackedMarker::iterator m;
 	for(m = trackMarkers.begin(); m != trackMarkers.end(); ++m){
 		// Does the id is in the list of valid markers
@@ -132,6 +146,12 @@ void ArtagSubscriber::artagCallback(const ar_track_alvar_msgs::AlvarMarkers::Con
 			t.ref.cube2Cam_R = cubeToCam.linear();
 			t.ref.world2Tag_T = worldToTag.translation();
 			t.ref.world2Tag_R = world2Tag_R_mat;
+			t.ref.proj = cameraMatrixP;
+			for(int i = 0; i < 4; i++){
+				t.ref.corners[i](0) = m->corners[2 * i];
+				t.ref.corners[i](1) = m->corners[2 * i + 1];
+			}
+
 			t.cam2Tag_T = camToTag.translation();
 			t.cam2Tag_R = camToTag.linear();
 			tagsDetected.push_back(t);

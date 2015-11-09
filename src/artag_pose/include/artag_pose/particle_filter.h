@@ -14,11 +14,22 @@
 #include <unsupported/Eigen/MatrixFunctions>
 
 
+enum cornersType{
+	SW =0,
+	SE,
+	NE,
+	NW
+};
+
 typedef struct{
 	Eigen::Vector3d cube2Cam_T;
 	Eigen::Matrix3d cube2Cam_R;
 	Eigen::Vector3d world2Tag_T;
 	Eigen::Matrix3d world2Tag_R;
+	Eigen::Matrix<double, 3, 4> proj; //Projection matrixs
+	Eigen::Vector2d corners[4]; // Corner order: sw, se, ne, nw
+	Eigen::Vector3d world2Tag_T_corners[4];
+
 }
 tagRef_t;
 
@@ -32,6 +43,7 @@ tagHandle_t;
 
 class ParticleFilter
 {
+	int iterated;
 	/* Matrix representing the model cinetic property */
 	Eigen::MatrixXd forces;
 	/* Max value of the 4 first parameters*/

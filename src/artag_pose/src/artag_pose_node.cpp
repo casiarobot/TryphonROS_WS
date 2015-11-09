@@ -9,6 +9,9 @@ ArtagPoseNode::ArtagPoseNode(ParticleFilter* ppf):
 
 	nodeHandle.param<int>("hz", frequency, 8);
 
+	nodeHandle.param<double>("marker_size", marker_size, 10.0);
+	marker_size /= 100; // convert to meter
+
 	//nodeHandle.param<int>("", numMarkers, 2);
 	numMarkers = 2;
 	ROS_INFO_STREAM("Number markers: " << numMarkers);
@@ -21,7 +24,7 @@ ArtagPoseNode::ArtagPoseNode(ParticleFilter* ppf):
 	dynamicReconfigServer.setCallback(dynamicReconfigCallback);
 
 
-	srand (time(NULL));
+	srand(time(NULL));
 }
 
 ArtagPoseNode::~ArtagPoseNode(){
@@ -45,9 +48,19 @@ void ArtagPoseNode::createPublishers(){
 	pubPose = nodeHandle.advertise<geometry_msgs::PoseStamped>("multitag_pose", 1000);
 	pubParticles = nodeHandle.advertise<geometry_msgs::PoseArray>("particles_makers", 1000);
 	pubBestLLParticles = nodeHandle.advertise<geometry_msgs::PoseStamped>("best_likelihood_maker", 1000);
+
 }
 
 void ArtagPoseNode::createSubscribers(){
+	// compass
+	std::string topic("/192_168_10_242/compass");
+//	subCompass = nodeHandle.subscribe<sensors::compass>(
+//								topic,
+//								10,
+//								&ArtagPoseNode::compassCallback,
+//								this
+//							);
+
 	// Get topic list from parameter
 	//std::vector<std::string> camera_topics = loadCameraTopics();
 
@@ -55,8 +68,8 @@ void ArtagPoseNode::createSubscribers(){
 	std::vector<std::string> camera_topics;
 	camera_topics.push_back("camera1");
 	camera_topics.push_back("/192_168_10_242/artags/artag1/ar_pose_marker");
-	camera_topics.push_back("camera2");
-	camera_topics.push_back("/192_168_10_242/artags/artag2/ar_pose_marker");
+	//camera_topics.push_back("camera2");
+	//camera_topics.push_back("/192_168_10_242/artags/artag2/ar_pose_marker");
 	/*camera_topics.push_back("camera3");
 	camera_topics.push_back("/192_168_10_243/artags/artag3/ar_pose_marker");*/
 
@@ -71,6 +84,9 @@ void ArtagPoseNode::createSubscribers(){
 		ArtagSubPtr ptr(new ArtagSubscriber(camera_name, *topic_name, markersPose, nodeHandle, pf));
 		artagSubs.push_back(ptr);
 	}
+}
+
+void ArtagPoseNode::compassCallback(const sensors::compass::ConstPtr& msg){
 }
 
 
@@ -105,7 +121,8 @@ void ArtagPoseNode::computePoseAndPublish(){
 
 	unsigned int nbrCamera1Tag = 0, nbrCamera2Tag = 0;
 	nbrCamera1Tag = artagSubs[0]->getNumberTagsDetected();
-	nbrCamera2Tag = artagSubs[1]->getNumberTagsDetected();
+	if(artagSubs.size() > 1)
+		nbrCamera2Tag = artagSubs[1]->getNumberTagsDetected();
 
 	for(it = artagSubs.begin(); it != artagSubs.end(); ++it){
 		(*it)->pullTagDetected(tagsDetected);
@@ -151,6 +168,25 @@ void ArtagPoseNode::hardcodeValue2cam(std::list<tagHandle_t> &tagsDetected, unsi
 		        0, -1,  0;
 		//t->ref.world2Tag_T = Eigen::Vector3d(12.25, 0, -0.5);
 		t->ref.world2Tag_T = Eigen::Vector3d(0.42, 0, 0);
+
+		for(int i = 0; i < 4; i++){
+			t->ref.world2Tag_T_corners[i] = t->ref.world2Tag_T;
+		}
+		t->ref.world2Tag_T_corners[0](1) -= marker_size/2;
+		t->ref.world2Tag_T_corners[0](2) -= marker_size/2;
+		t->ref.world2Tag_T_corners[1](1) += marker_size/2;
+		t->ref.world2Tag_T_corners[1](2) -= marker_size/2;
+		t->ref.world2Tag_T_corners[2](1) += marker_size/2;
+		t->ref.world2Tag_T_corners[2](2) += marker_size/2;
+		t->ref.world2Tag_T_corners[3](1) -= marker_size/2;
+		t->ref.world2Tag_T_corners[3](2) += marker_size/2;
+
+
+		//for(int i = 0; i < 4; i++){
+		//	ROS_INFO_STREAM(std::endl << "t.world2Tag_T_corners[i] "<< i << std::endl << t->ref.world2Tag_T_corners[i]);
+		//}
+		//exit(0);
+		//calculateCorners(t->ref, false, false);
 //		t->ref.world2Tag_R <<
 //		        0,  0, -1,
 //		       -1,  0,  0,
@@ -172,6 +208,20 @@ void ArtagPoseNode::hardcodeValue2cam(std::list<tagHandle_t> &tagsDetected, unsi
 
 		//tag.ref.world2Tag_T = Eigen::Vector3d(0, -12.25, -0.5);
 		t->ref.world2Tag_T = Eigen::Vector3d(-0.1, -0.63, 0);
+
+		for(int i = 0; i < 4; i++){
+			t->ref.world2Tag_T_corners[i] = t->ref.world2Tag_T;
+		}
+		t->ref.world2Tag_T_corners[2](0) -= marker_size/2;
+		t->ref.world2Tag_T_corners[2](2) -= marker_size/2;
+		t->ref.world2Tag_T_corners[3](0) += marker_size/2;
+		t->ref.world2Tag_T_corners[3](2) -= marker_size/2;
+		t->ref.world2Tag_T_corners[0](0) += marker_size/2;
+		t->ref.world2Tag_T_corners[0](2) += marker_size/2;
+		t->ref.world2Tag_T_corners[1](0) -= marker_size/2;
+		t->ref.world2Tag_T_corners[1](2) += marker_size/2;
+
+		//calculateCorners(t->ref, false, true);
 //		t->ref.world2Tag_R <<
 //			   -1,  0,  0,
 //				0,  0,  1,
@@ -179,6 +229,25 @@ void ArtagPoseNode::hardcodeValue2cam(std::list<tagHandle_t> &tagsDetected, unsi
 
 		++t;
 	}
+}
+void ArtagPoseNode::calculateCorners(tagRef_t &t, bool inverse_x, bool perp_to_y){
+	for(int i = 0; i < 4; i++){
+		t.world2Tag_T_corners[i](1) = ((i&1)^((i&2)>>1) == 1 ? 1 : -1) * marker_size/2;
+		t.world2Tag_T_corners[i](2) = (i / 2 == 0 ? 1 : -1) * marker_size/2;
+		if(inverse_x){
+			std::swap(t.world2Tag_T_corners[i](0), t.world2Tag_T_corners[i](2));
+		}
+		if(perp_to_y){
+			t.world2Tag_T_corners[i](0) *= -1;
+			t.world2Tag_T_corners[i](2) *= -1;
+		}
+		t.world2Tag_T_corners[i](0) += t.world2Tag_T(0);
+		t.world2Tag_T_corners[i](1) = t.world2Tag_T(1);
+		t.world2Tag_T_corners[i](2) += t.world2Tag_T(2);
+
+		ROS_INFO_STREAM(std::endl << "t.world2Tag_T_corners[i] "<< i << std::endl << t.world2Tag_T_corners[i]);
+	}
+
 }
 
 void ArtagPoseNode::hardcodeValue1cam(std::list<tagHandle_t> &tagsDetected){

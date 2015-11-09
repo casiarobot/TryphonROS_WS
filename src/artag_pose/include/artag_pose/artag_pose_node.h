@@ -16,6 +16,7 @@
 #include <dynamic_reconfigure/server.h>
 
 #include <ar_track_alvar/AlvarMarkers.h>
+#include <sensors/compass.h>
 
 #include <artag_pose/ArtagPoseConfig.h> // Auto-generate by a configuration file
 
@@ -34,6 +35,7 @@ class ArtagPoseNode{
 	// Ros parameter:
 	int frequency;
 	int numMarkers;
+	double marker_size;
 
 	ConfigLoader* markerConfig;
 	MarkersPosePtr markersPose;
@@ -46,6 +48,7 @@ class ArtagPoseNode{
 	ros::Publisher pubPose;
 	ros::Publisher pubParticles;
 	ros::Publisher pubBestLLParticles;
+	ros::Subscriber subCompass;
 
 	dynamic_reconfigure::Server<artag_pose::ArtagPoseConfig> dynamicReconfigServer;
     dynamic_reconfigure::Server<artag_pose::ArtagPoseConfig>::CallbackType dynamicReconfigCallback;
@@ -56,6 +59,8 @@ public:
 
 	void start();
 
+
+	void compassCallback(const sensors::compass::ConstPtr& msg);
 	void dynamicParametersCallback(artag_pose::ArtagPoseConfig &config, uint32_t level);
 private:
 	void loop();
@@ -66,6 +71,7 @@ private:
 	void computePoseAndPublish();
 	void hardcodeValue2cam(std::list<tagHandle_t> &tagsDetected, unsigned nb1, unsigned nb2);
 	void hardcodeValue1cam(std::list<tagHandle_t> &tagsDetected);
+	void calculateCorners(tagRef_t &t, bool inverse_x, bool perp_to_y);
 
 };
 
