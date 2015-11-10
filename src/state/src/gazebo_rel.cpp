@@ -9,13 +9,14 @@
 #include <Euler_utility.h>
 #include "vects2geoMsgs.cpp"
 #include <math.h>
+#include <ctime>
 
  Eigen::Vector3d Gazpos,Gaz1pos_243,Gaz2pos_243, Gaz1pos_244, Gaz2pos_244, Gaz1vel_243, Gaz2vel_243, Gaz1vel_244 ,Gaz2vel_244;
  Eigen::Vector3d Gazangle,Gaz1angle_243,Gaz2angle_243, Gaz1angle_244, Gaz2angle_244, Gaz1avel_243, Gaz2avel_243, Gaz1avel_244, Gaz2avel_244;
 Eigen::Matrix3d RMatrix, Rmatrix1_243,Rmatrix2_243,Rmatrix1_244,Rmatrix2_244, RvelM;
 geometry_msgs::PoseStamped  Gazp1, Gazp2;
 geometry_msgs::TwistStamped Gazv1, Gazv2;
-
+double t;
 
 
 
@@ -105,13 +106,13 @@ Rmatrix1_244=quattemp.toRotationMatrix();
 Eigen::Quaterniond quatang(0,0,0,1); //to make orientation all 0 when docking face alligned
 quat=quat*quatang.inverse();  
 
-  Gaz1angle_244(0)=atan2(2*(quat.w()*quat.x()+quat.y()*quat.z()),1-2*(quat.x()*quat.x()+quat.y()*quat.y()));
-  Gaz1angle_244(1)=asin(2*(quat.w()*quat.y()-quat.z()*quat.x()));
-  Gaz1angle_244(2)=atan2(2*(quat.w()*quat.z()+quat.x()*quat.y()),1-2*(quat.z()*quat.z()+quat.y()*quat.y()));
+  Gaz1angle_244(0)=atan2(2*(quat.w()*quat.x()+quat.y()*quat.z()),1-2*(quat.x()*quat.x()+quat.y()*quat.y()));//+.02*sin(750*t);
+  Gaz1angle_244(1)=asin(2*(quat.w()*quat.y()-quat.z()*quat.x()));//+.03*sin(1000*t);
+  Gaz1angle_244(2)=atan2(2*(quat.w()*quat.z()+quat.x()*quat.y()),1-2*(quat.z()*quat.z()+quat.y()*quat.y()));//+.025*sin(550*t);
  
-  Gaz1pos_244(0)=Gazposition(0);
-  Gaz1pos_244(1)=Gazposition(1);
-  Gaz1pos_244(2)=Gazposition(2);
+  Gaz1pos_244(0)=Gazposition(0);//+.05*sin(560*t);
+  Gaz1pos_244(1)=Gazposition(1);//+.04*sin(940*t);
+  Gaz1pos_244(2)=Gazposition(2);//+.045*sin(810*t);
 
 }
 
@@ -175,13 +176,13 @@ void subgazv1_243(const geometry_msgs::TwistStamped Twist)
 //quat=quat*quatang.inverse();  
 //Gaz1position=Rmatrix1*Gaz1position;
 
-  Gaz1avel_243(0)=-Twist.twist.angular.x;
+  Gaz1avel_243(0)=-Twist.twist.angular.x;  //(-) like applying quatang[0001] rotation to get 0 orientation when facing
   Gaz1avel_243(1)=-Twist.twist.angular.y;
   Gaz1avel_243(2)=Twist.twist.angular.z;
  
-  Gaz1vel_243(0)=Gazvel(0); 
-  Gaz1vel_243(1)=Gazvel(1);
-  Gaz1vel_243(2)=Gazvel(2);
+  Gaz1vel_243(0)=Gazvel(0);//+.008*sin(460*t); 
+  Gaz1vel_243(1)=Gazvel(1);//+.0042*sin(760*t);
+  Gaz1vel_243(2)=Gazvel(2);//+.0093*sin(910*t);
 }
 
 void subgazv2_243(const geometry_msgs::TwistStamped Twist)
@@ -227,7 +228,7 @@ void subgazv1_244(const geometry_msgs::TwistStamped Twist)
 //quat=quat*quatang.inverse();  
 //Gaz1position=Rmatrix1*Gaz1position;
 
-  Gaz1avel_244(0)=-Twist.twist.angular.x;
+  Gaz1avel_244(0)=-Twist.twist.angular.x;  //(-) like applying quatang[0001] rotation to get 0 orientation when facing
   Gaz1avel_244(1)=-Twist.twist.angular.y;
   Gaz1avel_244(2)=Twist.twist.angular.z;
  
@@ -300,7 +301,7 @@ int main(int argc, char **argv)
 
   ros::init(argc, argv, "gazebo_rel");
   ros::NodeHandle nh;
-
+  t=ros::Time::now().toSec();
 //ros::Subscriber sub_243 = nh.subscribe("/192_168_10_243/poseStamped_gazebo",1,subgaz_243);
 //ros::Subscriber sub_244 = nh.subscribe("/192_168_10_244/poseStamped_gazebo",1,subgaz_244);
 ros::Subscriber sub1_243 = nh.subscribe("/192_168_10_243/poseStamped_gazebo_1",1,subgaz1_243);
@@ -315,6 +316,8 @@ ros::Subscriber subv2_244 = nh.subscribe("/192_168_10_244/velocity_2",1,subgazv2
 
 ros::Publisher  Gazp1_pub = nh.advertise<geometry_msgs::PoseStamped>("/192_168_10_243/ar_pose",1);
 ros::Publisher  Gazp2_pub = nh.advertise<geometry_msgs::PoseStamped>("/192_168_10_244/ar_pose",1);
+ros::Publisher  Gazp1_pub_calc = nh.advertise<geometry_msgs::PoseStamped>("/192_168_10_243/ar_pose",1);
+ros::Publisher  Gazp2_pub_calc = nh.advertise<geometry_msgs::PoseStamped>("/192_168_10_244/ar_pose",1);
 ros::Publisher  Gazv1_pub = nh.advertise<geometry_msgs::TwistStamped>("/192_168_10_243/ar_vel",1);
 ros::Publisher  Gazv2_pub = nh.advertise<geometry_msgs::TwistStamped>("/192_168_10_244/ar_vel",1);
 
@@ -357,7 +360,8 @@ Gazv2.twist=vects2twist(Rmatrix2_243*(Gaz1vel_244-Gaz2vel_243),(Gaz2avel_244-Gaz
   	Gazp2_pub.publish(Gazp2);
   	Gazv1_pub.publish(Gazv1);
   	Gazv2_pub.publish(Gazv2);
-
+    
+loop_rate.sleep();
 }
 
 	return 0;

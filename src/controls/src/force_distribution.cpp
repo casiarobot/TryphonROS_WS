@@ -147,7 +147,7 @@ double force2command(double f)
 {
 
     double command;
-    if(f>0)
+    if(f>=0)
     {
         if(f>maxForce)
         {
@@ -156,7 +156,7 @@ double force2command(double f)
         else
         {
             command=247.6222-sqrt(fabs(61316.75-92984.43*(f+0.0175878)));
-            if(command<0 || command==0){command=0;}
+            if(command<0 || f==0){command=0;}
             return command;
         }
     }

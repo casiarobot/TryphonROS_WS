@@ -117,12 +117,12 @@ ros::Publisher  netwrench_pub = nh.advertise<geometry_msgs::Wrench>("/192_168_10
 ros::Rate loop_rate(10);
 
 
-Kgain<<             .92,0,0,.92,0,0,0,0,0,6.9,0,0,6.9,0,0,0,0,0,
-					0,5.0255,0,0,5.0255,0,0,0,0,0,24.495,0,0,24.395,0,0,0,0,
-					0,0,4.025,0,0,4.025,0,0,0,0,0,13.8,0,0,13.8,0,0,0,
-					0,0,0,0,0,0,.945,0,0,0,0,0,0,0,0,7.65,0,0,
-					0,0,1,0,0,-1,0,1,0,0,0,6,0,0,-6,0,6,0,
-					0,-.6,0,0,.6,0,0,0,.6,0,-3.5,0,0,3.5,0,0,0,3.5;
+Kgain<<             .69,0,0,.69,0,0,0,0,0,5.75,0,0,5.75,0,0,0,0,0,
+					0,1.0580,0,0,1.0580,0,0,0,0,0,7.2450,0,0,7.245,0,0,0,0,
+					0,0,4.37,0,0,4.37,0,0,0,0,0,24.15,0,0,24.15,0,0,0,
+					0,0,0,0,0,0,.3,0,0,0,0,0,0,0,0,4.5,0,0,
+					0,0,-.315,0,0,.315,0,.315,0,0,0,-2.55,0,0,2.55,0,2.55,0,
+					0,1,0,0,-1,0,0,0,1,0,6,0,0,-6,0,0,0,6;
 
 
 
@@ -132,61 +132,18 @@ while (ros::ok())
  {
 
 ros::spinOnce();
-
-
 statevect<<rel_pos_1,rel_pos_2,rel_ang_1,rel_vel_1,rel_vel_2,rel_avel_1;
 forcevect=Kgain*statevect;
 
-
 for (int i=0; i<3 ; i++)
 {
-//force_1(i)=KpP[i]*rel_pos_1(i)+KdP[i]*rel_vel_1(i); //think about (-)
-//force_2(i)=KpP[i]*rel_pos_2(i)+KdP[i]*rel_vel_2(i);
 force_1(i)=forcevect(i);
-
-//torque_1(i)=-KpT[i]*rel_ang_1(i)-KdT[i]*rel_avel_1(i); //think about (-)  <---
-//torque_2(i)=-KpT[i]*rel_ang_2(i)-KdT[i]*rel_avel_2(i);
-
-//torque_1(i)=0;
-//torque_2(i)=0;
+torque_1(i)=forcevect(i+3);
 }
-for (int i=3; i<6 ; i++)
-{
-
-
-torque_1(i-3)=forcevect(i);
-
-}
-//torque_1(0)=KpT[0]/2*-(rel_pos_2(2)+rel_pos_1(2)) ;
-//torque_1(1)=KpT[1]*-(rel_pos_2(2)-rel_pos_1(2));
-//torque_1(2)=KpT[2]*(rel_pos_2(1)-rel_pos_1(1));//+KdT[2]*(rel_vel_2(1)-rel_vel_1(1));
-//torque_2(0)=KpT[0]/2*-(rel_pos_2(2)+rel_pos_1(2));
-//torque_2(1)=KpT[1]*-(rel_pos_2(2)-rel_pos_1(2));
-//torque_2(2)=KpT[2]*(rel_pos_2(1)-rel_pos_1(1));//+KdT[2]*(rel_vel_2(1)-rel_vel_1(1));
-
-
-/*
-wrench_1.header.stamp=ros::Time::now();
-wrench_2.header.stamp=ros::Time::now();
-wrench_1.wrench=vects2wrench(force_1,torque_1); //wrench before CM change
-wrench_2.wrench=vects2wrench(force_2,torque_2);
-
-//moving to CM
-//torque_1=torque_1+RCPM1*force_1;
-//torque_2=torque_2+RCPM2*force_2;
-
-//sharing functions
-
-netwrench=vects2wrench(.5*force_1+.5*force_2,.5*torque_1+.5*torque_2);
-*/
-
-
 
 netwrench=vects2wrench(force_1,torque_1);
-
-//wrench1_pub.publish(wrench_1); //wrench at camera frame origin
-//wrench2_pub.publish(wrench_2);
 netwrench_pub.publish(netwrench);
+ loop_rate.sleep();
  }
 
 

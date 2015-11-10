@@ -49,6 +49,13 @@ add_executable(ar_state src/ar_state.cpp)
 target_link_libraries(ar_state ${catkin_LIBRARIES} yaml-cpp)
 add_dependencies(ar_state sensors_gencpp std_msgs geometry_msgs)
 
+add_executable(ar_state_calc src/ar_state_calc.cpp)
+target_link_libraries(ar_state_calc ${catkin_LIBRARIES} yaml-cpp)
+add_dependencies(ar_state_calc sensors_gencpp std_msgs geometry_msgs)
+
+add_executable(testing src/testing.cpp)
+target_link_libraries(testing ${catkin_LIBRARIES} yaml-cpp)
+add_dependencies(testing sensors_gencpp std_msgs geometry_msgs)
 
 add_executable(gazebo_rel src/gazebo_rel.cpp)
 target_link_libraries(gazebo_rel ${catkin_LIBRARIES} yaml-cpp)
