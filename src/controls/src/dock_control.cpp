@@ -104,10 +104,10 @@ RCPM2=CPM(r2);
 ros::init(argc, argv, "dock_control");
 ros::NodeHandle nh;
 
-ros::Subscriber  pose1_sub= nh.subscribe("/192_168_10_243/ar_pose",1,p1_callback);
-ros::Subscriber  pose2_sub= nh.subscribe("/192_168_10_244/ar_pose",1,p2_callback);
-ros::Subscriber  vel1_sub= nh.subscribe("/192_168_10_243/ar_vel",1,v1_callback);
-ros::Subscriber  vel2_sub= nh.subscribe("/192_168_10_244/ar_vel",1,v2_callback);
+ros::Subscriber  pose1_sub= nh.subscribe("/192_168_10_243/ar_pose1",1,p1_callback);
+ros::Subscriber  pose2_sub= nh.subscribe("/192_168_10_243/ar_pose2",1,p2_callback);
+ros::Subscriber  vel1_sub= nh.subscribe("/192_168_10_243/ar_vel1",1,v1_callback);
+ros::Subscriber  vel2_sub= nh.subscribe("/192_168_10_243/ar_vel2",1,v2_callback);
 
 ros::Publisher  wrench1_pub = nh.advertise<geometry_msgs::WrenchStamped>("/dock_wrench_1",1);
 ros::Publisher  wrench2_pub = nh.advertise<geometry_msgs::WrenchStamped>("/dock_wrench_2",1);
@@ -119,14 +119,21 @@ ros::Rate loop_rate(10);
 
 Kgain<<             .69,0,0,.69,0,0,0,0,0,5.75,0,0,5.75,0,0,0,0,0,
 					0,1.0580,0,0,1.0580,0,0,0,0,0,7.2450,0,0,7.245,0,0,0,0,
-					0,0,4.37,0,0,4.37,0,0,0,0,0,24.15,0,0,24.15,0,0,0,
+					0,0,4.1,0,0,4.1,0,0,0,0,0,14.15,0,0,14.15,0,0,0,
 					0,0,0,0,0,0,.3,0,0,0,0,0,0,0,0,4.5,0,0,
 					0,0,-.315,0,0,.315,0,.315,0,0,0,-2.55,0,0,2.55,0,2.55,0,
 					0,1,0,0,-1,0,0,0,1,0,6,0,0,-6,0,0,0,6;
 
 
+/*
+Kgain<<             .69,0,0,.69,0,0,0,0,0,5.75,0,0,5.75,0,0,0,0,0,
+					0,1.0580,0,0,1.0580,0,0,0,0,0,7.2450,0,0,7.245,0,0,0,0,
+					0,0,4.37,0,0,4.37,0,0,0,0,0,24.15,0,0,24.15,0,0,0,
+					0,0,0,0,0,0,.3,0,0,0,0,0,0,0,0,4.5,0,0,
+					0,0,-.315,0,0,.315,0,.315,0,0,0,-2.55,0,0,2.55,0,2.55,0,
+					0,1,0,0,-1,0,0,0,1,0,6,0,0,-6,0,0,0,6;
 
-
+*/
 
 while (ros::ok())
  {
@@ -140,10 +147,10 @@ for (int i=0; i<3 ; i++)
 force_1(i)=forcevect(i);
 torque_1(i)=forcevect(i+3);
 }
-
 netwrench=vects2wrench(force_1,torque_1);
 netwrench_pub.publish(netwrench);
  loop_rate.sleep();
+
  }
 
 
