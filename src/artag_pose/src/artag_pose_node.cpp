@@ -167,14 +167,14 @@ void ArtagPoseNode::hardcodeValue2cam(std::list<tagHandle_t> &tagsDetected, unsi
 		//t->cam2Tag_T = Eigen::Vector3d(1, 1, 0);
 
 		t->ref.cube2Cam_H <<
-//		                     0,	0,	-1,	0, // cam2
-//							 1,	0,	0,	0,
-//							 0,	-1,	0,	0,
-//							 0,	0,	0,	1;
-		                     1,  0,  0,  0,//cam 1
-					         0,  0,  1,  0,
-		                     0, -1,  0,  0,
-					         0,  0,  0,  1;
+		                     0,	0,	-1,	0, // cam2
+							 1,	0,	0,	0,
+							 0,	-1,	0,	0,
+							 0,	0,	0,	1;
+//		                     1,  0,  0,  0,//cam 1
+//					         0,  0,  1,  0,
+//		                     0, -1,  0,  0,
+//					         0,  0,  0,  1;
 		//TODO make it changeable
 
 		double d = 0.10;
