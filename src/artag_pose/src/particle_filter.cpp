@@ -121,7 +121,7 @@ void ParticleFilter::calcLogLikelihood(const  std::list<tagHandle_t> &tags){
 			//const Eigen::Vector3d T_guess = particles.col(k).topRows(3);
 
 			for(it = tags.begin(); it != tags.end(); ++it){
-				ROS_INFO_STREAM(std::endl <<"x: "<<std::endl << world2Cube_guess);
+				ROS_INFO_STREAM(std::endl <<" it->ref.cube2Cam_H: "<<std::endl <<  it->ref.cube2Cam_H);
 				ROS_INFO_STREAM(std::endl <<"x * it->ref.cube2Cam_H: "<<std::endl << world2Cube_guess * it->ref.cube2Cam_H);
 				ROS_INFO_STREAM(std::endl <<"it->ref.posTag_W: "<<std::endl <<it->ref.posTag_W);
 				ROS_INFO_STREAM(std::endl <<"gros: "<<std::endl <<
