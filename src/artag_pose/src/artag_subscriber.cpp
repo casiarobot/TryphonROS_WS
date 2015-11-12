@@ -147,10 +147,14 @@ void ArtagSubscriber::artagCallback(const ar_track_alvar_msgs::AlvarMarkers::Con
 			t.ref.world2Tag_T = worldToTag.translation();
 			t.ref.world2Tag_R = world2Tag_R_mat;
 			t.ref.proj = cameraMatrixP;
-			for(int i = 0; i < 4; i++){
+			/*for(int i = 0; i < 4; i++){
 				t.ref.corners[i](0) = m->corners[2 * i];
 				t.ref.corners[i](1) = m->corners[2 * i + 1];
-			}
+			}*/
+			t.ref.corners[0](0) = 247.078581347000;	t.ref.corners[0](1) =213.816556995000;
+			t.ref.corners[1](0) = 446.024811679000;	t.ref.corners[1](1) =216.513126468000;
+			t.ref.corners[2](0) = 444.251833741000;	t.ref.corners[2](1) =25.6693131215000;
+			t.ref.corners[3](0) = 252.690849739000;	t.ref.corners[3](1) =23.3895247245000;
 
 			t.cam2Tag_T = camToTag.translation();
 			t.cam2Tag_R = camToTag.linear();

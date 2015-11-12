@@ -136,23 +136,27 @@ void ArtagPoseNode::computePoseAndPublish(){
 
 	struct timeval tm1, tm2;
 	gettimeofday(&tm1, NULL);
-
-	pf->updateParticle();
-	pf->calcLogLikelihood(tagsDetected, false);
-	pf->resampleParticles();
+	for(int i = 0; i < 1; ++i){
+		pf->updateParticle();
+		pf->calcLogLikelihood(tagsDetected);
+		pf->resampleParticles();
+	}
+	pf->calcLogLikelihood(tagsDetected);
 
 	gettimeofday(&tm2, NULL);
 	unsigned long long timel = 1000 * (tm2.tv_sec - tm1.tv_sec) + (tm2.tv_usec - tm1.tv_usec) / 1000;
 
 	ROS_INFO_STREAM("Time for the particle update: " << timel << "ms, n =" << tagsDetected.size());
+	//exit(0);
 
 	// Publish visualization of the particle for Rviz
 	geometry_msgs::PoseArray msg = pf->getParticleMsg();
-	geometry_msgs::PoseStamped  msgBestLL = pf->getBestLikelihoodMsg();
+	geometry_msgs::PoseStamped  msgBestLL = pf->getBestLikelihoodMsg(tagsDetected.begin()->ref);
 	msg.header.frame_id = "cafeteria";
 	msgBestLL.header.frame_id = "cafeteria";
 	pubParticles.publish(msg);
 	pubBestLLParticles.publish(msgBestLL);
+	exit(0);
 }
 
 void ArtagPoseNode::hardcodeValue2cam(std::list<tagHandle_t> &tagsDetected, unsigned nb1, unsigned nb2){
@@ -161,36 +165,41 @@ void ArtagPoseNode::hardcodeValue2cam(std::list<tagHandle_t> &tagsDetected, unsi
 	// First tag
 	for(int i = 0; i < nb1; i++){
 		//t->cam2Tag_T = Eigen::Vector3d(1, 1, 0);
-		t->ref.cube2Cam_T = Eigen::Vector3d(0, 0, 0);
-		t->ref.cube2Cam_R <<
-		        0,  0,  1,
-		       -1,  0,  0,
-		        0, -1,  0;
-		//t->ref.world2Tag_T = Eigen::Vector3d(12.25, 0, -0.5);
-		t->ref.world2Tag_T = Eigen::Vector3d(0.42, 0, 0);
 
-		for(int i = 0; i < 4; i++){
-			t->ref.world2Tag_T_corners[i] = t->ref.world2Tag_T;
-		}
-		t->ref.world2Tag_T_corners[0](1) -= marker_size/2;
-		t->ref.world2Tag_T_corners[0](2) -= marker_size/2;
-		t->ref.world2Tag_T_corners[1](1) += marker_size/2;
-		t->ref.world2Tag_T_corners[1](2) -= marker_size/2;
-		t->ref.world2Tag_T_corners[2](1) += marker_size/2;
-		t->ref.world2Tag_T_corners[2](2) += marker_size/2;
-		t->ref.world2Tag_T_corners[3](1) -= marker_size/2;
-		t->ref.world2Tag_T_corners[3](2) += marker_size/2;
+		t->ref.cube2Cam_H <<
+//		                     0,	0,	-1,	0, // cam2
+//							 1,	0,	0,	0,
+//							 0,	-1,	0,	0,
+//							 0,	0,	0,	1;
+		                     1,  0,  0,  0,//cam 1
+					         0,  0,  1,  0,
+		                     0, -1,  0,  0,
+					         0,  0,  0,  1;
+		//TODO make it changeable
+
+		double d = 0.10;
+		Eigen::Matrix4d tagA;
+		tagA << -d/2,  d/2,  d/2,  -d/2,
+		         0,  0,  0,  0,
+		         -d/2,  -d/2,  d/2,  d/2,
+		         1,  1,  1,  1;
+		Eigen::Vector3d tagPosA;
+		//tagPosA << -0.0157, 0.3202, 0.0593;
+		tagPosA << 0, 0, 0;
+		t->ref.posTag_W = Eigen::Matrix4d::Identity(4,4);
+		t->ref.posTag_W.col(3).topRows(3) = tagPosA;
+		t->ref.posTag_W = t->ref.posTag_W*tagA;
 
 
-		//for(int i = 0; i < 4; i++){
-		//	ROS_INFO_STREAM(std::endl << "t.world2Tag_T_corners[i] "<< i << std::endl << t->ref.world2Tag_T_corners[i]);
-		//}
-		//exit(0);
-		//calculateCorners(t->ref, false, false);
-//		t->ref.world2Tag_R <<
-//		        0,  0, -1,
-//		       -1,  0,  0,
-//		        0,  1,  0;
+		/*t->ref.posTag_W <<
+//		                   0.3202,	0.3202,	0.3202,	0.3202, // cam2
+//						   -0.0343,	0.0657,	0.0657,	-0.0343,
+//						   0.0093,	0.0093,	0.1093,	0.1093,
+//						   1,	1,	1,	1;
+		                  -0.0657,	0.0343,	0.0343,	-0.0657, //Cam1
+						   0.3202,	0.3202,	0.3202,	 0.3202,
+						   0.0093,	0.0093,	0.1093,	 0.1093,
+						   1,		1,		1,		 1;*/
 
 		++t;
 	}
@@ -317,12 +326,12 @@ int main(int argc, char **argv){
 
 	// Test for particle filter...
 	// TODO remove this:
-
+	double dt = 0;
 	Eigen::MatrixXd forces(8,8);
-	forces << 1, 0, 0, 0, 1, 0, 0, 0,
-	          0, 1, 0, 0, 0, 1, 0, 0,
-	          0, 0, 1, 0, 0, 0, 1, 0,
-	          0, 0, 0, 1, 0, 0, 0, 1,
+	forces << 1, 0, 0, 0,dt, 0, 0, 0,
+	          0, 1, 0, 0, 0,dt, 0, 0,
+	          0, 0, 1, 0, 0, 0,dt, 0,
+	          0, 0, 0, 1, 0, 0, 0,dt,
 	          0, 0, 0, 0, 1, 0, 0, 0,
 	          0, 0, 0, 0, 0, 1, 0, 0,
 	          0, 0, 0, 0, 0, 0, 1, 0,
@@ -330,28 +339,23 @@ int main(int argc, char **argv){
 	// Range zero => zero at initiation
 	Eigen::VectorXd range(8);
 	range << 20, 20, 20, 60, 0, 0, 0, 0;
-    int nbr_particles = 300;
-    double std_pose = 0.1;
-    double std_R = 0.1;
-    double std_T = 0.1;
+    int nbr_particles = 3;
+    double std_pose = 30;
+    double std_R = 0.25;
+    double std_T = 0.03;
 
-	//Eigen::Vector3d cube2Cam_T(0,0,0);
-	//Eigen::Vector3d world2Tag_T(12.25, 0, -0.5);
-	Eigen::Matrix3d world2Tag_R_mat, cube2Cam_R_mat;
-	world2Tag_R_mat << 0, 0, -1,
-				      -1, 0,  0,
-				       0, 1,  0;
-	Eigen::Quaterniond world2Tag_R(world2Tag_R_mat);
-	cube2Cam_R_mat << 0, -1,  0,
-				      0,  0, -1,
-				      1,  0,  0;
-	//Eigen::AngleAxisd test;
-	//test.fromRotationMatrix(cube2Cam_R_mat);
-	Eigen::Quaterniond cube2Cam_R(cube2Cam_R_mat);
+	Eigen::Matrix4d world2TagInit_H;
+	world2TagInit_H <<
+	                   1,	0,	0,	0,
+					   0,	1,	0,	-1,
+					   0,	0,	1,	0,
+					   0,	0	,0	,1;
+//	                      1,  0,  0,  -1.0,// old
+//				          0,  1,  0,  0,
+//	                      0,  0,  1,  0,
+//				          0,  0,  0,  1;
 
-	ROS_INFO_STREAM(std::endl << "cube2Cam_R: " << std::endl << cube2Cam_R.toRotationMatrix());
-
-	ParticleFilter *p = new ParticleFilter(forces, range, nbr_particles, std_pose, std_R, std_T);
+	ParticleFilter *p = new ParticleFilter(forces, range, world2TagInit_H, nbr_particles, std_pose, std_R, std_T);
 
 	ArtagPoseNode mw(p);
 

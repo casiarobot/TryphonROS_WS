@@ -10,32 +10,33 @@
 #include <geometry_msgs/PoseArray.h>
 #include <geometry_msgs/PoseStamped.h>
 
+// For normal distribution
+#include <cmath>
+
 #include <Eigen/Geometry>
+#include <Eigen/LU>
 #include <unsupported/Eigen/MatrixFunctions>
 
 
-enum cornersType{
-	SW =0,
-	SE,
-	NE,
-	NW
-};
-
 typedef struct{
+	Eigen::Matrix4d posTag_W;
+
+	Eigen::Matrix4d cube2Cam_H;
 	Eigen::Vector3d cube2Cam_T;
 	Eigen::Matrix3d cube2Cam_R;
 	Eigen::Vector3d world2Tag_T;
 	Eigen::Matrix3d world2Tag_R;
 	Eigen::Matrix<double, 3, 4> proj; //Projection matrixs
 	Eigen::Vector2d corners[4]; // Corner order: sw, se, ne, nw
-	Eigen::Vector3d world2Tag_T_corners[4];
+	Eigen::Vector3d world2Tag_T_corners[4];\
 
 }
 tagRef_t;
 
 typedef struct {
+	Eigen::Matrix4d cam2Tag_H;
 	Eigen::Vector3d cam2Tag_T;
-	Eigen::Matrix3d  cam2Tag_R;
+	Eigen::Matrix3d cam2Tag_R;
 	tagRef_t ref;
 }
 tagHandle_t;
@@ -59,16 +60,13 @@ class ParticleFilter
 
 	int indexMaxLikelihood;
 
-	// TODO use a struct
-	// Camera and tag reference
-	//Eigen::Vector3d cube2Cam_T;
-	//Eigen::Quaterniond cube2Cam_R;
-	//Eigen::Vector3d world2Tag_T;
-	//Eigen::Quaterniond world2Tag_R;
+
+	Eigen::Matrix4d world2TagInit_H;
 
 public:
 	ParticleFilter(const Eigen::MatrixXd& forces,
 	               const Eigen::VectorXd& range,
+	               const Eigen::Matrix4d& world2TagInit_H,
 	               int nbr_particles,
 	               double std_pose,
 	               double std_R,
@@ -76,15 +74,16 @@ public:
 	void createParticles();
 	void update();
 	void updateParticle();
-	void calcLogLikelihood(const  std::list<tagHandle_t> &tags,
-	                       const bool reculsive_flag);
+	void calcLogLikelihood(const  std::list<tagHandle_t> &tags);
 	void resampleParticles();
 
 	geometry_msgs::PoseArray getParticleMsg();
-	geometry_msgs::PoseStamped getBestLikelihoodMsg();
+	geometry_msgs::PoseStamped getBestLikelihoodMsg(tagRef_t ref);
 	void updateParameters(double p, double r, double t, double dt, double dr);
 private:
-
+	bool performCameraProjection(Eigen::MatrixXd projectionMatrix,
+	                             Eigen::MatrixXd dataPoints,
+	                             Eigen::MatrixXd &returnedPoints);
 	void printQuaternion(const std::string title, const Eigen::Quaterniond &quat) const;
 
 	const static int NBR_PARAMETERS = 8;

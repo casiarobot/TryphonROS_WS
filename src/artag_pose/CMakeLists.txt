@@ -67,6 +67,7 @@ add_executable(artag_pose_node
     src/tf_config_loader.cpp
     src/markers_pose.cpp
     src/particle_filter.cpp
+    src/default_config.cpp
 
 # PB: I added the header so they are visible in QtCreator,
 # it's *NOT* require for compiling
@@ -77,6 +78,7 @@ add_executable(artag_pose_node
     include/artag_pose/tf_config_loader.h
     include/artag_pose/markers_pose.h
     include/artag_pose/particle_filter.h
+    include/artag_pose/default_config.h
 )
 
 add_dependencies(artag_pose_node ${${PROJECT_NAME}_EXPORTED_TARGETS})
