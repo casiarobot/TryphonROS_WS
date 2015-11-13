@@ -74,8 +74,7 @@ public:
 	void createParticles();
 	void update();
 	void updateParticle();
-	void calcLogLikelihood(const  std::list<tagHandle_t> &tags,
-	                       const bool recursive_flag);
+	void calcLogLikelihood(const  std::list<tagHandle_t> &tags);
 	void resampleParticles();
 
 	geometry_msgs::PoseArray getParticleMsg();

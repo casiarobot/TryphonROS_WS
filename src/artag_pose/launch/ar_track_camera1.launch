@@ -27,7 +27,6 @@
 		</group>
 
 	</group>
-<<<<<<< HEAD
 	  <group ns="192_168_10_242">
                 <group ns="artags">
                         <!-- Marker tracker -->
@@ -41,6 +40,4 @@
                         <node ns="artag2" name="ar_track_alvar" pkg="ar_track_alvar" type="individualMarkersNoKinect" respawn="false" output="screen" args="$(arg marker_size) $(arg max_new_marker_error) $(arg max_track_error) $(arg cam_image_topic) $(arg cam_info_topic) $(arg output_frame)" />
                 </group>
         </group>
-=======
->>>>>>> 39c251eaf82c862ddb728022509613d449c8faed
 </launch>
