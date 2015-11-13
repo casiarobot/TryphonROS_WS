@@ -22,8 +22,8 @@ generate_dynamic_reconfigure_options(
   cfg/fdistribution.cfg
   cfg/glideslope.cfg
   cfg/formation.cfg
+  cfg/dock_control.cfg
 )
-
 ## Declare a catkin package
 catkin_package( INCLUDE_DIRS include
 # Libraries

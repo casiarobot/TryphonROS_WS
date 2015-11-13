@@ -166,7 +166,7 @@ void compasscallback(const sensors::compass::ConstPtr& compass)
 	t_yaw=ros::Time::now().toSec();
 	
 	ctrl_yaw=-0.75*err -0.05*vel;
-  ROS_INFO("Avel: %f",vel);
+  //ROS_INFO("Avel: %f",vel);
 
 	if (fabs(ctrl_yaw)>0.5){ctrl_yaw=copysign(0.5,ctrl_yaw);}
 	err_yaw_old=err;
@@ -331,10 +331,10 @@ void subLeddar(const sensors::leddarArray::ConstPtr& msg)
     start_leddar=false;
     ROS_INFO("Leddar started!");
   }*/
-
+//%ROS_INFO("z_start= %d", z_start);
   if(z_start)
   {
-
+    //ROS_INFO("dsztf[4]= %f", dsztf[4]);
     dszwant=dsztf[4];
     z_start=false;
   }
@@ -358,7 +358,7 @@ void subLeddar(const sensors::leddarArray::ConstPtr& msg)
   ctrl_z=.04*(3.2*errorn+10.8*deriv+.15*intZ);
 
   //ROS_INFO("fuck: z:%f, zbf:%f, zf:%f, intZ:%f",dsz1,dszt[4],dsztf[4],intZ );
-  ROS_INFO("intz:%f,error:%f,deriv:%f, ctrz_z:%f",intZ,errorn,deriv, ctrl_z);
+ // ROS_INFO("intz:%f,error:%f,deriv:%f, ctrz_z:%f",intZ,errorn,deriv, ctrl_z);
   
 }
 
@@ -393,8 +393,8 @@ int main(int argc, char** argv)
 
 
   ros::Subscriber  joy_stick = n.subscribe<sensor_msgs::Joy>("/joy",1,&joycallback);
-  ros::Subscriber  compass = n.subscribe<sensors::compass>("/192_168_10_241/compass",1,&compasscallback);
-  ros::Subscriber subL = n.subscribe("/192_168_10_241/leddars", 1, subLeddar);
+  ros::Subscriber  compass = n.subscribe<sensors::compass>("/192_168_10_242/compass",1,&compasscallback);
+  ros::Subscriber subL = n.subscribe("/192_168_10_242/leddars", 1, subLeddar);
   Control_node = n.advertise<geometry_msgs::Wrench>("/192_168_10_243/command_control",1);
   Desired_pose_node = n.advertise<controls::Commands>("/192_168_10_243/commands",1);
   Magnet = n.advertise<std_msgs::Bool>("/192_168_10_243/magnet_on",1);

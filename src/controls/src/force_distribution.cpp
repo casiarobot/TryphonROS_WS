@@ -56,6 +56,7 @@ void callback(controls::fdistributionConfig &config, uint32_t level) {
 void subMax(const std_msgs::Float64 inputMsg)
 {
   maxPrct=(inputMsg.data)/100.000;
+   ROS_INFO("test %f", maxPrct);
 }
 
 void subForces(const geometry_msgs::Wrench inputMsg)

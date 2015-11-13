@@ -8,7 +8,7 @@
 
 
 <!-- Marker tracker -->
-			<arg name="marker_size" default="5" />
+			<arg name="marker_size" default="6.5" />
 			<arg name="max_new_marker_error" default="0.08" />
 			<arg name="max_track_error" default="0.2" />
 			<arg name="image_transport" default="compressed" />
@@ -21,8 +21,8 @@
 			<node ns="artag" name="ar_track_alvar" pkg="ar_track_alvar" type="individualMarkersNoKinect" respawn="false" output="screen" args="$(arg marker_size) $(arg max_new_marker_error) $(arg max_track_error) $(arg cam_image_topic) $(arg cam_info_topic) $(arg output_frame)" />
 	
 	
-	<node pkg="tf" type="static_transform_publisher" name="mav_to_camera" output="screen" args="0 0 0 0 1.570796327 0 arcam1_rect mav 10" />
-	<!--<node pkg="tf" type="static_transform_publisher" name="mav_to_camera" output="screen" args="0 0 0 0.785398163 0 0 mav camera3 10" />-->
+	<!--<node pkg="tf" type="static_transform_publisher" name="mav_to_camera1" output="screen" args="0 0 0 0 1.570796327 0 arcam1_rect mav 10" /> -->
+	<!--<node pkg="tf" type="static_transform_publisher" name="mav_to_camera" output="screen" args="0 0 0 0.785398163 0 0 mav arcam1 10" />-->
 	
 	</group>
 	</group>
