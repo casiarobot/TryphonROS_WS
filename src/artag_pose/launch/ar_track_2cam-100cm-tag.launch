@@ -1,0 +1,32 @@
+<launch>
+	<group ns="192_168_10_242">
+		<group ns="artags">
+			<node name="republish1" type="republish" pkg="image_transport" output="screen" args="compressed in:=/192_168_10_243/camera1/image_raw raw out:=/192_168_10_242/camera1/raw1" />
+			<node name="republish2" type="republish" pkg="image_transport" output="screen" args="compressed in:=/192_168_10_243/camera2/image_raw raw out:=/192_168_10_242/camera2/raw2" />
+			<!-- Marker tracker -->
+			<arg name="marker_size" default="100" />
+			<arg name="max_new_marker_error" default="0.08" />
+			<arg name="max_track_error" default="0.2" />
+			<arg name="cam_image_topic" default="/192_168_10_242/camera1/raw1" />
+			<arg name="cam_info_topic" default="/192_168_10_243/camera1/camera_info" />	
+			<arg name="output_frame" default="camera1" />
+
+			<node ns="artag1" name="ar_track_alvar1" pkg="ar_track_alvar" type="individualMarkersNoKinect" respawn="false" output="screen" args="$(arg marker_size) $(arg max_new_marker_error) $(arg max_track_error) $(arg cam_image_topic) $(arg cam_info_topic) $(arg output_frame)" />
+		</group>
+                <group ns="artags">
+                        <!-- Marker tracker -->
+                        <arg name="marker_size" default="100" />
+                        <arg name="max_new_marker_error" default="0.08" />
+                        <arg name="max_track_error" default="0.2" />
+                        <arg name="cam_image_topic" default="/192_168_10_242/camera2/raw2" />
+                        <arg name="cam_info_topic" default="/192_168_10_243/camera2/camera_info" />
+                        <arg name="output_frame" default="camera2" />
+
+                        <node ns="artag2" name="ar_track_alvar2" pkg="ar_track_alvar" type="individualMarkersNoKinect" respawn="false" output="screen" args="$(arg marker_size) $(arg max_new_marker_error) $(arg max_track_error) $(arg cam_image_topic) $(arg cam_info_topic) $(arg output_frame)" />
+		</group>
+
+	</group>
+	  <node pkg="tf" type="static_transform_publisher" name="camera1_tf_pub" output="screen" args="0 0 0 0 0 0 cube camera1 100" /> <!-- camera3 -->
+        <node pkg="tf" type="static_transform_publisher" name="camera2_tf_pub" output="screen" args="0 0 0 0 0 0 cube camera2 100" /> <!-- camera4 -->
+
+</launch>

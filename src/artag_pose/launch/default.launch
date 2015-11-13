@@ -1,0 +1,12 @@
+<launch>
+	<node  name="artag_pose_node" pkg="artag_pose" type="artag_pose_node" respawn="false" output="screen">
+	</node>
+
+	<node pkg="tf" type="static_transform_publisher" name="artag00_tf_pub" output="screen" args="0 0 0 0 0 0 cafeteria artag_00_rectify_link 100" /> <!-- Artag00 -->
+	<node pkg="tf" type="static_transform_publisher" name="artag01_tf_pub" output="screen" args="0 0 0 0 0 0 cafeteria artag_01_rectify_link 100" /> <!-- Artag01 -->
+
+	<!-- The prefix before the tag name is only in the rosbag of sept Residency-->
+	<node pkg="tf" type="static_transform_publisher" name="camera1_tf_pub" output="screen" args="0 0 0 0 0 0 cube camera1 100" /> <!-- camera3 -->
+	<node pkg="tf" type="static_transform_publisher" name="camera2_tf_pub" output="screen" args="0 0 0 0 0 0 cube camera2 100" /> <!-- camera4 -->
+
+</launch>
