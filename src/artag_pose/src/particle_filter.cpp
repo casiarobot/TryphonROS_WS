@@ -88,6 +88,7 @@ void ParticleFilter::updateParticle(){
 
 }
 
+<<<<<<< HEAD
 void ParticleFilter::calcLogLikelihood(const  std::list<tagHandle_t> &tags){
 	//double A = -log(sqrt(2* M_PI) * std_pose);
 	//double B = -0.5 / (std_pose * std_pose);
@@ -95,6 +96,17 @@ void ParticleFilter::calcLogLikelihood(const  std::list<tagHandle_t> &tags){
 
 	double A = -log(sqrt(2* M_PI) * std_pose);
 	double B = -0.5 / (std_pose * std_pose);
+=======
+void ParticleFilter::calcLogLikelihood(const  std::list<tagHandle_t> &tags,
+                                       const bool recursive_flag){
+	double A = -log(sqrt(2* M_PI) * std_pose);
+	double B = -0.5 / (std_pose * std_pose);
+	std::list<tagHandle_t>::const_iterator it;
+
+	bool oneParticleInRange = false;
+	if(recursive_flag)
+		oneParticleInRange = true;
+>>>>>>> 39c251eaf82c862ddb728022509613d449c8faed
 
 	for(int k = 0; k < nbr_particles; ++k){
 
@@ -107,7 +119,9 @@ void ParticleFilter::calcLogLikelihood(const  std::list<tagHandle_t> &tags){
 
 		// If 4 first parameters are in range
 		if(inRange){
+			oneParticleInRange = true;
 			double yaw = particles(3, k);
+<<<<<<< HEAD
 			//world2Cube_guess.block(0, 0, 3, 3) = Eigen::AngleAxisd(-0 * M_PI/ 180.0,
 			//                                                       Eigen::Vector3d::UnitZ());
 			Eigen::Matrix4d world2Cube_guess = Eigen::Matrix4d::Identity(4, 4);
@@ -142,6 +156,23 @@ void ParticleFilter::calcLogLikelihood(const  std::list<tagHandle_t> &tags){
 				else{
 					ll(k) = -std::numeric_limits<double>::max();// = -inf
 				}
+=======
+			Eigen::Matrix3d world2Cube_R_guess;
+			world2Cube_R_guess = Eigen::AngleAxisd(-yaw * M_PI/ 180.0, Eigen::Vector3d::UnitZ());
+			//world2Cube_R_guess = Eigen::AngleAxisd(-0 * M_PI/ 180.0, Eigen::Vector3d::UnitZ());
+			const Eigen::Vector3d world2Cube_T_guess = particles.col(k).topRows(3);
+
+			ll(k) = A;
+			for(it = tags.begin(); it != tags.end(); ++it){
+				Eigen::Vector3d error =
+						(world2Cube_R_guess * it->ref.cube2Cam_R).inverse()
+						* (it->ref.world2Tag_T -world2Cube_T_guess) -it->ref.cube2Cam_R.inverse() * it->ref.cube2Cam_T
+						-it->cam2Tag_T;
+
+
+				double D = error.transpose() * error;
+				ll(k) += B * D;
+>>>>>>> 39c251eaf82c862ddb728022509613d449c8faed
 			}
 
 		}
@@ -149,6 +180,7 @@ void ParticleFilter::calcLogLikelihood(const  std::list<tagHandle_t> &tags){
 			ll(k) = -std::numeric_limits<double>::max();// = -inf
 		}
 	}
+<<<<<<< HEAD
 	iterated++;
 
 	//ROS_INFO_STREAM(std::endl << "firstL_log: " << std::endl << ll);
@@ -175,6 +207,14 @@ void ParticleFilter::calcLogLikelihood(const  std::list<tagHandle_t> &tags){
 		}
 		returnedPoints = imageGPB;
 		return inRange;
+=======
+	// Every particles is of infinite likelihood
+	if(!oneParticleInRange && false){
+		createParticles();
+		updateParticle();
+		calcLogLikelihood(tags, true);
+	}
+>>>>>>> 39c251eaf82c862ddb728022509613d449c8faed
 }
 
 
@@ -322,7 +362,11 @@ geometry_msgs::PoseArray ParticleFilter::getParticleMsg(){
 		m.position.y = particles(1, i);
 		m.position.z = particles(2, i);
 		Eigen::Quaterniond q;
+<<<<<<< HEAD
 		q = Eigen::AngleAxisd(particles(3, i) * M_PI/ 180.0, Eigen::Vector3d::UnitZ());
+=======
+		q = Eigen::AngleAxisd(-particles(3, i) * M_PI/ 180.0, Eigen::Vector3d::UnitZ());
+>>>>>>> 39c251eaf82c862ddb728022509613d449c8faed
 		m.orientation.x = q.x();
 		m.orientation.y = q.y();
 		m.orientation.z = q.z();
@@ -336,6 +380,7 @@ geometry_msgs::PoseArray ParticleFilter::getParticleMsg(){
 geometry_msgs::PoseStamped  ParticleFilter::getBestLikelihoodMsg(tagRef_t ref){
 	// TODO init at resize this array
 	geometry_msgs::PoseStamped m;
+<<<<<<< HEAD
 	double angle = 0;
 
 	Eigen::VectorXd w = ll.array().exp();
@@ -352,10 +397,35 @@ geometry_msgs::PoseStamped  ParticleFilter::getBestLikelihoodMsg(tagRef_t ref){
 	}
 	Eigen::Quaterniond q;
 	q = Eigen::AngleAxisd(angle * M_PI/ 180.0, Eigen::Vector3d::UnitZ());
+=======
+	double bllAngle = particles(3, indexMaxLikelihood);
+	double maxRange = range(3)/10.0;
+	double angle;
+	int n = 0;
+	for(int i = 0; i < nbr_particles; ++i){
+		// Check if the particle's angle is not far from the best likelihood's angle
+		if(abs(bllAngle - particles(3, i)) < maxRange){
+			m.pose.position.x += particles(0, i);
+			m.pose.position.y += particles(1, i);
+			m.pose.position.z += particles(2, i);
+			angle += particles(3, i);
+			n++;
+		}
+	}
+	ROS_INFO_STREAM(n);
+	m.pose.position.x /= (double)n;
+	m.pose.position.y /= (double)n;
+	m.pose.position.z /= (double)n;
+	angle /= (double)n;
+
+	Eigen::Quaterniond q;
+	q = Eigen::AngleAxisd(-angle * M_PI/ 180.0, Eigen::Vector3d::UnitZ());
+>>>>>>> 39c251eaf82c862ddb728022509613d449c8faed
 	m.pose.orientation.x = q.x();
 	m.pose.orientation.y = q.y();
 	m.pose.orientation.z = q.z();
 	m.pose.orientation.w = q.w();
+<<<<<<< HEAD
 
 	ROS_INFO_STREAM("Angle " << angle);
 
@@ -379,6 +449,8 @@ geometry_msgs::PoseStamped  ParticleFilter::getBestLikelihoodMsg(tagRef_t ref){
 	//m.pose.position.y = imgPx(1) / imgPx(2) / 480.0;
 	m.pose.position.x = imgPx(0) / 640.0;
 	m.pose.position.y = imgPx(1) / 480.0;*/
+=======
+>>>>>>> 39c251eaf82c862ddb728022509613d449c8faed
 
 	return m;
 }

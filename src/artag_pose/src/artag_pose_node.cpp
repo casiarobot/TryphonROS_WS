@@ -54,7 +54,6 @@ void ArtagPoseNode::createPublishers(){
 
 void ArtagPoseNode::createSubscribers(){
 
-
 	Eigen::Matrix4d cube2Cam_H;
 	cube2Cam_H <<
 	              0,	0,	1,	0, // cam2
@@ -86,6 +85,7 @@ void ArtagPoseNode::createSubscribers(){
 }
 
 void ArtagPoseNode::compassCallback(const sensors::compass::ConstPtr& msg){
+
 }
 
 
@@ -141,6 +141,7 @@ void ArtagPoseNode::computePoseAndPublish(){
 		pf->resampleParticles();
 	}
 	pf->calcLogLikelihood(tagsDetected);
+
 
 	gettimeofday(&tm2, NULL);
 	unsigned long long timel = 1000 * (tm2.tv_sec - tm1.tv_sec) + (tm2.tv_usec - tm1.tv_usec) / 1000;
@@ -265,6 +266,7 @@ int main(int argc, char **argv){
 	// Range zero => zero at initiation
 	Eigen::VectorXd range(8);
 	range << 20, 20, 20, 60, 0, 0, 0, 0;
+
     int nbr_particles = 300;
     double std_pose = 30;
     double std_R = 0.25;
