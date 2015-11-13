@@ -72,6 +72,7 @@ void ArtagPoseNode::createSubscribers(){
 				 -1,	0,	0,	0,
 				  0,   -1,	0,	0,
 				  0,	0,	0,	1;
+	cube2Cam_H.col(3).topRows(3) = Eigen::Vector3d(1, -1.0, 0);
 	ArtagSubPtr ptr2(new ArtagSubscriber("camera2",
 	                                    "/192_168_10_242/artags/artag2/ar_pose_marker",
 	                                    cube2Cam_H,
@@ -127,7 +128,7 @@ void ArtagPoseNode::computePoseAndPublish(){
 		return;
 
 	//hardcodeValue1cam(tagsDetected);
-	hardcodeValue2cam(tagsDetected, nbrCamera1Tag, nbrCamera2Tag);
+	//hardcodeValue2cam(tagsDetected, nbrCamera1Tag, nbrCamera2Tag);
 
 	struct timeval tm1, tm2;
 	gettimeofday(&tm1, NULL);
@@ -187,15 +188,15 @@ void ArtagPoseNode::hardcodeValue2cam(std::list<tagHandle_t> &tagsDetected, unsi
 		//ROS_INFO_STREAM("dude it's late"<<std::endl << t->ref.posTag_W);
 
 
-		/*t->ref.posTag_W <<
+//		t->ref.posTag_W <<
 //		                   0.3202,	0.3202,	0.3202,	0.3202, // cam2
 //						   -0.0343,	0.0657,	0.0657,	-0.0343,
 //						   0.0093,	0.0093,	0.1093,	0.1093,
 //						   1,	1,	1,	1;
-		                  -0.0657,	0.0343,	0.0343,	-0.0657, //Cam1
-						   0.3202,	0.3202,	0.3202,	 0.3202,
-						   0.0093,	0.0093,	0.1093,	 0.1093,
-						   1,		1,		1,		 1;*/
+//		                  -0.0657,	0.0343,	0.0343,	-0.0657, //Cam1
+//						   0.3202,	0.3202,	0.3202,	 0.3202,
+//						   0.0093,	0.0093,	0.1093,	 0.1093,
+//						   1,		1,		1,		 1;
 
 	//	++t;
 	//}

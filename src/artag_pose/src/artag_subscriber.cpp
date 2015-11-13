@@ -5,7 +5,7 @@
 
 ArtagSubscriber::ArtagSubscriber(const std::string& camera_name,
                                  const std::string& topic_name,
-								 const Eigen::Matrix4d& cube_cam,
+								 const Eigen::Matrix4d cube_cam,
 								 MarkersPosePtr markers,
 								 ros::NodeHandle & nh,
                                  ParticleFilterPtr pf):
