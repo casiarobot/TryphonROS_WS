@@ -54,12 +54,14 @@ void ArtagPoseNode::createPublishers(){
 
 void ArtagPoseNode::createSubscribers(){
 
+
 	Eigen::Matrix4d cube2Cam_H;
 	cube2Cam_H <<
-				 1,  0,  0,  0,//cam 1
-				 0,  0,  1,  0,
-				 0, -1,  0,  0,
-				 0,  0,  0,  1;
+	              0,	0,	1,	0, // cam2
+				 -1,	0,	0,	0,
+				  0,   -1,	0,	0,
+				  0,	0,	0,	1;
+	// Camera on the right side
 	ArtagSubPtr ptr1(new ArtagSubscriber("camera1",
 	                                    "/192_168_10_242/artags/artag1/ar_pose_marker",
 	                                    cube2Cam_H,
@@ -68,10 +70,11 @@ void ArtagPoseNode::createSubscribers(){
 	                                    pf));
 	artagSubs.push_back(ptr1);
 	cube2Cam_H <<
-	              0,	0,	1,	0, // cam2
-				 -1,	0,	0,	0,
-				  0,   -1,	0,	0,
-				  0,	0,	0,	1;
+				 1,  0,  0,  0,//cam 1
+				 0,  0,  1,  0,
+				 0, -1,  0,  0,
+				 0,  0,  0,  1;
+	// Camera at the front
 	cube2Cam_H.col(3).topRows(3) = Eigen::Vector3d(1, -1.0, 0);
 	ArtagSubPtr ptr2(new ArtagSubscriber("camera2",
 	                                    "/192_168_10_242/artags/artag2/ar_pose_marker",

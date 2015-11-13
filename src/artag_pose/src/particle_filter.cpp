@@ -321,6 +321,12 @@ geometry_msgs::PoseArray ParticleFilter::getParticleMsg(){
 		m.position.x = particles(0, i);
 		m.position.y = particles(1, i);
 		m.position.z = particles(2, i);
+		Eigen::Quaterniond q;
+		q = Eigen::AngleAxisd(particles(3, i) * M_PI/ 180.0, Eigen::Vector3d::UnitZ());
+		m.orientation.x = q.x();
+		m.orientation.y = q.y();
+		m.orientation.z = q.z();
+		m.orientation.w = q.w();
 		msgArray.poses.push_back(m);
 	}
 
