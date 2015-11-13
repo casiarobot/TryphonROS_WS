@@ -4,17 +4,18 @@
 #include "ros/ros.h"
 
 ArtagSubscriber::ArtagSubscriber(const std::string& camera_name,
-								 const std::string& topic_name,
+                                 const std::string& topic_name,
+								 const Eigen::Matrix4d& cube_cam,
 								 MarkersPosePtr markers,
 								 ros::NodeHandle & nh,
                                  ParticleFilterPtr pf):
 	cameraName(camera_name),
+    cube2Cam(cube_cam),
 	topicName(topic_name),
 	markers(markers),
 	receiveIsFirstMsg(false),
 	lastReception(ros::Time::now()),
 	emptyCount(0),
-
 	jmpThreshold(1.0)
 {
 	ROS_INFO_STREAM("New ArtagSubscriber for " << topic_name);
@@ -33,10 +34,11 @@ ArtagSubscriber::ArtagSubscriber(const std::string& camera_name,
 
 
 
-	lookupCameraTf();
+	//lookupCameraTf();
 }
 
 void ArtagSubscriber::lookupCameraTf(){
+	/*
 	tf::TransformListener listener;
 	tf::StampedTransform cubeToCamTf;
 	try{
@@ -48,7 +50,7 @@ void ArtagSubscriber::lookupCameraTf(){
 		Eigen::Matrix3d cube2Cam_R_mat;
 		/*cube2Cam_R_mat << 0, -1,  0,
 					      0,  0, -1,
-					      1,  0,  0;*/
+					      1,  0,  0;
 		cubeToCam.linear() = cube2Cam_R_mat;
 
 	}
@@ -56,7 +58,7 @@ void ArtagSubscriber::lookupCameraTf(){
 		ROS_ERROR_STREAM("Camera tf not found : " << cameraName);
 		ROS_ERROR("%s",ex.what());
 		ros::shutdown();
-	}
+	}*/
 }
 
 
@@ -104,18 +106,6 @@ void ArtagSubscriber::artagCallback(const ar_track_alvar_msgs::AlvarMarkers::Con
     cameraMatrixP(2, 1) = msg->P[9];
     cameraMatrixP(2, 2) = msg->P[10];
     cameraMatrixP(2, 3) = msg->P[11];
-//	cameraMatrixP(0, 0) = 407.07208252;
-//	cameraMatrixP(0, 1) = 0;
-//    cameraMatrixP(0, 2) = 320.173417533;
-//    cameraMatrixP(0, 3) = 0;
-//    cameraMatrixP(1, 0) = 0;
-//    cameraMatrixP(1, 1) = 448.358703613;
-//    cameraMatrixP(1, 2) = 251.148861613;
-//    cameraMatrixP(1, 3) = 0;
-//    cameraMatrixP(2, 0) = 0;
-//    cameraMatrixP(2, 1) = 0;
-//    cameraMatrixP(2, 2) = 1;
-//    cameraMatrixP(2, 3) = 0;
 
 
 	TrackedMarker::iterator m;
@@ -141,24 +131,18 @@ void ArtagSubscriber::artagCallback(const ar_track_alvar_msgs::AlvarMarkers::Con
 				}
 			}
 
-			Eigen::Affine3d camToTag, worldToTag;
-			// Convert in Eigen
-			tf::poseMsgToEigen(m->pose.pose, camToTag);
+			Eigen::Matrix4d worldToTag;
 			// Get tag's transformation
-			worldToTag = markers->get(m->id).getEigen();
-
-			// TODO: Harcoded
-			Eigen::Matrix3d world2Tag_R_mat;
-			world2Tag_R_mat << 0, 0, -1,
-						      -1, 0,  0,
-						       0, 1,  0;
+			worldToTag = markers->get(m->id).getEigen().matrix();
 
 			// Set all required constant for the particle filter
 			tagHandle_t t;
-			t.ref.cube2Cam_T = cubeToCam.translation();
-			t.ref.cube2Cam_R = cubeToCam.linear();
-			t.ref.world2Tag_T = worldToTag.translation();
-			t.ref.world2Tag_R = world2Tag_R_mat;
+//			t.ref.cube2Cam_T = cubeToCam.translation();
+//			t.ref.cube2Cam_R = cubeToCam.linear();
+//			t.ref.world2Tag_T = worldToTag.translation();
+//			t.ref.world2Tag_R = world2Tag_R_mat;
+			t.ref.cube2Cam_H = cube2Cam;
+			t.ref.posTag_W = worldToTag;
 			t.ref.proj = cameraMatrixP;
 			for(int i = 0; i < 4; i++){
 				t.ref.corners[i](0) = m->corners[2 * i];
@@ -169,8 +153,8 @@ void ArtagSubscriber::artagCallback(const ar_track_alvar_msgs::AlvarMarkers::Con
 //			t.ref.corners[2](0) = 444.251833741000;	t.ref.corners[2](1) =25.6693131215000;
 //			t.ref.corners[3](0) = 252.690849739000;	t.ref.corners[3](1) =23.3895247245000;
 
-			t.cam2Tag_T = camToTag.translation();
-			t.cam2Tag_R = camToTag.linear();
+//			t.cam2Tag_T = camToTag.translation();
+//			t.cam2Tag_R = camToTag.linear();
 			tagsDetected.push_back(t);
 			// Calcul likelihood for particle
 

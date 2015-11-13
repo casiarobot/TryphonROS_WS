@@ -19,13 +19,13 @@
 
 
 typedef struct{
-	Eigen::Matrix4d posTag_W;
+	Eigen::Matrix4d posTag_W; // world to Tag
 
 	Eigen::Matrix4d cube2Cam_H;
-	Eigen::Vector3d cube2Cam_T;
+/*	Eigen::Vector3d cube2Cam_T;
 	Eigen::Matrix3d cube2Cam_R;
 	Eigen::Vector3d world2Tag_T;
-	Eigen::Matrix3d world2Tag_R;
+	Eigen::Matrix3d world2Tag_R;*/
 	Eigen::Matrix<double, 3, 4> proj; //Projection matrixs
 	Eigen::Vector2d corners[4]; // Corner order: sw, se, ne, nw
 	Eigen::Vector3d world2Tag_T_corners[4];\

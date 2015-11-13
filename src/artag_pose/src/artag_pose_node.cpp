@@ -16,7 +16,8 @@ ArtagPoseNode::ArtagPoseNode(ParticleFilter* ppf):
 	numMarkers = 2;
 	ROS_INFO_STREAM("Number markers: " << numMarkers);
 
-	markerConfig = new TfConfigLoader;
+	//markerConfig = new TfConfigLoader;
+	markerConfig = new DefaultConfig;
 
 	// Dynamice reconfiguration
 	dynamic_reconfigure::Server<artag_pose::ArtagPoseConfig>::CallbackType dynamicReconfigCallback;
@@ -52,38 +53,32 @@ void ArtagPoseNode::createPublishers(){
 }
 
 void ArtagPoseNode::createSubscribers(){
-	// compass
-	std::string topic("/192_168_10_242/compass");
-//	subCompass = nodeHandle.subscribe<sensors::compass>(
-//								topic,
-//								10,
-//								&ArtagPoseNode::compassCallback,
-//								this
-//							);
 
-	// Get topic list from parameter
-	//std::vector<std::string> camera_topics = loadCameraTopics();
-
-	// Bypass the Yaml configuration for debugging
-	std::vector<std::string> camera_topics;
-	camera_topics.push_back("camera1");
-	camera_topics.push_back("/192_168_10_242/artags/artag1/ar_pose_marker");
-	//camera_topics.push_back("camera2");
-	//camera_topics.push_back("/192_168_10_242/artags/artag2/ar_pose_marker");
-	/*camera_topics.push_back("camera3");
-	camera_topics.push_back("/192_168_10_243/artags/artag3/ar_pose_marker");*/
-
-	// for each camera topics create a subscriber
-	std::vector<std::string>::iterator topic_name;
-	for(topic_name = camera_topics.begin();
-	    topic_name != camera_topics.end();
-	    topic_name++){
-		std::string camera_name = *topic_name;
-		// The following element is the topic name
-		topic_name++;
-		ArtagSubPtr ptr(new ArtagSubscriber(camera_name, *topic_name, markersPose, nodeHandle, pf));
-		artagSubs.push_back(ptr);
-	}
+	Eigen::Matrix4d cube2Cam_H;
+	cube2Cam_H <<
+				 1,  0,  0,  0,//cam 1
+				 0,  0,  1,  0,
+				 0, -1,  0,  0,
+				 0,  0,  0,  1;
+	ArtagSubPtr ptr1(new ArtagSubscriber("camera1",
+	                                    "/192_168_10_242/artags/artag1/ar_pose_marker",
+	                                    cube2Cam_H,
+	                                    markersPose,
+	                                    nodeHandle,
+	                                    pf));
+	artagSubs.push_back(ptr1);
+	cube2Cam_H <<
+	              0,	0,	1,	0, // cam2
+				 -1,	0,	0,	0,
+				  0,   -1,	0,	0,
+				  0,	0,	0,	1;
+	ArtagSubPtr ptr2(new ArtagSubscriber("camera2",
+	                                    "/192_168_10_242/artags/artag2/ar_pose_marker",
+	                                    cube2Cam_H,
+	                                    markersPose,
+	                                    nodeHandle,
+	                                    pf));
+	artagSubs.push_back(ptr2);
 }
 
 void ArtagPoseNode::compassCallback(const sensors::compass::ConstPtr& msg){
@@ -231,72 +226,6 @@ void ArtagPoseNode::hardcodeValue2cam(std::list<tagHandle_t> &tagsDetected, unsi
 
 
 
-}
-void ArtagPoseNode::calculateCorners(tagRef_t &t, bool inverse_x, bool perp_to_y){
-	for(int i = 0; i < 4; i++){
-		t.world2Tag_T_corners[i](1) = ((i&1)^((i&2)>>1) == 1 ? 1 : -1) * marker_size/2;
-		t.world2Tag_T_corners[i](2) = (i / 2 == 0 ? 1 : -1) * marker_size/2;
-		if(inverse_x){
-			std::swap(t.world2Tag_T_corners[i](0), t.world2Tag_T_corners[i](2));
-		}
-		if(perp_to_y){
-			t.world2Tag_T_corners[i](0) *= -1;
-			t.world2Tag_T_corners[i](2) *= -1;
-		}
-		t.world2Tag_T_corners[i](0) += t.world2Tag_T(0);
-		t.world2Tag_T_corners[i](1) = t.world2Tag_T(1);
-		t.world2Tag_T_corners[i](2) += t.world2Tag_T(2);
-
-		ROS_INFO_STREAM(std::endl << "t.world2Tag_T_corners[i] "<< i << std::endl << t.world2Tag_T_corners[i]);
-	}
-
-}
-
-void ArtagPoseNode::hardcodeValue1cam(std::list<tagHandle_t> &tagsDetected){
-	// Hard coded fake camera, with different reference
-	std::list<tagHandle_t>::iterator t = tagsDetected.begin();
-	tagHandle_t tag = *t;
-	// First tag
-	//t->cam2Tag_T = Eigen::Vector3d(1, 1, 0);
-	t->ref.cube2Cam_T = Eigen::Vector3d(0, 0, 0);
-	t->ref.cube2Cam_R <<
-	        0,  0,  1,
-	       -1,  0,  0,
-	        0, -1,  0;
-	// inverse
-//		0, -1,  0,
-//		0,  0, -1,
-//		1,  0,  0;
-	//t->ref.world2Tag_T = Eigen::Vector3d(12.25, 0, -0.5);
-	t->ref.world2Tag_T = Eigen::Vector3d(1, 0, 0);
-	t->ref.world2Tag_R <<
-	        0,  0, -1,
-	       -1,  0,  0,
-	        0,  1,  0;
-	//Second tag
-	//tag.cam2Tag_T = Eigen::Vector3d(1, 1, 0);
-	tag.ref.cube2Cam_T = Eigen::Vector3d(0, 0, 0);
-	tag.ref.cube2Cam_R <<
-	       -1,  0,  0,
-	        0,  0, -1,
-	        0, -1,  0;
-	// inversed
-//	-1,  0,  0,
-//     0,  0, -1,
-//     0, -1,  0;
-	//tag.ref.world2Tag_T = Eigen::Vector3d(0, -12.25, -0.5);
-	tag.ref.world2Tag_T = Eigen::Vector3d(0, -1, 0);
-	tag.ref.world2Tag_R <<
-	       -1,  0,  0,
-	        0,  0,  1,
-	        0,  1,  0;
-
-	//Add random camera lost after 10 secondes
-	//if(ros::Time::now() - startNode > ros::Duration(10.0)
-	//   && rand() % 2 == 0)
-	//	return;
-
-	tagsDetected.push_back(tag);
 }
 
 

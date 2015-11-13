@@ -40,7 +40,7 @@ class ArtagSubscriber{
 	ros::Time lastReception;
 
 
-	Eigen::Affine3d cubeToCam;
+	Eigen::Matrix4d cube2Cam;
 	ar_track_alvar_msgs::AlvarMarkers oldMsg;
 	unsigned int emptyCount;
 
@@ -52,6 +52,7 @@ class ArtagSubscriber{
 public:
 	ArtagSubscriber(const std::string& camera_name,
 	                const std::string& topic_name,
+	                const Eigen::Matrix4d& cube2Cam,
 	                MarkersPosePtr markers,
 	                ros::NodeHandle& nh,
 	                ParticleFilterPtr pf);

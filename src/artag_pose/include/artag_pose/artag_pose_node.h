@@ -23,6 +23,7 @@
 // Project includes
 #include "artag_pose/artag_subscriber.h"
 #include "artag_pose/tf_config_loader.h"
+#include "artag_pose/default_config.h"
 #include "artag_pose/particle_filter.h"
 
 
@@ -70,8 +71,6 @@ private:
 	void createSubscribers();
 	void computePoseAndPublish();
 	void hardcodeValue2cam(std::list<tagHandle_t> &tagsDetected, unsigned nb1, unsigned nb2);
-	void hardcodeValue1cam(std::list<tagHandle_t> &tagsDetected);
-	void calculateCorners(tagRef_t &t, bool inverse_x, bool perp_to_y);
 
 };
 

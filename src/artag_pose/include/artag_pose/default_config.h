@@ -16,6 +16,8 @@ class DefaultConfig : public ConfigLoader
 {
 public:
 	DefaultConfig();
+	void load(int numMarkers);
+	MarkersPosePtr parse();
 };
 
 #endif // DEFAULTCONFIG_H

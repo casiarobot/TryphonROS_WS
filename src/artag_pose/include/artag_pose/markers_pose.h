@@ -62,6 +62,9 @@ public:
 	void insert(const unsigned int & id, const tf::Pose & tf){
 		map.insert(std::pair<unsigned int, MarkerPose>(id, tf));
 	}
+	void insert(const unsigned int & id, const Eigen::Affine3d & m){
+		map.insert(std::pair<unsigned int, MarkerPose>(id, m));
+	}
 
 	bool isValidMarker(const unsigned int & id){
 		return map.find(id) != map.end();
