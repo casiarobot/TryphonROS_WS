@@ -156,25 +156,24 @@ void ArtagPoseNode::computePoseAndPublish(){
 	msgBestLL.header.frame_id = "cafeteria";
 	pubParticles.publish(msg);
 	pubBestLLParticles.publish(msgBestLL);
-	exit(0);
 }
 
 void ArtagPoseNode::hardcodeValue2cam(std::list<tagHandle_t> &tagsDetected, unsigned nb1, unsigned nb2){
 	// Hard coded fake camera, with different reference
 	std::list<tagHandle_t>::iterator t = tagsDetected.begin();
 	// First tag
-	for(int i = 0; i < nb1; i++){
+	//for(int i = 0; i < nb1; i++){
 		//t->cam2Tag_T = Eigen::Vector3d(1, 1, 0);
 
 		t->ref.cube2Cam_H <<
-		                     0,	0,	-1,	0, // cam2
-							 1,	0,	0,	0,
-							 0,	-1,	0,	0,
-							 0,	0,	0,	1;
-//		                     1,  0,  0,  0,//cam 1
-//					         0,  0,  1,  0,
-//		                     0, -1,  0,  0,
-//					         0,  0,  0,  1;
+//		                     0,	0,	-1,	0, // cam2
+//							 1,	0,	0,	0,
+//							 0,	-1,	0,	0,
+//							 0,	0,	0,	1;
+		                     1,  0,  0,  0,//cam 1
+					         0,  0,  1,  0,
+		                     0, -1,  0,  0,
+					         0,  0,  0,  1;
 		//TODO make it changeable
 
 		double d = 0.10;
@@ -185,10 +184,12 @@ void ArtagPoseNode::hardcodeValue2cam(std::list<tagHandle_t> &tagsDetected, unsi
 		         1,  1,  1,  1;
 		Eigen::Vector3d tagPosA;
 		//tagPosA << -0.0157, 0.3202, 0.0593;
-		tagPosA << 0, 0, 0;
+		tagPosA << 0.0157, 0.3202, 0.0593;
 		t->ref.posTag_W = Eigen::Matrix4d::Identity(4,4);
 		t->ref.posTag_W.col(3).topRows(3) = tagPosA;
-		t->ref.posTag_W = t->ref.posTag_W*tagA;
+		t->ref.posTag_W = t->ref.posTag_W * tagA;
+
+		//ROS_INFO_STREAM("dude it's late"<<std::endl << t->ref.posTag_W);
 
 
 		/*t->ref.posTag_W <<
@@ -201,43 +202,35 @@ void ArtagPoseNode::hardcodeValue2cam(std::list<tagHandle_t> &tagsDetected, unsi
 						   0.0093,	0.0093,	0.1093,	 0.1093,
 						   1,		1,		1,		 1;*/
 
-		++t;
-	}
-
+	//	++t;
+	//}
 	//Second tag
-	for(int i = 0; i < nb2; i++){
-		t->ref.cube2Cam_T = Eigen::Vector3d(-0.1, -0.1, 0);
-		t->ref.cube2Cam_R <<
-			   -1,  0,  0,
-				0,  0, -1,
-				0, -1,  0;
-//			 1,  0,  0, // Facing right side
-//			 0,  0,  1,
-//			 0, -1,  0;
+	tagHandle_t t2 = *t;
 
-		//tag.ref.world2Tag_T = Eigen::Vector3d(0, -12.25, -0.5);
-		t->ref.world2Tag_T = Eigen::Vector3d(-0.1, -0.63, 0);
+	t2.ref.cube2Cam_H <<
+		                     0,	0,	1,	0, // cam2
+							 -1,0,	0,	0,
+							 0,	-1,	0,	0,
+							 0,	0,	0,	1;
+	Eigen::Matrix3d rot90;
+	rot90 <<  0,    1,    0,
+	         -1,    0,    0,
+		      0,    0 ,   1;
+	t2.ref.posTag_W = Eigen::Matrix4d::Identity(4,4);
+	t2.ref.posTag_W.block(0, 0, 3, 3) = rot90;
+	Eigen::Vector3d tagPosB(0.3202, -0.0157, 0.0593);
+	t2.ref.posTag_W.col(3).topRows(3) = tagPosB;
+	t2.ref.posTag_W = t2.ref.posTag_W * tagA;
+//	t2.ref.posTag_W <<
+//	0.3202,	0.3202,	0.3202,	0.3202,
+//	0.0343,	-0.0657,-0.0657, 0.0343,
+//	0.0093,	0.0093,	0.1093,	0.1093,
+//	1,	1,	1,	1;
 
-		for(int i = 0; i < 4; i++){
-			t->ref.world2Tag_T_corners[i] = t->ref.world2Tag_T;
-		}
-		t->ref.world2Tag_T_corners[2](0) -= marker_size/2;
-		t->ref.world2Tag_T_corners[2](2) -= marker_size/2;
-		t->ref.world2Tag_T_corners[3](0) += marker_size/2;
-		t->ref.world2Tag_T_corners[3](2) -= marker_size/2;
-		t->ref.world2Tag_T_corners[0](0) += marker_size/2;
-		t->ref.world2Tag_T_corners[0](2) += marker_size/2;
-		t->ref.world2Tag_T_corners[1](0) -= marker_size/2;
-		t->ref.world2Tag_T_corners[1](2) += marker_size/2;
+	tagsDetected.push_back(t2);
 
-		//calculateCorners(t->ref, false, true);
-//		t->ref.world2Tag_R <<
-//			   -1,  0,  0,
-//				0,  0,  1,
-//				0,  1,  0;
 
-		++t;
-	}
+
 }
 void ArtagPoseNode::calculateCorners(tagRef_t &t, bool inverse_x, bool perp_to_y){
 	for(int i = 0; i < 4; i++){
@@ -339,7 +332,7 @@ int main(int argc, char **argv){
 	// Range zero => zero at initiation
 	Eigen::VectorXd range(8);
 	range << 20, 20, 20, 60, 0, 0, 0, 0;
-    int nbr_particles = 3;
+    int nbr_particles = 300;
     double std_pose = 30;
     double std_R = 0.25;
     double std_T = 0.03;
