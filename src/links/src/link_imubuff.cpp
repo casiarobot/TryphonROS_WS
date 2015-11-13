@@ -30,7 +30,7 @@ void subImu(const links::imubuff Imus)
 
 int main(int argc, char **argv)
 {
-  ros::init(argc, argv, "links_imubuff");
+  ros::init(argc, argv, "link_imubuff");
   ros::NodeHandle nh("~");
 
 

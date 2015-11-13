@@ -1,15 +1,15 @@
 <launch>
-	<group ns="127_0_0_1">
+	<group ns="192_168_10_243">
 	 <node name="ps3" pkg="ps3" type="ps3" respawn="false" output="screen">
-	 <param name="mode" type="int" value="3" />
+	 <param name="mode" type="int" value="2" />
 	</node>
-	<node name="force_distribution" pkg="controls" type="force_distribution" respawn="false" output="screen" />
+<!--	<node name="force_distribution" pkg="controls" type="force_distribution" respawn="false" output="screen" />
 	<node pkg="topic_tools" type="relay" name="relay1" args="/camera2/image_raw/compressed /camera20/image_raw/compressed" />
 	<node pkg="topic_tools" type="relay" name="relay2" args="/camera1/image_raw/compressed /camera10/image_raw/compressed" />
-	</group>
+-->	</group>
 	<node name="joy_node" pkg="joy" type="joy_node" respawn="false" output="screen" />
-	<node name="rosbag" pkg="rosbag" type="record" respawn="false" output="screen"
+	<!--<node name="rosbag" pkg="rosbag" type="record" respawn="false" output="screen"
 			args="record -o /home/tryphon/Rosbags/cameras_comp_force_mot /camera10/image_raw/compressed  /camera20/image_raw/compressed 
 			/127_0_0_1/motors_info /127_0_0_1/command_control /10_42_0_244/compass /10_42_0_244/leddars" />
-
+	-->
 </launch>

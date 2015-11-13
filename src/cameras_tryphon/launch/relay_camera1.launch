@@ -1,0 +1,7 @@
+<launch>
+  <group ns="cameras_viewer" >
+
+    <node name="republish1" type="republish" pkg="image_transport" output="screen" args="compressed in:=/camera1/image_raw raw out:=/relay/camera1" />  
+
+   </group>
+</launch>

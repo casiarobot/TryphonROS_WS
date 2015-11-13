@@ -4,8 +4,8 @@ cmake_minimum_required(VERSION 2.8.3)
 project(tests)
 
 ## Find catkin and any catkin packages
-find_package(catkin REQUIRED COMPONENTS roscpp rospy std_msgs sensors sensor_msgs message_generation)
-
+find_package(catkin REQUIRED COMPONENTS roscpp rospy std_msgs sensors sensor_msgs message_generation cmake_modules)
+find_package(Eigen REQUIRED)
 ## Declare ROS messages, services and actions
 #add_service_files(FILES AddTwoInts.srv)
 
@@ -18,7 +18,8 @@ generate_messages(DEPENDENCIES std_msgs)
 catkin_package(
 # INCLUDE_DIRS include
 # Libraries
-CATKIN_DEPENDS  message_runtime sensors)
+CATKIN_DEPENDS  message_runtime sensors 
+DEPENDS eigen)
 
 ##Specify additional locations of header files
 ## Your package locations should be listed before other locations
@@ -26,7 +27,7 @@ include_directories( ${catkin_INCLUDE_DIRS})
 
 
 ## Build talker and listener
-include_directories(include ${catkin_INCLUDE_DIRS})
+include_directories(include ${catkin_INCLUDE_DIRS} ${EIGEN_INCLUDE_DIRS})
 include_directories(include ${sensors_INCLUDE_DIRS})
 
 

@@ -1,0 +1,8 @@
+<launch>
+    <node pkg="camera1394" type="camera1394_node" name="camera3" >
+      <rosparam file="$(find cameras_tryphon)/launch/ffmv3c.yaml" />
+      <param name="guid" value=" 00b09d0100da74d3" />
+      <param name="camera_info_url" value="file://$(find cameras_tryphon)/launch/calibration/camera2.yaml" />
+      <remap from="camera" to="camera3" />
+    </node>
+</launch>

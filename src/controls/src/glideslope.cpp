@@ -351,7 +351,7 @@ if (starting_now)
 			pdes_target.pose.position.y=p_target.pose.position.y;
 			pdes_target.pose.position.z=p_target.pose.position.z;
 			
-			temp_angle1=yawd_target+PI/2;
+			temp_angle1=yawd_target-PI/2;
 			if (temp_angle1>PI) {temp_angle1=temp_angle1-2*PI;}
 			ROS_INFO("temp_angle1: %f, yawd:%f",temp_angle1,yawd_target);
 			pdes_target.pose.orientation.z=temp_angle1; //+PI/2; //add angle to choose face for docking
@@ -360,8 +360,9 @@ if (starting_now)
 			pdes_chaser.pose.position.y=p_chaser.pose.position.y;
 			pdes_chaser.pose.position.z=p_target.pose.position.z; //chaser goes to height of target
 			
-			temp_angle2=yawd_chaser+PI/2;
+			temp_angle2=yawd_chaser-PI/2;
 			if (temp_angle2>PI) {temp_angle2=temp_angle2-2*PI;}
+			if (temp_angle2<PI) {temp_angle2=temp_angle2+2*PI;}
 			ROS_INFO("temp_angle2: %f, yawc:%f",temp_angle2,yawd_chaser);
 			pdes_chaser.pose.orientation.z=temp_angle2; //add an angle to choose a face for docking
 			
