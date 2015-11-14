@@ -137,7 +137,8 @@ void ArtagSubscriber::artagCallback(const ar_track_alvar_msgs::AlvarMarkers::Con
 
 			// Set all required constant for the particle filter
 			tagHandle_t t;
-//			t.ref.cube2Cam_T = cubeToCam.translation();
+			t.id = m->id;
+			t.ref.cube2Cam_T = cubeToCam.translation();
 //			t.ref.cube2Cam_R = cubeToCam.linear();
 //			t.ref.world2Tag_T = worldToTag.translation();
 //			t.ref.world2Tag_R = world2Tag_R_mat;

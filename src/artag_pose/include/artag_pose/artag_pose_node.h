@@ -38,9 +38,10 @@ class ArtagPoseNode{
 	int numMarkers;
 	double marker_size;
 
-	ConfigLoader* markerConfig;
+	DefaultConfig* markerConfig;
 	MarkersPosePtr markersPose;
 
+	bool initializing;
 
 	ros::Time startNode;
 

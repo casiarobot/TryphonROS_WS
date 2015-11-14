@@ -5,7 +5,8 @@
 ArtagPoseNode::ArtagPoseNode(ParticleFilter* ppf):
     nodeHandle("~"),
 	startNode(ros::Time::now()),
-	pf(ppf){
+	pf(ppf),
+	initializing(true){
 
 	nodeHandle.param<int>("hz", frequency, 8);
 
@@ -13,7 +14,7 @@ ArtagPoseNode::ArtagPoseNode(ParticleFilter* ppf):
 	marker_size /= 100; // convert to meter
 
 	//nodeHandle.param<int>("", numMarkers, 2);
-	numMarkers = 2;
+	numMarkers = 3;
 	ROS_INFO_STREAM("Number markers: " << numMarkers);
 
 	//markerConfig = new TfConfigLoader;
@@ -104,6 +105,7 @@ std::vector<std::string> ArtagPoseNode::loadCameraTopics(){
 
 void ArtagPoseNode::loop(){
 	ros::Rate loop_rate(frequency);
+	ROS_INFO("Initilizing")
 	while(ros::ok()){
 		computePoseAndPublish();
 
@@ -129,6 +131,16 @@ void ArtagPoseNode::computePoseAndPublish(){
 	//nbrCamera2Tag = artagSubs[1]->getNumberTagsDetected();
 	if(nbrCamera1Tag + nbrCamera2Tag < 1)
 		return;
+
+	if(initializing){
+		if(nbrCamera1Tag + nbrCamera2Tag != numMarkers){
+			markerConfig->init(tagsDetected);
+
+		}
+		else{
+			ROS_INFO_STREAM("Detected n=" << tagsDetected.size());
+		}
+	}
 
 	//hardcodeValue1cam(tagsDetected);
 	//hardcodeValue2cam(tagsDetected, nbrCamera1Tag, nbrCamera2Tag);

@@ -11,12 +11,14 @@
 //library for ros
 #include <ros/ros.h>
 #include "artag_pose/config_loader.h"
+#include "artag_pose/particle_filter.h"
 
 class DefaultConfig : public ConfigLoader
 {
 public:
 	DefaultConfig();
 	void load(int numMarkers);
+	void init(std::list<tagHandle_t> &tagsDetected);
 	MarkersPosePtr parse();
 };
 

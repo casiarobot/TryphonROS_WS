@@ -34,9 +34,11 @@ typedef struct{
 tagRef_t;
 
 typedef struct {
+	geometry_msgs::Pose cam2Tag_T;
 //	Eigen::Matrix4d cam2Tag_H;
 //	Eigen::Vector3d cam2Tag_T;
 //	Eigen::Matrix3d cam2Tag_R;
+	int id;
 	tagRef_t ref;
 }
 tagHandle_t;
