@@ -6,7 +6,9 @@ ArtagPoseNode::ArtagPoseNode(ParticleFilter* ppf):
     nodeHandle("~"),
 	startNode(ros::Time::now()),
 	pf(ppf),
-	initializing(true){
+	initializing(true),
+	settingFirstOffset(false),
+	offset(0,0,0){
 
 	nodeHandle.param<int>("hz", frequency, 8);
 
@@ -105,7 +107,7 @@ std::vector<std::string> ArtagPoseNode::loadCameraTopics(){
 
 void ArtagPoseNode::loop(){
 	ros::Rate loop_rate(frequency);
-	ROS_INFO("Initilizing")
+	ROS_WARN("Initializing...");
 	while(ros::ok()){
 		computePoseAndPublish();
 
@@ -133,13 +135,18 @@ void ArtagPoseNode::computePoseAndPublish(){
 		return;
 
 	if(initializing){
-		if(nbrCamera1Tag + nbrCamera2Tag != numMarkers){
+		if(nbrCamera1Tag + nbrCamera2Tag >= numMarkers){
 			markerConfig->init(tagsDetected);
-
+			initializing = false;
+			settingFirstOffset = true;
 		}
 		else{
-			ROS_INFO_STREAM("Detected n=" << tagsDetected.size());
+			ROS_INFO_STREAM("Initializing, detected " << tagsDetected.size() << "/" << numMarkers);
 		}
+		return; // We wait another cycle
+	}
+	if(settingFirstOffset){
+
 	}
 
 	//hardcodeValue1cam(tagsDetected);
@@ -162,8 +169,21 @@ void ArtagPoseNode::computePoseAndPublish(){
 	//exit(0);
 
 	// Publish visualization of the particle for Rviz
-	geometry_msgs::PoseArray msg = pf->getParticleMsg();
-	geometry_msgs::PoseStamped  msgBestLL = pf->getBestLikelihoodMsg(tagsDetected.begin()->ref);
+	geometry_msgs::PoseArray msg = pf->getParticleMsg(offset);
+	geometry_msgs::PoseStamped  msgBestLL = pf->getBestLikelihoodMsg(offset);
+
+	double var = pf->getVariance();
+	if(settingFirstOffset && var < 0.5){
+		offset(0) = -msgBestLL.pose.position.x;
+		offset(1) = -msgBestLL.pose.position.y;
+		offset(2) = -msgBestLL.pose.position.z;
+		settingFirstOffset = false;
+		ROS_INFO_STREAM("(N)Var =" << var);
+	}
+	else
+		ROS_INFO_STREAM("(O)Var =" << var);
+
+
 	msg.header.frame_id = "cafeteria";
 	msgBestLL.header.frame_id = "cafeteria";
 	pubParticles.publish(msg);
@@ -286,9 +306,9 @@ int main(int argc, char **argv){
 
 	Eigen::Matrix4d world2TagInit_H;
 	world2TagInit_H <<
-	                   1,	0,	0,	0,
-					   0,	1,	0,	-1,
-					   0,	0,	1,	0,
+	                   1,	0,	0,	-0.5,
+					   0,	1,	0,	-0.5,
+					   0,	0,	1,	-0.5,
 					   0,	0	,0	,1;
 //	                      1,  0,  0,  -1.0,// old
 //				          0,  1,  0,  0,

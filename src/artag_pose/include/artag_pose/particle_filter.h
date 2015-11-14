@@ -34,7 +34,7 @@ typedef struct{
 tagRef_t;
 
 typedef struct {
-	geometry_msgs::Pose cam2Tag_T;
+	geometry_msgs::Point cam2Tag_T;
 //	Eigen::Matrix4d cam2Tag_H;
 //	Eigen::Vector3d cam2Tag_T;
 //	Eigen::Matrix3d cam2Tag_R;
@@ -78,9 +78,10 @@ public:
 	void updateParticle();
 	void calcLogLikelihood(const  std::list<tagHandle_t> &tags);
 	void resampleParticles();
+	double getVariance();
 
-	geometry_msgs::PoseArray getParticleMsg();
-	geometry_msgs::PoseStamped getBestLikelihoodMsg(tagRef_t ref);
+	geometry_msgs::PoseArray getParticleMsg(const Eigen::Vector3d &offset);
+	geometry_msgs::PoseStamped getBestLikelihoodMsg(const Eigen::Vector3d &offset);
 	void updateParameters(double p, double r, double t, double dt, double dr);
 private:
 	bool performCameraProjection(Eigen::MatrixXd projectionMatrix,

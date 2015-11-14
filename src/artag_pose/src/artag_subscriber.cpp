@@ -125,7 +125,7 @@ void ArtagSubscriber::artagCallback(const ar_track_alvar_msgs::AlvarMarkers::Con
 				geometry_msgs::Point newPosition = m->pose.pose.position;
 				geometry_msgs::Point oldPosition = oldM->pose.pose.position;
 				double dist = distanceBetweenPoint(newPosition, oldPosition);
-				if(dist >= jmpThreshold){
+				if(dist >= jmpThreshold && false){
 					ROS_WARN_STREAM("Tag " << m->id
 									<< " move more than the maximum threshold " << dist);
 				}
@@ -138,7 +138,7 @@ void ArtagSubscriber::artagCallback(const ar_track_alvar_msgs::AlvarMarkers::Con
 			// Set all required constant for the particle filter
 			tagHandle_t t;
 			t.id = m->id;
-			t.ref.cube2Cam_T = cubeToCam.translation();
+			t.cam2Tag_T = m->pose.pose.position;
 //			t.ref.cube2Cam_R = cubeToCam.linear();
 //			t.ref.world2Tag_T = worldToTag.translation();
 //			t.ref.world2Tag_R = world2Tag_R_mat;
@@ -163,9 +163,9 @@ void ArtagSubscriber::artagCallback(const ar_track_alvar_msgs::AlvarMarkers::Con
 			                     Eigen::Quaterniond(camToTag.linear()),
 			                     ref);*/
 		}
-		else
-			ROS_WARN_STREAM("Cam \"" << cameraName
-							<< "\" invalid tag detected id=" << m->id);
+		//else
+		//	ROS_WARN_STREAM("Cam \"" << cameraName
+		//					<< "\" invalid tag detected id=" << m->id);
 	}
 
 	oldMsg = *msg;

@@ -18,7 +18,7 @@ class DefaultConfig : public ConfigLoader
 public:
 	DefaultConfig();
 	void load(int numMarkers);
-	void init(std::list<tagHandle_t> &tagsDetected);
+	void init(const std::list<tagHandle_t> &tagsDetected);
 	MarkersPosePtr parse();
 };
 

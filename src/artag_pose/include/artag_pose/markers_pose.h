@@ -33,6 +33,9 @@ public:
 		tf::poseEigenToTF(eigen, poseTf);
 
 	}
+	void setEigen(Eigen::Affine3d m){
+		poseEigen = m;
+	}
 
 	Eigen::Affine3d getEigen(){
 		return poseEigen;
@@ -70,10 +73,10 @@ public:
 		return map.find(id) != map.end();
 	}
 
-	MarkerPose get(const unsigned int & id){
+	MarkerPose& get(const unsigned int & id){
 		return map[id];
 	}
-	MarkerPose operator[](const unsigned int & id){
+	MarkerPose& operator[](const unsigned int & id){
 		return map[id];
 	}
 

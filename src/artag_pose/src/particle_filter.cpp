@@ -312,7 +312,7 @@ void ParticleFilter::resampleParticles(){
 
 }
 
-geometry_msgs::PoseArray ParticleFilter::getParticleMsg(){
+geometry_msgs::PoseArray ParticleFilter::getParticleMsg(const Eigen::Vector3d &offset){
 	// TODO init at resize this array
 	geometry_msgs::PoseArray msgArray;
 	geometry_msgs::Pose m;
@@ -323,9 +323,9 @@ geometry_msgs::PoseArray ParticleFilter::getParticleMsg(){
 		n = 100;
 	msgArray.poses.reserve(n);
 	for(int i = 0; i < n; ++i){
-		m.position.x = particles(0, i);
-		m.position.y = particles(1, i);
-		m.position.z = particles(2, i);
+		m.position.x = offset(0) + particles(0, i);
+		m.position.y = offset(1) + particles(1, i);
+		m.position.z = offset(2) + particles(2, i);
 		Eigen::Quaterniond q;
 		q = Eigen::AngleAxisd(particles(3, i) * M_PI/ 180.0, Eigen::Vector3d::UnitZ());
 		m.orientation.x = q.x();
@@ -337,17 +337,32 @@ geometry_msgs::PoseArray ParticleFilter::getParticleMsg(){
 
 	return msgArray;
 }
+double ParticleFilter::getVariance(){
+	double avgPoseX = particles.row(0).array().mean();
+	double avgPoseY = particles.row(1).array().mean();
+	double avgPoseZ = particles.row(2).array().mean();
+	// E((x- E(x))^2)
+	double varX = (particles.row(0).array() - avgPoseX).array().square().mean();
+	double varY = (particles.row(1).array() - avgPoseY).array().square().mean();
+	double varZ = (particles.row(2).array() - avgPoseZ).array().square().mean();
+	return varX*varX + varY*varY + varZ*varZ;
 
-geometry_msgs::PoseStamped  ParticleFilter::getBestLikelihoodMsg(tagRef_t ref){
+}
+
+geometry_msgs::PoseStamped  ParticleFilter::getBestLikelihoodMsg(const Eigen::Vector3d &offset){
 	// TODO init at resize this array
 	geometry_msgs::PoseStamped m;
+
+	m.pose.position.x = offset(0);
+	m.pose.position.y = offset(1);
+	m.pose.position.z = offset(2);
 	double angle = 0;
 
 	Eigen::VectorXd w = ll.array().exp();
 	ROS_INFO_STREAM(std::endl <<
 	                "Min: " << w.minCoeff() << std::endl <<
-	                "Max:" << w.maxCoeff());
-	ROS_INFO_STREAM("pose" << std_pose);
+	                "Max: " << w.maxCoeff() << std::endl <<
+	                "std_pose = " << std_pose);
 	w = w / w.sum();
 	for(int i = 0; i < nbr_particles; ++i){
 		m.pose.position.x += particles(0, i) * w(i);
@@ -362,28 +377,9 @@ geometry_msgs::PoseStamped  ParticleFilter::getBestLikelihoodMsg(tagRef_t ref){
 	m.pose.orientation.z = q.z();
 	m.pose.orientation.w = q.w();
 
-	ROS_INFO_STREAM("Angle " << angle);
-
-	/*Eigen::Matrix<double, 3, 4> proj; //Projection matrixs
-	proj << 382.5693969726562,	0.0,				316.7359733365374, 0.0,
-	        0.0,				422.2102966308594,	271.7760648319054, 0.0,
-	        0.0,				0.0,				1.0,			   0.0;
-	Eigen::Vector3d tmp;
-	tmp <<
-			m.pose.position.x,
-			m.pose.position.y,
-			m.pose.position.z;
-	Eigen::Matrix4d world2Cube_guess = Eigen::Matrix4d::Identity(4, 4);
-	world2Cube_guess.col(3).topRows(3) = tmp;
-	Eigen::MatrixXd	imgPx(2,1);
-	performCameraProjection(proj,
-	                        (world2Cube_guess * ref.cube2Cam_H).inverse()*ref.posTag_W,
-	                        imgPx);
-	//Eigen::Vector2d	imgPx =  proj * tmp;
-	//m.pose.position.x = imgPx(0) / imgPx(2) / 640.0;
-	//m.pose.position.y = imgPx(1) / imgPx(2) / 480.0;
-	m.pose.position.x = imgPx(0) / 640.0;
-	m.pose.position.y = imgPx(1) / 480.0;*/
+	ROS_INFO_STREAM( std::endl
+	                 << "Angle :" << angle << std::endl
+	                << m.pose.position);
 
 	return m;
 }

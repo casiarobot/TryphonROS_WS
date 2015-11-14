@@ -42,6 +42,8 @@ class ArtagPoseNode{
 	MarkersPosePtr markersPose;
 
 	bool initializing;
+	bool settingFirstOffset;
+	Eigen::Vector3d offset;
 
 	ros::Time startNode;
 
