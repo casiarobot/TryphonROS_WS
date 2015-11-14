@@ -265,7 +265,7 @@ int main(int argc, char **argv){
 	          0, 0, 0, 0, 0, 0, 0, 1;
 	// Range zero => zero at initiation
 	Eigen::VectorXd range(8);
-	range << 20, 20, 20, 60, 0, 0, 0, 0;
+	range << 20, 20, 20, 170, 0, 0, 0, 0;
 
     int nbr_particles = 300;
     double std_pose = 30;

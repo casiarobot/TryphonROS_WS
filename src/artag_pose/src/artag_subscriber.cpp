@@ -65,7 +65,7 @@ void ArtagSubscriber::lookupCameraTf(){
 void ArtagSubscriber::timerCallback(const ros::TimerEvent& event){
 	ros::Duration t = ros::Time::now() - lastReception;
 	if(t > ros::Duration(5.0)){
-		if(!this->receiveIsFirstMsg)
+		if(this->receiveIsFirstMsg)
 			ROS_WARN_STREAM("Cam \"" << cameraName
 							<< "\" still has not received is first msg");
 		else

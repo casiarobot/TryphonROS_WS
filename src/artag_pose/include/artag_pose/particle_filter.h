@@ -34,9 +34,9 @@ typedef struct{
 tagRef_t;
 
 typedef struct {
-	Eigen::Matrix4d cam2Tag_H;
-	Eigen::Vector3d cam2Tag_T;
-	Eigen::Matrix3d cam2Tag_R;
+//	Eigen::Matrix4d cam2Tag_H;
+//	Eigen::Vector3d cam2Tag_T;
+//	Eigen::Matrix3d cam2Tag_R;
 	tagRef_t ref;
 }
 tagHandle_t;

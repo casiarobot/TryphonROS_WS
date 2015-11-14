@@ -6,6 +6,7 @@ project(ps3)
 ## Find catkin and any catkin packages
 find_package(catkin REQUIRED COMPONENTS geometry_msgs sensor_msgs roscpp rospy std_msgs state)
 
+set(CMAKE_BUILD_TYPE Debug)
 ## Declare ROS messages, services and actions
 #add_message_files(DIRECTORY msg FILES sonar.msg sonarArray.msg compass.msg motor.msg motorArray.msg forces.msg imuros.msg state.msg)
 #add_service_files(FILES AddTwoInts.srv)

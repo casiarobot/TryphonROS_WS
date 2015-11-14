@@ -119,6 +119,7 @@ void ParticleFilter::calcLogLikelihood(const  std::list<tagHandle_t> &tags){
 			//const Eigen::Vector3d T_guess = particles.col(k).topRows(3);
 
 			for(it = tags.begin(); it != tags.end(); ++it){
+				tagRef_t refdebug= it->ref;
 //				ROS_INFO_STREAM(std::endl <<" x: "<<std::endl <<  world2Cube_guess);
 //				ROS_INFO_STREAM(std::endl <<" it->ref.cube2Cam_H: "<<std::endl <<  it->ref.cube2Cam_H);
 //				ROS_INFO_STREAM(std::endl <<"x * it->ref.cube2Cam_H: "<<std::endl << world2Cube_guess * it->ref.cube2Cam_H);
@@ -140,13 +141,13 @@ void ParticleFilter::calcLogLikelihood(const  std::list<tagHandle_t> &tags){
 					}
 				}
 				else{
-					ll(k) = -std::numeric_limits<double>::max();// = -inf
+					ll(k) = -100000;// = -inf
 				}
 			}
 
 		}
 		else{
-			ll(k) = -std::numeric_limits<double>::max();// = -inf
+			ll(k) = -100000;// = -inf
 		}
 	}
 	iterated++;
@@ -254,7 +255,11 @@ void ParticleFilter::resampleParticles(){
 
 	ll = ll - ll.maxCoeff() * Eigen::VectorXd::Ones(nbr_particles);
 	Eigen::VectorXd l = ll.array().exp();
-	Eigen::VectorXd Q = l / l.sum();
+	double lsum =l.sum();
+	//if(lsum != lsum || lsum == 0.0){// NaN check
+	//	lsum = 0.00001;
+	//}
+	Eigen::VectorXd Q = l /lsum;
 	Eigen::VectorXd R = Q;
 	// Currently no equivalant to cumsum in Eigen
 	for(int i = 1; i < nbr_particles; ++i)
