@@ -1,0 +1,6 @@
+<launch>
+        <group ns="192_168_10_242">
+                       
+                        <node name="republish2" type="republish" pkg="image_transport" output="screen" args="compressed in:=/192_168_10_242/camera2/image_raw raw out:=/192_168_10_242/camera2/raw2" />
+        </group>
+</launch>

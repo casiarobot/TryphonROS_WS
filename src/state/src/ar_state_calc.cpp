@@ -13,7 +13,7 @@
 #include <math.h>
 
  Eigen::Vector3d ALVAR1pos,ALVAR2pos,ALVAR1position1, ALVAR1position2,ALVAR2position1, ALVAR2position2;
- Eigen::Vector3d ALVAR1angle,ALVAR2angle,ALVARangle;
+ Eigen::Vector3d ALVAR1angle,ALVAR2angle,ALVARangle,angletemp1,angletemp2;
 Eigen::Matrix3d Rmatrix1,Rmatrix2;
 Eigen::Quaterniond quatdiff(1,0,0,0);
 geometry_msgs::PoseStamped alvarp1, alvarp2;
@@ -28,9 +28,15 @@ double meanx=.45;
 //assumed both cameras on tryphon
 void subALVAR1(const ar_track_alvar_msgs::AlvarMarkers Aposes1)
 {
+
+  if(Aposes1.markers.size() < 2)
+  	return;
+
+
   ar_track_alvar_msgs::AlvarMarker alvartemp1,alvartemp2;
-  alvartemp1=Aposes1.markers[0];
-  alvartemp2=Aposes1.markers[1];
+  alvartemp1=Aposes1.markers[0]; //upper tag at Cm
+  alvartemp2=Aposes1.markers[1]; //lower tag at Cm
+
   geometry_msgs::Pose Pose1=alvartemp1.pose.pose ; 
   geometry_msgs::Pose Pose2=alvartemp2.pose.pose ;//Pose=Aposes.pose;
   
@@ -38,31 +44,35 @@ void subALVAR1(const ar_track_alvar_msgs::AlvarMarkers Aposes1)
   ALVAR1position1(0)=Pose1.position.x; // defined in global frame
   ALVAR1position1(1)=Pose1.position.y;
   ALVAR1position1(2)=Pose1.position.z;
- 
 
   ALVAR1position2(0)=Pose2.position.x; // defined in global frame
   ALVAR1position2(1)=Pose2.position.y;
   ALVAR1position2(2)=Pose2.position.z;
 
- // Eigen::Quaterniond quat(Pose1.orientation.w,Pose1.orientation.x,Pose1.orientation.y,Pose1.orientation.z);
+  Eigen::Quaterniond quat(Pose1.orientation.w,Pose1.orientation.x,Pose1.orientation.y,Pose1.orientation.z);
   
 //ROS_INFO("Pose.z=%f",Pose.position.z);
 
  //to make x y z of camera/artag output aloligned with tryphon body frame
 Eigen::Quaterniond quatpos(.7071,-.7071,0,0);
-
+Eigen::Quaterniond quat15degyaw( 0.9962,0,0,.0872);
+Eigen::Quaterniond quat180z(0,0,0,1);
+Eigen::Quaterniond quattemp=quat180z*quat15degyaw*quatpos;
+//Eigen::Quaterniond quattemp=quatpos;
 //Eigen::Quaterniond quatang(0,1,0,0); //to make orientation all 0 when docking face alligned
 //quat=quat*quatang.inverse();  
 
 
-Rmatrix1=quatpos.toRotationMatrix();
+
+Rmatrix1=quattemp.toRotationMatrix();
 ALVAR1position1=Rmatrix1*ALVAR1position1;
 ALVAR1position2=Rmatrix1*ALVAR1position2;
-/*
-  ALVAR1angle(0)=atan2(2*(quat.w()*quat.x()+quat.y()*quat.z()),1-2*(quat.x()*quat.x()+quat.y()*quat.y()));
-  ALVAR1angle(1)=asin(2*(quat.w()*quat.y()-quat.z()*quat.x()));
-  ALVAR1angle(2)=atan2(2*(quat.w()*quat.z()+quat.x()*quat.y()),1-2*(quat.z()*quat.z()+quat.y()*quat.y()));
- */
+
+  angletemp1(0)=atan2(2*(quat.w()*quat.x()+quat.y()*quat.z()),1-2*(quat.x()*quat.x()+quat.y()*quat.y()));
+  angletemp1(1)=asin(2*(quat.w()*quat.y()-quat.z()*quat.x()));
+  angletemp1(2)=atan2(2*(quat.w()*quat.z()+quat.x()*quat.y()),1-2*(quat.z()*quat.z()+quat.y()*quat.y()));
+
+//ROS_INFO("angle= %f",angletemp1(1));
 
   ALVAR1pos(0)=ALVAR1position1(0);
   ALVAR1pos(1)=ALVAR1position1(1);
@@ -91,6 +101,11 @@ alvarv1.twist.angular.z=(1.83333*pos1[5][3]-3*pos1[5][2]+1.5*pos1[5][1]-0.33333*
 void subALVAR2(const ar_track_alvar_msgs::AlvarMarkers Aposes2) //camera frame on other tryphon
 {
   ar_track_alvar_msgs::AlvarMarker alvartemp1,alvartemp2;
+
+  if(Aposes2.markers.size() < 2)
+  	return;
+
+
   alvartemp1=Aposes2.markers[0];
   alvartemp2=Aposes2.markers[1];
   geometry_msgs::Pose Pose1=alvartemp1.pose.pose ;
@@ -108,11 +123,15 @@ void subALVAR2(const ar_track_alvar_msgs::AlvarMarkers Aposes2) //camera frame o
 
 /////For Tryphon////////////
 Eigen::Quaterniond quatpos(.7071,-.7071,0,0); //to make x y z of camera/artag output alligned with tryphon body frame 
+Eigen::Quaterniond quat15degyaw( 0.9962,0,0,-.0872);
+Eigen::Quaterniond quat180z(0,0,0,1);
+Eigen::Quaterniond quattemp=quat180z*quat15degyaw*quatpos;
+//Eigen::Quaterniond quattemp=quatpos;
 //Eigen::Quaterniond quatang(0,1,0,0); //to make orientation all 0 when docking face alligned
-Rmatrix2=quatpos.toRotationMatrix();
+Rmatrix2=quattemp.toRotationMatrix();
 
 
-
+//Eigen::Quaterniond quat(Pose1.orientation.w,Pose1.orientation.x,Pose1.orientation.y,Pose1.orientation.z);
 /*
 //////For Gazebo////////////
 Eigen::Quaterniond quat(Pose1.orientation.w,Pose1.orientation.x,Pose1.orientation.y,Pose1.orientation.z);
@@ -123,8 +142,6 @@ quattemp=quatpos*quat.inverse();
 Rmatrix2=quattemp.toRotationMatrix();
 */
 
-
-Rmatrix2=quatpos.toRotationMatrix();
 ALVAR2position1=Rmatrix2*ALVAR2position1;
 ALVAR2position2=Rmatrix2*ALVAR2position2;
 
@@ -136,6 +153,12 @@ ALVAR2position2=Rmatrix2*ALVAR2position2;
   ALVAR2pos(1)=ALVAR2position1(1);
   ALVAR2pos(2)=ALVAR2position1(2);
 
+/*
+  angletemp2(0)=atan2(2*(quat.w()*quat.x()+quat.y()*quat.z()),1-2*(quat.x()*quat.x()+quat.y()*quat.y()));
+  angletemp2(1)=asin(2*(quat.w()*quat.y()-quat.z()*quat.x()));
+  angletemp2(2)=atan2(2*(quat.w()*quat.z()+quat.x()*quat.y()),1-2*(quat.z()*quat.z()+quat.y()*quat.y()));
+
+ROS_INFO("angle= %f",angletemp2(1));
 /*
 		pos2[0][3]=ALVAR2pos(0);
 		alvarv2.twist.linear.x=(1.83333*pos2[0][3]-3*pos2[0][2]+1.5*pos2[0][1]-0.33333*pos2[0][0])/h;
@@ -263,8 +286,9 @@ int main(int argc, char **argv)
   ros::init(argc, argv, "ar_state");
   ros::NodeHandle nh;
 
-ros::Subscriber sub1 = nh.subscribe("/192_168_10_243/artags/artag1/ar_pose_marker",1,subALVAR1);
-ros::Subscriber sub2 = nh.subscribe("/192_168_10_244/artags/artag1/ar_pose_marker",1,subALVAR2);
+
+ros::Subscriber sub1 = nh.subscribe("/192_168_10_243/artags1/artag/ar_pose_marker",1,subALVAR1);
+ros::Subscriber sub2 = nh.subscribe("/192_168_10_243/artags2/artag/ar_pose_marker",1,subALVAR2);
 
 ros::Publisher  alvarp1_pub = nh.advertise<geometry_msgs::PoseStamped>("/192_168_10_243/ar_pose1",1);
 ros::Publisher  alvarp2_pub = nh.advertise<geometry_msgs::PoseStamped>("/192_168_10_243/ar_pose2",1);
@@ -303,9 +327,47 @@ ros::spinOnce();
 
 ////////////////////find orientation/////////////////////////////
 
+double temp;
+
 //roll  (x axis = pitch in docking situation)
-ALVAR1angle(0)=atan2(ALVAR1position2(1)-ALVAR1position1(1),.15); //of tag set 1
-ALVAR2angle(0)=atan2(ALVAR2position2(1)-ALVAR2position1(1),.15);  //of tag set 2
+ALVAR1angle(0)=atan2(ALVAR1position2(1)-ALVAR1position1(1),0.0985); //of tag set 1
+ALVAR2angle(0)=atan2(ALVAR2position2(1)-ALVAR2position1(1),0.0985);  //of tag set 2
+ALVARangle(0)=.5*ALVAR1angle(0)+.5*ALVAR2angle(0);
+
+//pitch (y axis = roll in docking situation)
+ALVAR1angle(1)=atan2(ALVAR2position1(2)-ALVAR1position1(2),1.89); //of main tag, --> 2 is distance between tags
+ALVAR2angle(1)=atan2(ALVAR2position2(2)-ALVAR1position2(2),1.89);  //of extra tag
+ALVARangle(1)=.5*ALVAR1angle(1)+.5*ALVAR2angle(1);
+
+//yaw  
+
+ALVAR1angle(2)=asin((ALVAR2position1(1)-ALVAR1position1(1))/1.89);//of main tag (-) for proper orientation   ///(-) removed for -y camera
+ALVAR2angle(2)=asin((ALVAR2position2(1)-ALVAR1position2(1))/1.89); //of extra tag
+ALVARangle(2)=.5*ALVAR1angle(2)+.5*ALVAR2angle(2);
+
+ROS_INFO("angle1= %f, angle2=%f",ALVAR1angle(2),ALVAR2angle(2));
+
+/*
+ALVAR1angle(2)=-asin(ALVAR2position1(1)-ALVAR1position1(1),1.89);//of main tag (-) for proper orientation ///for +y camera
+ALVAR2angle(2)=-asin(ALVAR2position2(1)-ALVAR1position2(1),1.89); //of extra tag
+ALVARangle(2)=.5*ALVAR1angle(2)+.5*ALVAR2angle(2);
+*/
+
+
+/*
+ALVAR1angle(2)=-atan2(ALVAR2position1(1)-ALVAR1position1(1),1.89);//of main tag (-) for proper orientation
+ALVAR2angle(2)=-atan2(ALVAR2position2(1)-ALVAR1position2(1),1.89); //of extra tag
+ALVARangle(2)=.5*ALVAR1angle(2)+.5*ALVAR2angle(2);
+/*
+////////////////////////////////////////////////////////////////
+
+/*
+////////////////////find orientation/////////////////////////////
+
+
+//roll  (x axis = pitch in docking situation)
+ALVAR1angle(0)=atan2(ALVAR1position2(1)-ALVAR1position1(1),.0985); //of tag set 1
+ALVAR2angle(0)=atan2(ALVAR2position2(1)-ALVAR2position1(1),.0985);  //of tag set 2
 ALVARangle(0)=.5*ALVAR1angle(0)+.5*ALVAR2angle(0);
 
 //pitch (y axis = roll in docking situation)
@@ -319,8 +381,9 @@ ALVAR2angle(2)=-atan2(ALVAR2position2(1)-ALVAR1position2(1),2.1); //of extra tag
 ALVARangle(2)=.5*ALVAR1angle(2)+.5*ALVAR2angle(2);
 
 ////////////////////////////////////////////////////////////////
-
+*/
 //////compute velocity////////
+
 
 
 
@@ -337,6 +400,7 @@ ALVARangle(2)=.5*ALVAR1angle(2)+.5*ALVAR2angle(2);
 	pos[1][3][10]=ALVAR2angle(0);
 	pos[1][4][10]=ALVAR2angle(1);
 	pos[1][5][10]=ALVAR2angle(2);	
+
 
 
 

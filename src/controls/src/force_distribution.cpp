@@ -56,6 +56,7 @@ void callback(controls::fdistributionConfig &config, uint32_t level) {
 void subMax(const std_msgs::Float64 inputMsg)
 {
   maxPrct=(inputMsg.data)/100.000;
+   ROS_INFO("test %f", maxPrct);
 }
 
 void subForces(const geometry_msgs::Wrench inputMsg)
@@ -147,7 +148,7 @@ double force2command(double f)
 {
 
     double command;
-    if(f>0)
+    if(f>=0)
     {
         if(f>maxForce)
         {
@@ -156,7 +157,7 @@ double force2command(double f)
         else
         {
             command=247.6222-sqrt(fabs(61316.75-92984.43*(f+0.0175878)));
-            if(command<0 || command==0){command=0;}
+            if(command<0 || f==0){command=0;}
             return command;
         }
     }

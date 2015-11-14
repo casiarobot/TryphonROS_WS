@@ -1,7 +1,7 @@
 <launch>
 	<group ns="192_168_10_243">
 	 <node name="ps3" pkg="ps3" type="ps3" respawn="false" output="screen">
-	 <param name="mode" type="int" value="2" />
+	 <param name="mode" type="int" value="3" />
 	</node>
 <!--	<node name="force_distribution" pkg="controls" type="force_distribution" respawn="false" output="screen" />
 	<node pkg="topic_tools" type="relay" name="relay1" args="/camera2/image_raw/compressed /camera20/image_raw/compressed" />

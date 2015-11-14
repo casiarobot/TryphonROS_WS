@@ -1,0 +1,5 @@
+<launch>
+	<include file="$(find artag_pose)/launch/arcam_1.launch" />
+	<include file="$(find artag_pose)/launch/arcam_2.launch" />
+</launch>
+
