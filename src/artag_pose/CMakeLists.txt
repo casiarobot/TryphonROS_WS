@@ -14,7 +14,8 @@ REQUIRED COMPONENTS
     tf
     tf_conversions
     eigen_conversions
-# !!!Hydro doesn't require it!!!----> : cmake_modules
+# !!!Hydro doesn't require it!!!----> : 
+cmake_modules
 )
 
 # Set debug mode for breakpoint in gdb and QtCreator

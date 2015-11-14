@@ -1,7 +1,0 @@
-% Camera poses in MKF frame, format:
-% Total number of cameras
-% Camera Name, Position (3 vector), Orientation (quaternion, 4 vector)
-2
-camera1saved, -0, -0, -0, 0, 0, 0, 1
-camera2saved, 1.0880674878833105357, -0.0068156496361810904594, -0.016788804467488593897, -0.01521368161833565151, 0.0037303741225785448134, -0.00802155548141851929, 0.99984512943164360887
-% The end
