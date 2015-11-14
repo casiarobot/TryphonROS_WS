@@ -6,6 +6,7 @@ project(artag_pose)
 ## is used, also find other catkin packages
 find_package(catkin
 REQUIRED COMPONENTS
+    ar_track_alvar_msgs
     geometry_msgs
     roscpp
     std_msgs
