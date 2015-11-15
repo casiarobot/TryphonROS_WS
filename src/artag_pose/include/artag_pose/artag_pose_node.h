@@ -47,6 +47,8 @@ class ArtagPoseNode{
 
 	ros::Time startNode;
 
+	double std_pose, std_R, std_T;
+
 	ParticleFilterPtr pf;
 	std::vector<ArtagSubPtr> artagSubs;
 	ros::Publisher pubPose;
@@ -73,7 +75,6 @@ private:
 	void createPublishers();
 	void createSubscribers();
 	void computePoseAndPublish();
-	void hardcodeValue2cam(std::list<tagHandle_t> &tagsDetected, unsigned nb1, unsigned nb2);
 
 };
 

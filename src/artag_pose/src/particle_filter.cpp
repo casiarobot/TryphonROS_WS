@@ -388,10 +388,8 @@ void ParticleFilter::printQuaternion(const std::string title, const Eigen::Quate
 	 ROS_INFO_STREAM(std::endl << title << std::endl << quat.x() << std::endl  << quat.y() << std::endl  << quat.z() << std::endl  << quat.w());
 }
 
-void ParticleFilter::updateParameters(double p, double t, double r, double dt, double dr){
+void ParticleFilter::updateParameters(double p, double t, double r){
 	std_pose = p;
 	std_T = t;
 	std_R = r;
-	std_DT = dt;
-	std_DR = dr;
 }
