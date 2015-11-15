@@ -143,14 +143,13 @@ void ArtagPoseNode::computePoseAndPublish(){
 		else{
 			ROS_INFO_STREAM("Initializing, detected " << tagsDetected.size() << "/" << numMarkers);
 		}
+		// Paramater during the initiation phase
+		pf->updateParameters(30.0,
+		                     0.06,
+		                     0.4);
 		return; // We wait another cycle
 	}
-	if(settingFirstOffset){
 
-	}
-
-	//hardcodeValue1cam(tagsDetected);
-	//hardcodeValue2cam(tagsDetected, nbrCamera1Tag, nbrCamera2Tag);
 
 	struct timeval tm1, tm2;
 	gettimeofday(&tm1, NULL);
@@ -180,8 +179,12 @@ void ArtagPoseNode::computePoseAndPublish(){
 		settingFirstOffset = false;
 		ROS_INFO_STREAM("(N)Var =" << var);
 	}
-	else
+	else{
+		pf->updateParameters(std_pose,
+		                     std_T,
+		                     std_R);
 		ROS_INFO_STREAM("(O)Var =" << var);
+	}
 
 
 	msg.header.frame_id = "cafeteria";
@@ -190,90 +193,16 @@ void ArtagPoseNode::computePoseAndPublish(){
 	pubBestLLParticles.publish(msgBestLL);
 }
 
-void ArtagPoseNode::hardcodeValue2cam(std::list<tagHandle_t> &tagsDetected, unsigned nb1, unsigned nb2){
-	// Hard coded fake camera, with different reference
-	std::list<tagHandle_t>::iterator t = tagsDetected.begin();
-	// First tag
-	//for(int i = 0; i < nb1; i++){
-		//t->cam2Tag_T = Eigen::Vector3d(1, 1, 0);
-
-		t->ref.cube2Cam_H <<
-//		                     0,	0,	-1,	0, // cam2
-//							 1,	0,	0,	0,
-//							 0,	-1,	0,	0,
-//							 0,	0,	0,	1;
-		                     1,  0,  0,  0,//cam 1
-					         0,  0,  1,  0,
-		                     0, -1,  0,  0,
-					         0,  0,  0,  1;
-		//TODO make it changeable
-
-		double d = 0.10;
-		Eigen::Matrix4d tagA;
-		tagA << -d/2,  d/2,  d/2,  -d/2,
-		         0,  0,  0,  0,
-		         -d/2,  -d/2,  d/2,  d/2,
-		         1,  1,  1,  1;
-		Eigen::Vector3d tagPosA;
-		//tagPosA << -0.0157, 0.3202, 0.0593;
-		tagPosA << 0.0157, 0.3202, 0.0593;
-		t->ref.posTag_W = Eigen::Matrix4d::Identity(4,4);
-		t->ref.posTag_W.col(3).topRows(3) = tagPosA;
-		t->ref.posTag_W = t->ref.posTag_W * tagA;
-
-		//ROS_INFO_STREAM("dude it's late"<<std::endl << t->ref.posTag_W);
-
-
-//		t->ref.posTag_W <<
-//		                   0.3202,	0.3202,	0.3202,	0.3202, // cam2
-//						   -0.0343,	0.0657,	0.0657,	-0.0343,
-//						   0.0093,	0.0093,	0.1093,	0.1093,
-//						   1,	1,	1,	1;
-//		                  -0.0657,	0.0343,	0.0343,	-0.0657, //Cam1
-//						   0.3202,	0.3202,	0.3202,	 0.3202,
-//						   0.0093,	0.0093,	0.1093,	 0.1093,
-//						   1,		1,		1,		 1;
-
-	//	++t;
-	//}
-	//Second tag
-	tagHandle_t t2 = *t;
-
-	t2.ref.cube2Cam_H <<
-		                     0,	0,	1,	0, // cam2
-							 -1,0,	0,	0,
-							 0,	-1,	0,	0,
-							 0,	0,	0,	1;
-	Eigen::Matrix3d rot90;
-	rot90 <<  0,    1,    0,
-	         -1,    0,    0,
-		      0,    0 ,   1;
-	t2.ref.posTag_W = Eigen::Matrix4d::Identity(4,4);
-	t2.ref.posTag_W.block(0, 0, 3, 3) = rot90;
-	Eigen::Vector3d tagPosB(0.3202, -0.0157, 0.0593);
-	t2.ref.posTag_W.col(3).topRows(3) = tagPosB;
-	t2.ref.posTag_W = t2.ref.posTag_W * tagA;
-//	t2.ref.posTag_W <<
-//	0.3202,	0.3202,	0.3202,	0.3202,
-//	0.0343,	-0.0657,-0.0657, 0.0343,
-//	0.0093,	0.0093,	0.1093,	0.1093,
-//	1,	1,	1,	1;
-
-	tagsDetected.push_back(t2);
-
-
-
-}
 
 
 void ArtagPoseNode::dynamicParametersCallback(artag_pose::ArtagPoseConfig &config, uint32_t level){
 	ROS_INFO("Parameters changed");
-
+	std_pose = config.std_pose;
+	std_T = config.std_T;
+	std_R = config.std_R;
 	pf->updateParameters(config.std_pose,
 	                     config.std_T,
-	                     config.std_R,
-	                     config.std_DT,
-	                     config.std_DR);
+	                     config.std_R);
 }
 
 
@@ -310,33 +239,11 @@ int main(int argc, char **argv){
 					   0,	1,	0,	-0.5,
 					   0,	0,	1,	-0.5,
 					   0,	0	,0	,1;
-//	                      1,  0,  0,  -1.0,// old
-//				          0,  1,  0,  0,
-//	                      0,  0,  1,  0,
-//				          0,  0,  0,  1;
 
 	ParticleFilter *p = new ParticleFilter(forces, range, world2TagInit_H, nbr_particles, std_pose, std_R, std_T);
 
 	ArtagPoseNode mw(p);
 
 	mw.start();
-	/*
-	// TODO load a csv
-	Eigen::MatrixXd data(4,7);
-	// tx, ty, tz, rx, ry, rz, rw
-	data << 0.131816708409,0.763523402815,12.9119347279,0.997427140486,-0.00453556586724,-0.00616969498657,0.0712773661727,
-	        0.131931847866,0.763413953575,12.9100207,0.997298885456,-0.00455192282082,-0.00803591208295,0.0728672572854,
-	        0.131973728663,0.763381963781,12.909917379,0.997402676848,-0.00421134000945,-0.00476821825192,0.0717455847183,
-	        0.13227620295,0.762760021493,12.9041169895,0.997132343074,-0.00376080959683,0.00331893837823,0.0755111339748;
-	Eigen::Vector3d cam2Tag_T;
-	Eigen::Quaterniond cam2Tag_R;
-	int nbr_iter = 2;
-	for(int  i = 0; i < nbr_iter; i++){
-			cam2Tag_T = Eigen::Vector3d(data(i, 0), data(i, 1), data(i, 2));
-			cam2Tag_R = Eigen::Quaterniond(data(i, 6), data(i, 3), data(i, 4), data(i, 5)); // Eigen is q(w, x, y, z)
-			p.update(cam2Tag_T, cam2Tag_R);
-	}
-
-	*/
 	return 0;
 }

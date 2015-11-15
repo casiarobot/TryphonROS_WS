@@ -56,7 +56,7 @@ class ParticleFilter
 	Eigen::MatrixXd particles;
 	int nbr_particles;
 	/* Standard deviation */
-	double std_pose, std_R, std_T, std_DT, std_DR;
+	double std_pose, std_R, std_T;
 	/* Likelihood */
 	Eigen::VectorXd ll;
 
@@ -82,7 +82,7 @@ public:
 
 	geometry_msgs::PoseArray getParticleMsg(const Eigen::Vector3d &offset);
 	geometry_msgs::PoseStamped getBestLikelihoodMsg(const Eigen::Vector3d &offset);
-	void updateParameters(double p, double r, double t, double dt, double dr);
+	void updateParameters(double p, double r, double t);
 private:
 	bool performCameraProjection(Eigen::MatrixXd projectionMatrix,
 	                             Eigen::MatrixXd dataPoints,
