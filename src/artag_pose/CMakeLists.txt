@@ -21,9 +21,9 @@ cmake_modules
 
 # Set debug mode for breakpoint in gdb and QtCreator
 # Comment for release
-set(CMAKE_BUILD_TYPE Debug)
+#set(CMAKE_BUILD_TYPE Debug)
 if(CMAKE_COMPILER_IS_GNUCXX)
-#    set(CMAKE_CXX_FLAGS "-O3")        ## Optimize
+    set(CMAKE_CXX_FLAGS "-O3")        ## Optimize
 endif()
 
 find_package(Eigen REQUIRED)

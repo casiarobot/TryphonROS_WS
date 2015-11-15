@@ -15,7 +15,7 @@
 #include <geometry_msgs/PolygonStamped.h>
 #include <dynamic_reconfigure/server.h>
 
-#include <ar_track_alvar/AlvarMarkers.h>
+#include <ar_track_alvar_msgs/AlvarMarkers.h> //change this line to compile on hydro.
 #include <sensors/compass.h>
 
 #include <artag_pose/ArtagPoseConfig.h> // Auto-generate by a configuration file
