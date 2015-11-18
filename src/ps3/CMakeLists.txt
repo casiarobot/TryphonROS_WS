@@ -15,7 +15,7 @@ find_package(catkin REQUIRED COMPONENTS geometry_msgs sensor_msgs roscpp rospy s
 
 ## Declare a catkin package
 catkin_package(
-# INCLUDE_DIRS include
+INCLUDE_DIRS include
 # Libraries
 CATKIN_DEPENDS   )
 
@@ -34,6 +34,10 @@ add_dependencies(ps3 sensors_gencpp  sensor_msgs geometry_msgs)
 add_executable(ps3_z src/ps3_z.cpp)
 target_link_libraries(ps3_z ${catkin_LIBRARIES})
 add_dependencies(ps3_z sensors_gencpp std_msgs  geometry_msgs state)
+
+add_executable(ps3XZLC src/ps3XZLC.cpp)
+target_link_libraries(ps3XZLC ${catkin_LIBRARIES})
+add_dependencies(ps3XZLC sensors_gencpp std_msgs  geometry_msgs state)
 
 #%EndTag(FULLTEXT)%
 

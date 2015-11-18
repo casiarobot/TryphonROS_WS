@@ -44,6 +44,10 @@ add_executable(control src/control.cpp)
 target_link_libraries(control ${state_LIBRARIES} ${catkin_LIBRARIES})
 add_dependencies(control sensors_gencpp std_msgs geometry_msgs sensors state)
 
+add_executable(controlxzlc src/controlxzlc.cpp)
+target_link_libraries(controlxzlc ${state_LIBRARIES} ${catkin_LIBRARIES})
+add_dependencies(controlxzlc sensors_gencpp std_msgs geometry_msgs sensors state)
+
 add_executable(ar_convert src/ar_convert.cpp)
 target_link_libraries(ar_convert ${state_LIBRARIES} ${catkin_LIBRARIES})
 add_dependencies(ar_convert sensors_gencpp std_msgs geometry_msgs sensors state)

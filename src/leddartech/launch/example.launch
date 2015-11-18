@@ -1,0 +1,7 @@
+<launch>
+	<node name="leddar_one" type="leddar_one" pkg="leddartech" output="screen">
+		<param name="publishTopic" value="" />
+		<param name="portName" value="ttyUSB3"/>
+		<param name="modbusAddress" value="1" />
+	</node>
+</launch>

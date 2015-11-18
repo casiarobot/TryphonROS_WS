@@ -1,0 +1,17 @@
+<package>
+  <description brief="leddar_tech">
+
+     leddar_tech
+
+  </description>
+  <author>smichaud</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/leddar_tech</url>
+  <depend package="std_msgs"/>
+  <depend package="rospy"/>
+  <depend package="roscpp"/>
+
+</package>
+
+
