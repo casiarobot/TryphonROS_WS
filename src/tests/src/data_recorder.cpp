@@ -23,14 +23,18 @@
 
 using namespace std;
 
-geometry_msgs::Pose PoseEKF,PoseGaz,PoseCtrl,PoseDesir, Posetraj, PoseAR1, PoseAR3, PoseIacc, PoseIgyr,PoseRP,PoseARconv;
-geometry_msgs::Twist VelEKF, VelGAZ;
+geometry_msgs::Pose PoseEKF,PoseGaz,PoseCtrl,PoseDesir, Posetraj, PoseAR1, PoseAR3, PoseIacc, PoseIgyr,PoseRP,PoseARconv,PoseAR_1,PoseAR_2;
+geometry_msgs::Twist VelEKF, VelGAZ,VelAR_1,VelAR_2;
 geometry_msgs::Wrench CmdCtrl,CmdReal;
 sensor_msgs::Imu Imu;
 double debut;
 
 std::ofstream filePAR1;
 std::ofstream filePAR3;
+std::ofstream filePAR_1;
+std::ofstream filePAR_2;
+std::ofstream fileVAR_1;
+std::ofstream fileVAR_2;
 std::ofstream fileIMUB;
 std::ofstream fileIMUPOSE;
 std::ofstream fileARC;
@@ -80,6 +84,35 @@ void subARconv(const geometry_msgs::PoseStamped PoseARC)
   fileARC <<","<< PoseARconv.orientation.y <<","<< PoseARconv.orientation.z << "," << PoseARconv.orientation.w <<endl;
 }
 
+void subarpose_1(const geometry_msgs::PoseStamped PoseAR)
+{
+  PoseAR_1=PoseAR.pose;
+  double secs = ros::Time::now().toSec()-debut;
+  filePAR_1 <<secs << "," << PoseAR_1.position.x << ","<< PoseAR_1.position.y <<","<< PoseAR_1.position.z <<","<< PoseAR_1.orientation.x;
+  filePAR_1 <<","<< PoseAR_1.orientation.y <<","<< PoseAR_1.orientation.z << "," << PoseAR_1.orientation.w <<endl;
+}
+
+void subarpose_2(const geometry_msgs::PoseStamped PoseAR)
+{
+  PoseAR_2=PoseAR.pose;
+  double secs = ros::Time::now().toSec()-debut;
+  filePAR_2 <<secs << "," << PoseAR_2.position.x << ","<< PoseAR_2.position.y <<","<< PoseAR_2.position.z <<","<< PoseAR_2.orientation.x;
+  filePAR_2 <<","<< PoseAR_2.orientation.y <<","<< PoseAR_2.orientation.z << "," << PoseAR_2.orientation.w <<endl;
+}
+void subarvel_1(const geometry_msgs::TwistStamped VelAR)
+{
+  VelAR_1=VelAR.twist;
+  double secs = ros::Time::now().toSec()-debut;
+  fileVAR_1 <<secs << "," << VelAR_1.linear.x << ","<< VelAR_1.linear.y <<","<< VelAR_1.linear.z <<","<< VelAR_1.angular.x;
+  fileVAR_1 <<","<< VelAR_1.angular.y <<","<< VelAR_1.angular.z <<endl;
+}
+void subarvel_2(const geometry_msgs::TwistStamped VelAR)
+{
+  VelAR_2=VelAR.twist;
+  double secs = ros::Time::now().toSec()-debut;
+  fileVAR_2 <<secs << "," << VelAR_2.linear.x << ","<< VelAR_2.linear.y <<","<< VelAR_2.linear.z <<","<< VelAR_2.angular.x;
+  fileVAR_2 <<","<< VelAR_2.angular.y <<","<< VelAR_2.angular.z <<endl;
+}
 
 void subARtag1(const ar_track_alvar_msgs::AlvarMarkers Alvar1)
 {
@@ -189,7 +222,7 @@ void subPath(const geometry_msgs::Pose2D Pose)
 void subCommandProps(const tests::props_command props)
 {
   double commands[8]={0,0,0,0,0,0,0,0};
-  for(int i=0;i<props.commands.size();i++){commands[i]=props.commands[i];}
+  for(int i=0;i<8;i++){commands[i]=props.commands[i];}
 	double secs = ros::Time::now().toSec()-debut;
 	fileCP <<secs << "," << commands[0] << ","<< commands[1] <<","<< commands[2] <<","<< commands[3];
 	fileCP <<","<< commands[4] <<","<< commands[5] <<","<< commands[6] <<","<< commands[7] <<endl;
@@ -247,14 +280,21 @@ int main(int argc, char **argv)
 
 /////////////////////////////////ArTag recording
 
-sprintf(rosname,"/%s/artags1/artag1/ar_pose_marker",temp_arg.c_str());
-  ros::Subscriber subPARtag1 = node.subscribe(rosname, 100, subARtag1);
+
    sprintf(rosname,"/%s/imubuff",temp_arg.c_str()); //messed up Ip's
   ros::Subscriber subIMUBuff = node.subscribe(rosname, 100, subIMUB);
-  sprintf(rosname,"/%s/imu_rp",temp_arg.c_str()); 
-  ros::Subscriber subIMUPOSE = node.subscribe(rosname, 100, subIMUPose);
-  sprintf(rosname,"/%s/pose_ar_frame",temp_arg.c_str()); 
-  ros::Subscriber subarconv = node.subscribe(rosname, 100, subARconv);
+  sprintf(rosname,"/%s/ar_pose1",temp_arg.c_str()); //messed up Ip's
+  ros::Subscriber subarpose1 = node.subscribe(rosname, 100, subarpose_1);
+  sprintf(rosname,"/%s/ar_pose2",temp_arg.c_str()); //messed up Ip's
+  ros::Subscriber subarpose2 = node.subscribe(rosname, 100, subarpose_2);
+  sprintf(rosname,"/%s/ar_vel1",temp_arg.c_str()); //messed up Ip's
+  ros::Subscriber subarvel1 = node.subscribe(rosname, 100, subarvel_1);
+  sprintf(rosname,"/%s/ar_vel2",temp_arg.c_str()); //messed up Ip's
+  ros::Subscriber subarvel2 = node.subscribe(rosname, 100, subarvel_2);
+  sprintf(rosname,"/%s/command_control",temp_arg.c_str());
+  ros::Subscriber subCC = node.subscribe(rosname, 100, subCommandControl);
+   sprintf(rosname,"/%s/command_props",temp_arg.c_str());
+  ros::Subscriber subCP = node.subscribe(rosname, 100, subCommandProps);
  //////////////////////////////////////////////
 
 
@@ -279,8 +319,7 @@ sprintf(rosname,"/%s/artags1/artag1/ar_pose_marker",temp_arg.c_str());
 
 ///////////////////////////Misc
   /*
-  sprintf(rosname,"/%s/command_control",temp_arg.c_str());
-  ros::Subscriber subCC = node.subscribe(rosname, 100, subCommandControl);
+
   ros::Subscriber subCR = node.subscribe("tryphon/thrust", 100, subCommandReal);
   sprintf(rosname,"/%s/pose",temp_arg.c_str());
   ros::Subscriber subPC = node.subscribe(rosname, 100, subPoseControl);
@@ -288,12 +327,19 @@ sprintf(rosname,"/%s/artags1/artag1/ar_pose_marker",temp_arg.c_str());
   ros::Subscriber subI = node.subscribe(rosname, 100, subImu);
   sprintf(rosname,"/%s/path_info",temp_arg.c_str());
   ros::Subscriber subP = node.subscribe(rosname, 100, subPath);
-  sprintf(rosname,"/%s/command_props",temp_arg.c_str());
-  ros::Subscriber subCP = node.subscribe(rosname, 100, subCommandProps);
+
   sprintf(rosname,"/%s/cubeA_pose",temp_arg.c_str());
   ros::Subscriber subSA = node.subscribe(rosname, 100, subSICKA);
   sprintf(rosname,"/%s/cubeB_pose",temp_arg.c_str());
   ros::Subscriber subSB = node.subscribe(rosname, 100, subSICKB);
+  
+    sprintf(rosname,"/%s/imu_rp",temp_arg.c_str()); 
+  ros::Subscriber subIMUPOSE = node.subscribe(rosname, 100, subIMUPose);
+  sprintf(rosname,"/%s/pose_ar_frame",temp_arg.c_str()); 
+  ros::Subscriber subarconv = node.subscribe(rosname, 100, subARconv);
+  
+  sprintf(rosname,"/%s/artags1/artag1/ar_pose_marker",temp_arg.c_str());
+  ros::Subscriber subPARtag1 = node.subscribe(rosname, 100, subARtag1);
   */
 ////////////////////////////////////
 
@@ -307,20 +353,27 @@ sprintf(rosname,"/%s/artags1/artag1/ar_pose_marker",temp_arg.c_str());
   
 
   /////////////////////////////////////////////////ArTag Recording
- sprintf(buffer,"%s/%s/%s_PAR1.csv",link,temp_arg.c_str(),argv[1]);
-  filePAR1.open(buffer);
-  ROS_INFO(buffer);
-  sprintf(buffer,"%s/%s/%s_PAR3.csv",link,temp_arg.c_str(),argv[1]);
-  filePAR3.open(buffer);
-  ROS_INFO(buffer);
+
    sprintf(buffer,"%s/%s/%s_IMUB.csv",link,temp_arg.c_str(),argv[1]);
   fileIMUB.open(buffer);
   ROS_INFO(buffer);
-  sprintf(buffer,"%s/%s/%s_IMUPose.csv",link,temp_arg.c_str(),argv[1]);
-  fileIMUPOSE.open(buffer);
+  sprintf(buffer,"%s/%s/%s_arpose1.csv",link,temp_arg.c_str(),argv[1]);
+  filePAR_1.open(buffer);
   ROS_INFO(buffer);
-  sprintf(buffer,"%s/%s/%s_Arconv.csv",link,temp_arg.c_str(),argv[1]);
-  fileARC.open(buffer);
+  sprintf(buffer,"%s/%s/%s_arpose2.csv",link,temp_arg.c_str(),argv[1]);
+  filePAR_2.open(buffer);
+  ROS_INFO(buffer);
+   sprintf(buffer,"%s/%s/%s_arvel1.csv",link,temp_arg.c_str(),argv[1]);
+  fileVAR_1.open(buffer);
+  ROS_INFO(buffer);
+  sprintf(buffer,"%s/%s/%s_arvel2.csv",link,temp_arg.c_str(),argv[1]);
+  fileVAR_2.open(buffer);
+  ROS_INFO(buffer);
+  sprintf(buffer,"%s/%s/%s_CCtrl.csv",link,temp_arg.c_str(),argv[1]);
+  fileCCtrl.open(buffer);
+  ROS_INFO(buffer);
+ sprintf(buffer,"%s/%s/%s_CP.csv",link,temp_arg.c_str(),argv[1]);
+  fileCP.open(buffer);
   ROS_INFO(buffer);
 //////////////////////////////////////////////////////////////////////
 
@@ -344,15 +397,14 @@ sprintf(rosname,"/%s/artags1/artag1/ar_pose_marker",temp_arg.c_str());
  sprintf(buffer,"%s/%s/%s_traj.csv",link,temp_arg.c_str(),argv[1]);
   filetraj.open(buffer);
   ROS_INFO(buffer);
-  */
+
+    */
 //////////////////////////////////////////////////////////////////////
   
 
 ////////////////////////////////////////////////////////////////////////////Misc
   /*
-  sprintf(buffer,"%s/%s/%s_CCtrl.csv",link,temp_arg.c_str(),argv[1]);
-  fileCCtrl.open(buffer);
-  ROS_INFO(buffer);
+
   sprintf(buffer,"%s/%s/%s_CRl.csv",link,temp_arg.c_str(),argv[1]);
   fileCRl.open(buffer);
   ROS_INFO(buffer);
@@ -365,14 +417,25 @@ sprintf(rosname,"/%s/artags1/artag1/ar_pose_marker",temp_arg.c_str());
   sprintf(buffer,"%s/%s/%s_Path.csv",link,temp_arg.c_str(),argv[1]);
   filePath.open(buffer);
   ROS_INFO(buffer);
-  sprintf(buffer,"%s/%s/%s_CP.csv",link,temp_arg.c_str(),argv[1]);
-  fileCP.open(buffer);
-  ROS_INFO(buffer);
+  
   sprintf(buffer,"%s/%s/%s_SICKA.csv",link,temp_arg.c_str(),argv[1]);
   fileSICKA.open(buffer);
   ROS_INFO(buffer);
   sprintf(buffer,"%s/%s/%s_SICKB.csv",link,temp_arg.c_str(),argv[1]);
   fileSICKB.open(buffer);
+  ROS_INFO(buffer);
+
+    sprintf(buffer,"%s/%s/%s_IMUPose.csv",link,temp_arg.c_str(),argv[1]);
+  fileIMUPOSE.open(buffer);
+  ROS_INFO(buffer);
+ sprintf(buffer,"%s/%s/%s_Arconv.csv",link,temp_arg.c_str(),argv[1]);
+  fileARC.open(buffer);
+  ROS_INFO(buffer);
+   sprintf(buffer,"%s/%s/%s_PAR1.csv",link,temp_arg.c_str(),argv[1]);
+  filePAR1.open(buffer);
+  ROS_INFO(buffer);
+  sprintf(buffer,"%s/%s/%s_PAR3.csv",link,temp_arg.c_str(),argv[1]);
+  filePAR3.open(buffer);
   ROS_INFO(buffer);
 */
   ////////////////////////////////////////////////////////////////////////
@@ -380,11 +443,14 @@ sprintf(rosname,"/%s/artags1/artag1/ar_pose_marker",temp_arg.c_str());
 
 
 /////////////////////////////////////////////////ArTag Recording
-filePAR1   << "time,x,y,z,qx,qy,qz,qw" << endl  ;
-filePAR3   << "time,x,y,z,qx,qy,qz,qw" << endl  ;
+
 fileIMUB   << "time,roll,pitch" << endl  ;
-fileIMUPOSE   << "time,x,y,z,qx,qy,qz,qw" << endl  ;
-fileARC   << "time,x,y,z,qx,qy,qz,qw" << endl  ;
+filePAR_1   << "time,x,y,z,qx,qy,qz,qw" << endl  ;
+filePAR_2   << "time,x,y,z,qx,qy,qz,qw" << endl  ;
+fileVAR_1   << "time,vx,vy,vz,wx,wy,wz" << endl  ;
+fileVAR_2   << "time,vx,vy,vz,wx,wy,wz" << endl  ;
+fileCCtrl  << "time,fx,fy,fz,tx,ty,tz" << endl  ;
+fileCP     << "time,p0,p1,p2,p3,p4,p5,p6,p7" << endl  ;
 //////////////////////////////////////////////////////////////////////
 
 
@@ -402,14 +468,17 @@ fileARC   << "time,x,y,z,qx,qy,qz,qw" << endl  ;
  ////////////////////////////////////////////////////////////////////////////Misc
   /*
   fileProp   << "time,x,y,z,qx,qy,qz,qw" << endl  ;
-  fileCCtrl  << "time,fx,fy,fz,tx,ty,tz" << endl  ;
-  fileCRl    << "time,fx,fy,fz,tx,ty,tz" << endl  ;
+    fileCRl    << "time,fx,fy,fz,tx,ty,tz" << endl  ;
   filePCtrl  << "time,x,y,z,qx,qy,qz,qw" << endl  ;
     fileI      << "time,ax,ay,az,gx,gy,gz" << endl  ;
   filePath   << "time,pathNb,step,path"  << endl  ;
-  fileCP     << "time,p0,p1,p2,p3,p4,p5,p6,p7" << endl  ;
+
   fileSICKA   << "time,x,y,z,qx,qy,qz,qw" << endl  ;
   fileSICKB   << "time,x,y,z,qx,qy,qz,qw" << endl  ;
+  fileIMUPOSE   << "time,x,y,z,qx,qy,qz,qw" << endl  ;
+fileARC   << "time,x,y,z,qx,qy,qz,qw" << endl  ;
+filePAR1   << "time,x,y,z,qx,qy,qz,qw" << endl  ;
+filePAR3   << "time,x,y,z,qx,qy,qz,qw" << endl  ;
 */
 ////////////////////////////////////////////////////////////////////////
 

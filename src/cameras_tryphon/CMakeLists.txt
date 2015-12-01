@@ -29,9 +29,9 @@ find_library(FLYCAPTURE2 flycapture)
 
 
 
-add_executable(pgrff_tryphon_software src/pgrff_tryphon_software.cpp)
-target_link_libraries(pgrff_tryphon_software ${catkin_LIBRARIES} ${FLYCAPTURE2}  ${Boost_LIBRARIES})
-add_dependencies(pgrff_tryphon_software std_msgs sensor_msgs camera_info_manager image_transport ${PROJECT_NAME}_gencfg)
+#add_executable(pgrff_tryphon_software src/pgrff_tryphon_software.cpp)
+#target_link_libraries(pgrff_tryphon_software ${catkin_LIBRARIES} ${FLYCAPTURE2}  ${Boost_LIBRARIES})
+#add_dependencies(pgrff_tryphon_software std_msgs sensor_msgs camera_info_manager image_transport ${PROJECT_NAME}_gencfg)
 
 add_executable(pgrff_tryphon_software2 src/pgrff_tryphon_software2.cpp)
 target_link_libraries(pgrff_tryphon_software2 ${catkin_LIBRARIES} ${FLYCAPTURE2}  ${Boost_LIBRARIES})

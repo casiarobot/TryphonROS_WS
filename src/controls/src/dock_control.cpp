@@ -230,7 +230,8 @@ Eigen::Matrix3d RCPM1,RCPM2;
  vecZ(0)=0;
   vecZ(1)=0;  
   vecZ(2)=0.05;
-maxPrctThrust.data=55.0;
+maxPrctThrust.data=100.0;
+
 
 
 glidepos1(0)=0;
@@ -251,7 +252,7 @@ RCPM2=CPM(rho2);
 
 for (int k = 0 ; k<3;k++){stabilizepos(k)=0;};
 for (int k = 0 ; k<3;k++){stabilizeang(k)=0;};
-stabilizepos(1)=.6; //(-) for -y cameras
+stabilizepos(1)=.6; //(-) for -y cameras//need to include rotation
 
 ros::init(argc, argv, "dock_control");
 ros::NodeHandle nh;
@@ -277,6 +278,7 @@ dynamic_reconfigure::Server<controls::dock_controlConfig>::CallbackType f;
 
 ros::Rate loop_rate(10);
 
+/*
 Kgain<<             0.6828,0,0,0.6828,0,0,0,0,0,3.8785,0,0,3.8785,0,0,0,0,0,  //good gains but with +y cameras
 					0,0.5463,0,0,0.5463,0,0,0,0,0,2.9485,0,0,2.9485,0,0,0,0,
 					0,0,1.15,0,0,1.15,0,0.,0.,0,0,5.5500,0,0,5.5500,0,0,0,
@@ -284,7 +286,7 @@ Kgain<<             0.6828,0,0,0.6828,0,0,0,0,0,3.8785,0,0,3.8785,0,0,0,0,0,  //
 					0,0,-0.145,0,0,0.145,0,0.145,0,0,0,0,0,0,0,0,0,0,
 					0,0.175,0,0,-0.175,0,0,0,0.175,0,1.05,0,0,-1.05,0,0,0,1.05;
 
-
+*/
 
 /*
 
@@ -303,7 +305,7 @@ Kgain<<             0.6828,0,0,0.6828,0,0,0,0,0,3.8785,0,0,3.8785,0,0,0,0,0,  //
 						0,0,-0.145,0,0,0.145,0,0.145,0,0,0,-1.95,0,0,1.95,0,1.95,0,
 						0,0.075,0,0,-0.075,0,0,0,0.075,0,1.05,0,0,-1.05,0,0,0,1.05;
 
-
+*/
 
 
 	Kgain<<             .69,0,0,.69,0,0,0,0,0,5.75,0,0,5.75,0,0,0,0,0,
@@ -313,7 +315,7 @@ Kgain<<             0.6828,0,0,0.6828,0,0,0,0,0,3.8785,0,0,3.8785,0,0,0,0,0,  //
 						0,0,-.315,0,0,.315,0,.315,0,0,0,-2.55,0,0,2.55,0,2.55,0,
 						0,1,0,0,-1,0,0,0,1,0,6,0,0,-6,0,0,0,6;
 
-	*/
+	
 
 	while (ros::ok())
 	 {
@@ -348,7 +350,7 @@ stateerr<<rel_pos_1-glidepos1,rel_pos_2-glidepos2,rel_ang_1,rel_vel_1-glidevel1,
 	}
 torque(2)=forcevect(5);
 //torque(1)=forcevect(4); pitch in body frame (roll about y)
-torque(0)=forcevect(3); //ro//ll in body frame pitch for y cam)
+//torque(0)=forcevect(3); //ro//ll in body frame pitch for y cam)
 
  if(fabs(force(2))<2.4 && fabs(force(1))<1.2 && fabs(force(0))<1.2) // increasing only if the command is not saturating //
      {
