@@ -60,7 +60,6 @@ add_executable(artag_pose_node
     # src/yaml_config_loader.cpp
     src/tf_config_loader.cpp
     src/markers_pose.cpp
-
 # PB: I added the header so they are visible in QtCreator,
 # it's *NOT* require for compiling
     include/artag_pose/artag_pose_node.h
@@ -73,7 +72,6 @@ add_executable(artag_pose_node
 
 add_executable(test_pose_node
     src/test_pose_node.cpp
-
 # PB: I added the header so they are visible in QtCreator,
 # it's *NOT* require for compiling
     include/artag_pose/test_pose_node.h
@@ -82,7 +80,7 @@ add_executable(test_pose_node
 )
 
 add_dependencies(artag_pose_node ${catkin_EXPORTED_TARGETS}  ${PROJECT_NAME}_gencf)
-add_dependencies(test_pose_node ${catkin_EXPORTED_TARGETS}  ${PROJECT_NAME}_gencf)
+add_dependencies(test_pose_node  ${catkin_EXPORTED_TARGETS}  ${PROJECT_NAME}_gencf)
 
 
 ## Specify libraries to link a library or executable target against

@@ -22,6 +22,8 @@ void subALVAR1(const ar_track_alvar_msgs::AlvarMarkers Aposes1)
   alvartemp=Aposes1.markers[0];
   geometry_msgs::Pose Pose=alvartemp.pose.pose ; //Pose=Aposes.pose;
   Eigen::Vector3d ALVAR1position;
+   Eigen::Quaterniond quatpos(.7071,-.7071,0,0);
+
 
   ALVAR1position(0)=Pose.position.x; // defined in global frame
   ALVAR1position(1)=Pose.position.y;
@@ -31,7 +33,7 @@ void subALVAR1(const ar_track_alvar_msgs::AlvarMarkers Aposes1)
 
 
   
-
+quat=quatpos*quat;
 
 Rmatrix1=quat.toRotationMatrix();
 ALVAR1position=Rmatrix1*ALVAR1position;

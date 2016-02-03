@@ -283,10 +283,10 @@ int main(int argc, char **argv)
 
    sprintf(rosname,"/%s/imubuff",temp_arg.c_str()); //messed up Ip's
   ros::Subscriber subIMUBuff = node.subscribe(rosname, 100, subIMUB);
-  sprintf(rosname,"/%s/ar_pose1",temp_arg.c_str()); //messed up Ip's
-  ros::Subscriber subarpose1 = node.subscribe(rosname, 100, subarpose_1);
-  sprintf(rosname,"/%s/ar_pose2",temp_arg.c_str()); //messed up Ip's
-  ros::Subscriber subarpose2 = node.subscribe(rosname, 100, subarpose_2);
+  //sprintf(rosname,"/%s/ar_pose1",temp_arg.c_str()); //messed up Ip's
+  //ros::Subscriber subarpose1 = node.subscribe(rosname, 100, subarpose_1);
+  //sprintf(rosname,"/%s/ar_pose2",temp_arg.c_str()); //messed up Ip's
+  //ros::Subscriber subarpose2 = node.subscribe(rosname, 100, subarpose_2);
   sprintf(rosname,"/%s/ar_vel1",temp_arg.c_str()); //messed up Ip's
   ros::Subscriber subarvel1 = node.subscribe(rosname, 100, subarvel_1);
   sprintf(rosname,"/%s/ar_vel2",temp_arg.c_str()); //messed up Ip's
@@ -295,6 +295,8 @@ int main(int argc, char **argv)
   ros::Subscriber subCC = node.subscribe(rosname, 100, subCommandControl);
    sprintf(rosname,"/%s/command_props",temp_arg.c_str());
   ros::Subscriber subCP = node.subscribe(rosname, 100, subCommandProps);
+   sprintf(rosname,"/%s/artags1/artag/ar_pose_marker",temp_arg.c_str());
+  ros::Subscriber subPARtag1 = node.subscribe(rosname, 100, subARtag1);
  //////////////////////////////////////////////
 
 
@@ -338,8 +340,7 @@ int main(int argc, char **argv)
   sprintf(rosname,"/%s/pose_ar_frame",temp_arg.c_str()); 
   ros::Subscriber subarconv = node.subscribe(rosname, 100, subARconv);
   
-  sprintf(rosname,"/%s/artags1/artag1/ar_pose_marker",temp_arg.c_str());
-  ros::Subscriber subPARtag1 = node.subscribe(rosname, 100, subARtag1);
+
   */
 ////////////////////////////////////
 
@@ -357,12 +358,12 @@ int main(int argc, char **argv)
    sprintf(buffer,"%s/%s/%s_IMUB.csv",link,temp_arg.c_str(),argv[1]);
   fileIMUB.open(buffer);
   ROS_INFO(buffer);
-  sprintf(buffer,"%s/%s/%s_arpose1.csv",link,temp_arg.c_str(),argv[1]);
-  filePAR_1.open(buffer);
-  ROS_INFO(buffer);
-  sprintf(buffer,"%s/%s/%s_arpose2.csv",link,temp_arg.c_str(),argv[1]);
-  filePAR_2.open(buffer);
-  ROS_INFO(buffer);
+  //sprintf(buffer,"%s/%s/%s_arpose1.csv",link,temp_arg.c_str(),argv[1]);
+  //filePAR_1.open(buffer);
+  //ROS_INFO(buffer);
+  //sprintf(buffer,"%s/%s/%s_arpose2.csv",link,temp_arg.c_str(),argv[1]);
+  //filePAR_2.open(buffer);
+  //ROS_INFO(buffer);
    sprintf(buffer,"%s/%s/%s_arvel1.csv",link,temp_arg.c_str(),argv[1]);
   fileVAR_1.open(buffer);
   ROS_INFO(buffer);
@@ -374,6 +375,12 @@ int main(int argc, char **argv)
   ROS_INFO(buffer);
  sprintf(buffer,"%s/%s/%s_CP.csv",link,temp_arg.c_str(),argv[1]);
   fileCP.open(buffer);
+  ROS_INFO(buffer);
+   sprintf(buffer,"%s/%s/%s_PAR1.csv",link,temp_arg.c_str(),argv[1]);
+  filePAR1.open(buffer);
+  ROS_INFO(buffer);
+  sprintf(buffer,"%s/%s/%s_PAR3.csv",link,temp_arg.c_str(),argv[1]);
+  filePAR3.open(buffer);
   ROS_INFO(buffer);
 //////////////////////////////////////////////////////////////////////
 
@@ -431,12 +438,7 @@ int main(int argc, char **argv)
  sprintf(buffer,"%s/%s/%s_Arconv.csv",link,temp_arg.c_str(),argv[1]);
   fileARC.open(buffer);
   ROS_INFO(buffer);
-   sprintf(buffer,"%s/%s/%s_PAR1.csv",link,temp_arg.c_str(),argv[1]);
-  filePAR1.open(buffer);
-  ROS_INFO(buffer);
-  sprintf(buffer,"%s/%s/%s_PAR3.csv",link,temp_arg.c_str(),argv[1]);
-  filePAR3.open(buffer);
-  ROS_INFO(buffer);
+  
 */
   ////////////////////////////////////////////////////////////////////////
   
@@ -445,8 +447,10 @@ int main(int argc, char **argv)
 /////////////////////////////////////////////////ArTag Recording
 
 fileIMUB   << "time,roll,pitch" << endl  ;
-filePAR_1   << "time,x,y,z,qx,qy,qz,qw" << endl  ;
-filePAR_2   << "time,x,y,z,qx,qy,qz,qw" << endl  ;
+//filePAR_1   << "time,x,y,z,qx,qy,qz,qw" << endl  ;
+//filePAR_2   << "time,x,y,z,qx,qy,qz,qw" << endl  ;
+filePAR1   << "time,x,y,z,qx,qy,qz,qw" << endl  ;
+filePAR3   << "time,x,y,z,qx,qy,qz,qw" << endl  ;
 fileVAR_1   << "time,vx,vy,vz,wx,wy,wz" << endl  ;
 fileVAR_2   << "time,vx,vy,vz,wx,wy,wz" << endl  ;
 fileCCtrl  << "time,fx,fy,fz,tx,ty,tz" << endl  ;

@@ -75,8 +75,9 @@ void subALVAR1(const ar_track_alvar_msgs::AlvarMarkers Aposes1)
 //Eigen::Quaterniond quatpos(0,0,.7071,-.7071); //to make x y z of camera/artag output aloligned with tryphon body frame
 Eigen::Quaterniond quatpos(.7071,-.7071,0,0);
 Eigen::Quaterniond quatang(0,1,0,0); //to make orientation all 0 when docking face alligned
+Eigen::Quaterniond quat15degyaw( 0.9962,0,0,.0872);
 quat=quat*quatang.inverse();  
-
+quat=quat*quatpos.inverse()*quat15degyaw.inverse();
 
 Rmatrix1=quatpos.toRotationMatrix();
 ALVAR1position=Rmatrix1*ALVAR1position;
@@ -220,8 +221,8 @@ int main(int argc, char **argv)
   ros::init(argc, argv, "ar_state");
   ros::NodeHandle nh;
 
-ros::Subscriber sub1 = nh.subscribe("/192_168_10_243/artags/artag1/ar_pose_marker",1,subALVAR1);
-ros::Subscriber sub2 = nh.subscribe("/192_168_10_244/artags/artag1/ar_pose_marker",1,subALVAR2);
+ros::Subscriber sub1 = nh.subscribe("/192_168_10_243/artags1/artag/ar_pose_marker",1,subALVAR1);
+ros::Subscriber sub2 = nh.subscribe("/192_168_10_244/artags2/artag/ar_pose_marker",1,subALVAR2);
 
 ros::Publisher  alvarp1_pub = nh.advertise<geometry_msgs::PoseStamped>("/192_168_10_243/ar_pose",1);
 ros::Publisher  alvarp2_pub = nh.advertise<geometry_msgs::PoseStamped>("/192_168_10_244/ar_pose",1);
@@ -275,7 +276,7 @@ alvarv2.header.stamp=ros::Time::now();
   	alvarp2_pub.publish(alvarp2);
   	alvarv1_pub.publish(alvarv1);
   	alvarv2_pub.publish(alvarv2);
-
+loop_rate.sleep();
 }
 
 	return 0;

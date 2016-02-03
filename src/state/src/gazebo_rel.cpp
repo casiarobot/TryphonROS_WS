@@ -4,7 +4,9 @@
 
 #include <ros/ros.h>
 #include "geometry_msgs/PoseStamped.h"
+#include "geometry_msgs/Vector3Stamped.h"
 #include "geometry_msgs/TwistStamped.h"
+#include "sensors/compass.h"
 // Euler file
 #include <Euler_utility.h>
 #include "vects2geoMsgs.cpp"
@@ -18,8 +20,7 @@ geometry_msgs::PoseStamped  Gazp1a, Gazp2a,Gazp1b, Gazp2b;
 geometry_msgs::TwistStamped Gazv1, Gazv2;
 double t;
 
-
-
+sensors::compass comp1,comp2,compass_rel;
 
 void subgaz1_243a(const geometry_msgs::PoseStamped Pose)
 {
@@ -401,6 +402,32 @@ RvelM=quatang.toRotationMatrix();
 //////////////////////
 ////////////////
 ////////////////
+void subcompassa(geometry_msgs::Vector3Stamped magn) //set any pose msg to zero
+{
+Eigen::Vector3d meas;
+
+meas(0)=magn.vector.x;
+meas(1)=magn.vector.y;
+meas(2)=magn.vector.z;
+
+double angle = fmod(atan2(meas(1),meas(0)),2*M_PI)*360.0/(2*M_PI); //assumed to have no roll or pitch. 
+
+comp1.rz[0]=angle;
+}
+
+void subcompassb(geometry_msgs::Vector3Stamped magn) //set any pose msg to zero
+{
+Eigen::Vector3d meas;
+
+meas(0)=magn.vector.x;
+meas(1)=magn.vector.y;
+meas(2)=magn.vector.z;
+
+double angle = fmod(atan2(meas(1),meas(0)),2*M_PI)*360.0/(2*M_PI); //assumed to have no roll or pitch. 
+
+comp2.rz[0]=angle;
+}
+
 void pose_zero(geometry_msgs::PoseStamped &p) //set any pose msg to zero
 {
 	p.pose.position.x=0;
@@ -431,8 +458,16 @@ int main(int argc, char **argv)
   ros::init(argc, argv, "gazebo_rel");
   ros::NodeHandle nh;
   t=ros::Time::now().toSec();
+
+compass_rel.id=(int) (0xC0)/2;
+
 //ros::Subscriber sub_243 = nh.subscribe("/192_168_10_243/poseStamped_gazebo",1,subgaz_243);
 //ros::Subscriber sub_244 = nh.subscribe("/192_168_10_244/poseStamped_gazebo",1,subgaz_244);
+    
+
+
+    ros::Subscriber subcomp1 = nh.subscribe("/192_168_10_243/compass_simu",1,subcompassa);
+       ros::Subscriber subcomp2 = nh.subscribe("/192_168_10_244/compass_simu",1,subcompassb);
 ros::Subscriber sub1_243a = nh.subscribe("/192_168_10_243/poseStamped_gazebo_1a",1,subgaz1_243a);
 ros::Subscriber sub2_243a = nh.subscribe("/192_168_10_243/poseStamped_gazebo_2a",1,subgaz2_243a);
 ros::Subscriber sub1_244a = nh.subscribe("/192_168_10_244/poseStamped_gazebo_1a",1,subgaz1_244a);
@@ -447,13 +482,13 @@ ros::Subscriber sub2_243b = nh.subscribe("/192_168_10_243/poseStamped_gazebo_2b"
 ros::Subscriber sub1_244b = nh.subscribe("/192_168_10_244/poseStamped_gazebo_1b",1,subgaz1_244b);
 ros::Subscriber sub2_244b = nh.subscribe("/192_168_10_244/poseStamped_gazebo_2b",1,subgaz2_244b);
 
-ros::Publisher  Gazp1_puba = nh.advertise<geometry_msgs::PoseStamped>("/192_168_10_243/ar_posea",1);
-ros::Publisher  Gazp2_puba = nh.advertise<geometry_msgs::PoseStamped>("/192_168_10_244/ar_posea",1);
+ros::Publisher  Gazp1_puba = nh.advertise<geometry_msgs::PoseStamped>("/192_168_10_243/artags1/artag/ar_pose_marker",1);
+ros::Publisher  Gazp2_puba = nh.advertise<geometry_msgs::PoseStamped>("/192_168_10_243/artags2/artag/ar_pose_marker",1);
 ros::Publisher  Gazp1_pubb = nh.advertise<geometry_msgs::PoseStamped>("/192_168_10_243/ar_poseb",1);
 ros::Publisher  Gazp2_pubb = nh.advertise<geometry_msgs::PoseStamped>("/192_168_10_244/ar_poseb",1);
 ros::Publisher  Gazv1_pub = nh.advertise<geometry_msgs::TwistStamped>("/192_168_10_243/ar_vel",1);
 ros::Publisher  Gazv2_pub = nh.advertise<geometry_msgs::TwistStamped>("/192_168_10_244/ar_vel",1);
-
+ros::Publisher  Gaz_comp_pub = nh.advertise<sensors::compass>("/192_168_10_243/compass",1); //relative yaw in gazebo
 
 
 
@@ -475,8 +510,8 @@ while (ros::ok())
 ros::spinOnce();
 
 
-
-
+compass_rel.rz[0]=(comp1.rz[0]-comp2.rz[0])-180;
+if(compass_rel.rz[0]<0){compass_rel.rz[0]=compass_rel.rz[0]+360;}
 
 Gazp1a.header.stamp=ros::Time::now();
 Gazp2a.header.stamp=ros::Time::now();
@@ -502,7 +537,7 @@ Gazv2.twist=vects2twist(Rmatrix2_243*(Gaz1vel_244-Gaz2vel_243),(Gaz2avel_244-Gaz
   	Gazv2_pub.publish(Gazv2);
     Gazp1_pubb.publish(Gazp1b);
     Gazp2_pubb.publish(Gazp2b);
-
+    Gaz_comp_pub.publish(compass_rel);
 loop_rate.sleep();
 }
 

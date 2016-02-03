@@ -52,6 +52,16 @@ src/kalmanmeilleur.cpp
 src/kalmanbasefilter.cpp
 include/kalmanbasefilter.h
 )
+
+## Declare a C++ executable
+add_executable(kalmanmeilleur_dock
+src/kalmanbasefilter.cpp
+src/kalmanmeilleur_dock.cpp
+include/kalmanbasefilter.h
+)
+
 add_dependencies(kalmanmeilleur ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} ${PROJECT_NAME}_gencfg)
 target_link_libraries(kalmanmeilleur ${catkin_LIBRARIES})
 
+add_dependencies(kalmanmeilleur_dock ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} ${PROJECT_NAME}_gencfg)
+target_link_libraries(kalmanmeilleur_dock ${catkin_LIBRARIES})
