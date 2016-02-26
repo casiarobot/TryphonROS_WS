@@ -510,24 +510,28 @@ while (ros::ok())
 ros::spinOnce();
 
 
-compass_rel.rz[0]=(comp1.rz[0]-comp2.rz[0])-180;
-if(compass_rel.rz[0]<0){compass_rel.rz[0]=compass_rel.rz[0]+360;}
+compass_rel.rz[0]=(-comp1.rz[0]+comp2.rz[0])-180;
+if(compass_rel.rz[0]<0){compass_rel.rz[0]=compass_rel.rz[0]-360;}
 
 Gazp1a.header.stamp=ros::Time::now();
 Gazp2a.header.stamp=ros::Time::now();
 Gazp1b.header.stamp=ros::Time::now();
 Gazp2b.header.stamp=ros::Time::now();
-Gazp1a.pose=vects2pose(Rmatrix1_243*(Gaz2pos_244a-Gaz1pos_243a),(Gaz1angle_244-Gaz2angle_243));
-Gazp2a.pose=vects2pose(Rmatrix2_243*(Gaz1pos_244a-Gaz2pos_243a),(Gaz2angle_244-Gaz1angle_243));
-Gazp1b.pose=vects2pose(Rmatrix1_243*(Gaz2pos_244b-Gaz1pos_243a),(Gaz1angle_244-Gaz2angle_243));
-Gazp2b.pose=vects2pose(Rmatrix2_243*(Gaz1pos_244b-Gaz2pos_243a),(Gaz2angle_244-Gaz1angle_243));
+
+Gaz1angle_243(2)=Gaz1angle_243(2)-Gaz1angle_244(2);
+Gaz2angle_243(2)=Gaz2angle_243(2)-Gaz2angle_244(2);
+
+Gazp1a.pose=vects2pose(Rmatrix1_243*(Gaz2pos_244a-Gaz1pos_243a),(Gaz1angle_243));//-Gaz2angle_243));
+Gazp2a.pose=vects2pose(Rmatrix2_243*(Gaz1pos_244a-Gaz2pos_243a),(Gaz2angle_243));//-Gaz1angle_243));
+Gazp1b.pose=vects2pose(Rmatrix1_243*(Gaz2pos_244b-Gaz1pos_243a),(Gaz1angle_244));//-Gaz2angle_243));
+Gazp2b.pose=vects2pose(Rmatrix2_243*(Gaz1pos_244b-Gaz2pos_243a),(Gaz2angle_244));//-Gaz1angle_243));
 
 
 
 Gazv1.header.stamp=ros::Time::now();
 Gazv2.header.stamp=ros::Time::now();
-Gazv1.twist=vects2twist(Rmatrix1_243*(Gaz2vel_244-Gaz1vel_243),(Gaz1avel_244-Gaz2avel_243));
-Gazv2.twist=vects2twist(Rmatrix2_243*(Gaz1vel_244-Gaz2vel_243),(Gaz2avel_244-Gaz1avel_243));
+Gazv1.twist=vects2twist(Rmatrix1_243*(Gaz2vel_244-Gaz1vel_243),(Gaz1avel_244));//-Gaz2avel_243));
+Gazv2.twist=vects2twist(Rmatrix2_243*(Gaz1vel_244-Gaz2vel_243),(Gaz2avel_244));//-Gaz1avel_243));
 
 
 

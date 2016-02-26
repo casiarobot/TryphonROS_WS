@@ -10,7 +10,7 @@
 #include <iostream>
 #include "kalmanbasefilter.h"
 #include <cmath>
-
+#include <limits>
 
 // ROS messages libraries
 #include "geometry_msgs/PoseStamped.h"
@@ -90,6 +90,7 @@ Eigen::Quaterniond quatposAR(.7071,-.7071,0,0); //to make x y z of camera/artag 
 Eigen::Quaterniond quat15degyawAR( 0.9962,0,0,-.0872);
 Eigen::Quaterniond quattempAR=quat15degyawAR*quatposAR;
 Eigen::Matrix3d RmatrixAR=quattempAR.toRotationMatrix();
+geometry_msgs::PoseStamped Poseforrviz;
 
 //For Real Tryphom
 //Eigen::Quaterniond quatIMU(0.99255, 0,0.12187, 0); // quat of the rotation matrix between the tryphon frame and the IMU frame
@@ -333,10 +334,31 @@ else
 
 double GaussNoise()
 {
-srand (time(NULL));
-double rando1=(rand()%200-100)/10000.0;
+double mu=0.0;
+double sigma=0.005;
+srand(time(NULL));
+    const double epsilon = std::numeric_limits<double>::min();
 
-return rando1;
+
+    static double z0, z1;
+    static bool generate;
+    generate = !generate;
+
+    if (!generate)
+       return z1 * sigma + mu;
+
+    double u1, u2;
+    do
+     {
+       u1 = rand() * (1.0 / RAND_MAX);
+       u2 = rand() * (1.0 / RAND_MAX);
+     }
+    while ( u1 <= epsilon );
+
+    z0 = sqrt(-2.0 * log(u1)) * cos(2*M_PI * u2);
+    z1 = sqrt(-2.0 * log(u1)) * sin(2*M_PI* u2);
+    //return 0;
+   return z0 * sigma + mu;
 }
 
 void subImu(const sensor_msgs::Imu Imu_msg)
@@ -370,6 +392,7 @@ updateSensorInfo(1);
 void subArTag1(const geometry_msgs::PoseStamped Pose1)
 {
     updateSensorInfo(2);   
+Poseforrviz.pose=Pose1.pose;
 
     measures[2] <<  Pose1.pose.position.x+GaussNoise(),  Pose1.pose.position.y+GaussNoise(),  Pose1.pose.position.z+GaussNoise(); //or some distance between and also in target frame so not quite right!!
  measureTimes[2] = ros::Time::now();
@@ -462,7 +485,7 @@ void subLeddar2(const leddartech::leddar_data msg)  // sensor 0
     measureTimes[5] = ros::Time::now();
 }
 
-geometry_msgs::PoseStamped pose2ros(Eigen::VectorXd pose1,Eigen::VectorXd pose2)
+geometry_msgs::PoseStamped pose2ros(Eigen::VectorXd pose1, Eigen::VectorXd pose2)
 {
     geometry_msgs::PoseStamped Pose;
     Pose.header.stamp=ros::Time::now();
@@ -544,7 +567,7 @@ int main(int argc, char **argv)
     ros::Publisher pubvel1 = n.advertise<geometry_msgs::TwistStamped>("/192_168_10_243/ar_vel1",1);
     ros::Publisher pubvel2 = n.advertise<geometry_msgs::TwistStamped>("/192_168_10_243/ar_vel2",1);
     //ros::Publisher pubS = n.advertise<sensor_msgs::Range>("state_estimator/sonars",1);
-    //ros::Publisher pubPraw = n.advertise<geometry_msgs::PoseStamped>("state_estimator/rawpose",1);
+    ros::Publisher pubPraw = n.advertise<geometry_msgs::PoseStamped>("state_estimator/rawpose",1);
 
     // tf
     static tf::TransformBroadcaster br;
@@ -725,24 +748,26 @@ int main(int argc, char **argv)
                         state[0] = vals[0];
                         state[6] = vals[1];
                  }
+
+
                 geometry_msgs::PoseStamped Pose1 = pose2ros(state.segment(0,3),state.segment(6,3));
                 geometry_msgs::PoseStamped Pose2 = pose2ros(state.segment(3,3),state.segment(6,3));
                 Eigen::VectorXd rawEigPose = Eigen::VectorXd::Zero(6);
                 
-                //rawEigPose << measures[3](0,0) +2.0, measures[0], measures[2], measures[1];
-                rawEigPose << x +2.0, y, z, tx, ty, tz;
-                //geometry_msgs::PoseStamped rawPose = pose2ros(rawEigPose);
+                rawEigPose << Poseforrviz.pose.position.x,Poseforrviz.pose.position.y,Poseforrviz.pose.position.z, measures[1].head(2), measures[0];
+                //rawEigPose << x +2.0, y, z, tx, ty, tz;
+                geometry_msgs::PoseStamped rawPose = pose2ros(rawEigPose.head(3),rawEigPose.segment(3,3));
 
                 geometry_msgs::TwistStamped Twist1 = vel2ros(state.segment(9,3),state.segment(15,3));
                 geometry_msgs::TwistStamped Twist2 = vel2ros(state.segment(12,3),state.segment(15,3));
                 pubAR1.publish(Pose1);
                 pubAR2.publish(Pose2);
-                //pubPraw.publish(rawPose);
+                pubPraw.publish(rawPose);
                 pubvel1.publish(Twist1);
                 pubvel2.publish(Twist2);
                 transform.setOrigin( tf::Vector3(state[0], state[1], state[2]) );
                 tf::Quaternion q;
-                q.setEulerZYX(state[5], state[4], state[3]);
+                q.setEulerZYX(state[8], state[7], state[6]);
                 transform.setRotation(q);
                 br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "world", "Pose_Filtered"));
                 transform.setOrigin( tf::Vector3(rawEigPose[0], rawEigPose[1], rawEigPose[2]) );

@@ -23,16 +23,18 @@
 
 using namespace std;
 
-geometry_msgs::Pose PoseEKF,PoseGaz,PoseCtrl,PoseDesir, Posetraj, PoseAR1, PoseAR3, PoseIacc, PoseIgyr,PoseRP,PoseARconv,PoseAR_1,PoseAR_2;
+geometry_msgs::Pose PoseEKF,PoseGaz,PoseCtrl,PoseDesir, Posetraj, PoseAR1, PoseAR3, PoseIacc, PoseIgyr,PoseRP,PoseARconv,PoseAR_1,PoseAR_2,PosePAR_1,PosePAR_2,Poseglide_1,Poseglide_2;
 geometry_msgs::Twist VelEKF, VelGAZ,VelAR_1,VelAR_2;
-geometry_msgs::Wrench CmdCtrl,CmdReal;
+geometry_msgs::Wrench CmdCtrl,CmdReal,Wrenchglide_1,Wrenchglide_2;
 sensor_msgs::Imu Imu;
 double debut;
 
 std::ofstream filePAR1;
-std::ofstream filePAR3;
-std::ofstream filePAR_1;
-std::ofstream filePAR_2;
+std::ofstream filePAR2;
+std::ofstream fileAR_1;
+std::ofstream fileAR_2;
+std::ofstream fileglide_1;
+std::ofstream fileglide_2;
 std::ofstream fileVAR_1;
 std::ofstream fileVAR_2;
 std::ofstream fileIMUB;
@@ -86,18 +88,18 @@ void subARconv(const geometry_msgs::PoseStamped PoseARC)
 
 void subarpose_1(const geometry_msgs::PoseStamped PoseAR)
 {
-  PoseAR_1=PoseAR.pose;
+  PosePAR_1=PoseAR.pose;
   double secs = ros::Time::now().toSec()-debut;
-  filePAR_1 <<secs << "," << PoseAR_1.position.x << ","<< PoseAR_1.position.y <<","<< PoseAR_1.position.z <<","<< PoseAR_1.orientation.x;
-  filePAR_1 <<","<< PoseAR_1.orientation.y <<","<< PoseAR_1.orientation.z << "," << PoseAR_1.orientation.w <<endl;
+  filePAR1 <<secs << "," << PosePAR_1.position.x << ","<< PosePAR_1.position.y <<","<< PosePAR_1.position.z <<","<< PosePAR_1.orientation.x;
+  filePAR1 <<","<< PosePAR_1.orientation.y <<","<< PosePAR_1.orientation.z << "," << PosePAR_1.orientation.w <<endl;
 }
 
 void subarpose_2(const geometry_msgs::PoseStamped PoseAR)
 {
-  PoseAR_2=PoseAR.pose;
+  PosePAR_2=PoseAR.pose;
   double secs = ros::Time::now().toSec()-debut;
-  filePAR_2 <<secs << "," << PoseAR_2.position.x << ","<< PoseAR_2.position.y <<","<< PoseAR_2.position.z <<","<< PoseAR_2.orientation.x;
-  filePAR_2 <<","<< PoseAR_2.orientation.y <<","<< PoseAR_2.orientation.z << "," << PoseAR_2.orientation.w <<endl;
+  filePAR2 <<secs << "," << PosePAR_2.position.x << ","<< PosePAR_2.position.y <<","<< PosePAR_2.position.z <<","<< PosePAR_2.orientation.x;
+  filePAR2 <<","<< PosePAR_2.orientation.y <<","<< PosePAR_2.orientation.z << "," << PosePAR_2.orientation.w <<endl;
 }
 void subarvel_1(const geometry_msgs::TwistStamped VelAR)
 {
@@ -114,6 +116,7 @@ void subarvel_2(const geometry_msgs::TwistStamped VelAR)
   fileVAR_2 <<","<< VelAR_2.angular.y <<","<< VelAR_2.angular.z <<endl;
 }
 
+/*
 void subARtag1(const ar_track_alvar_msgs::AlvarMarkers Alvar1)
 {
  
@@ -133,6 +136,48 @@ void subARtag1(const ar_track_alvar_msgs::AlvarMarkers Alvar1)
 
 }
 
+*/
+void subglide1(const geometry_msgs::WrenchStamped Wrenchglide)
+{
+
+
+  Wrenchglide_1=Wrenchglide.wrench;
+  double secs = ros::Time::now().toSec()-debut;
+  fileglide_1 <<secs << "," << Wrenchglide_1.force.x << ","<< Wrenchglide_1.force.y <<","<< Wrenchglide_1.force.z <<","<< Wrenchglide_1.torque.x;
+  fileglide_1 <<","<< Wrenchglide_1.torque.y <<","<< Wrenchglide_1.torque.z << endl;
+
+}
+void subglide2(const geometry_msgs::WrenchStamped Wrenchglide)
+{
+
+
+  Wrenchglide_2=Wrenchglide.wrench;
+  double secs = ros::Time::now().toSec()-debut;
+  fileglide_2 <<secs << "," << Wrenchglide_2.force.x << ","<< Wrenchglide_2.force.y <<","<< Wrenchglide_2.force.z <<","<< Wrenchglide_2.torque.x;
+  fileglide_2 <<","<< Wrenchglide_2.torque.y <<","<< Wrenchglide_2.torque.z << endl;
+
+
+}
+void subARtag1(const geometry_msgs::PoseStamped PoseAR)
+{
+
+
+  PoseAR_1=PoseAR.pose;
+  double secs = ros::Time::now().toSec()-debut;
+  fileAR_1 <<secs << "," << PoseAR_1.position.x << ","<< PoseAR_1.position.y <<","<< PoseAR_1.position.z <<","<< PoseAR_1.orientation.x;
+  fileAR_1 <<","<< PoseAR_1.orientation.y <<","<< PoseAR_1.orientation.z << "," << PoseAR_1.orientation.w <<endl;
+
+}
+void subARtag2(const geometry_msgs::PoseStamped PoseAR)
+{
+
+
+  PoseAR_2=PoseAR.pose;
+  double secs = ros::Time::now().toSec()-debut;
+  fileAR_2 <<secs << "," << PoseAR_2.position.x << ","<< PoseAR_2.position.y <<","<< PoseAR_2.position.z <<","<< PoseAR_2.orientation.x;
+  fileAR_2 <<","<< PoseAR_2.orientation.y <<","<< PoseAR_2.orientation.z << "," << PoseAR_2.orientation.w <<endl;
+
+}
 
 void subPoseGaz(const geometry_msgs::PoseStamped PoseSG)
 {
@@ -283,20 +328,26 @@ int main(int argc, char **argv)
 
    sprintf(rosname,"/%s/imubuff",temp_arg.c_str()); //messed up Ip's
   ros::Subscriber subIMUBuff = node.subscribe(rosname, 100, subIMUB);
-  //sprintf(rosname,"/%s/ar_pose1",temp_arg.c_str()); //messed up Ip's
-  //ros::Subscriber subarpose1 = node.subscribe(rosname, 100, subarpose_1);
-  //sprintf(rosname,"/%s/ar_pose2",temp_arg.c_str()); //messed up Ip's
-  //ros::Subscriber subarpose2 = node.subscribe(rosname, 100, subarpose_2);
+  sprintf(rosname,"/%s/ar_pose1",temp_arg.c_str()); //messed up Ip's
+  ros::Subscriber subarpose1 = node.subscribe(rosname, 100, subarpose_1);
+  sprintf(rosname,"/%s/ar_pose2",temp_arg.c_str()); //messed up Ip's
+  ros::Subscriber subarpose2 = node.subscribe(rosname, 100, subarpose_2);
   sprintf(rosname,"/%s/ar_vel1",temp_arg.c_str()); //messed up Ip's
   ros::Subscriber subarvel1 = node.subscribe(rosname, 100, subarvel_1);
   sprintf(rosname,"/%s/ar_vel2",temp_arg.c_str()); //messed up Ip's
   ros::Subscriber subarvel2 = node.subscribe(rosname, 100, subarvel_2);
+  // sprintf(rosname,"/glide1",temp_arg.c_str()); //messed up Ip's
+  ros::Subscriber subGlide1 = node.subscribe("/glide1", 100, subglide1);
+  //sprintf(rosname,"/glide2",temp_arg.c_str()); //messed up Ip's
+  ros::Subscriber subGlide2 = node.subscribe("/glide2", 100, subglide2);
   sprintf(rosname,"/%s/command_control",temp_arg.c_str());
   ros::Subscriber subCC = node.subscribe(rosname, 100, subCommandControl);
    sprintf(rosname,"/%s/command_props",temp_arg.c_str());
   ros::Subscriber subCP = node.subscribe(rosname, 100, subCommandProps);
    sprintf(rosname,"/%s/artags1/artag/ar_pose_marker",temp_arg.c_str());
   ros::Subscriber subPARtag1 = node.subscribe(rosname, 100, subARtag1);
+  sprintf(rosname,"/%s/artags2/artag/ar_pose_marker",temp_arg.c_str());
+  ros::Subscriber subPARtag2 = node.subscribe(rosname, 100, subARtag2);
  //////////////////////////////////////////////
 
 
@@ -358,17 +409,23 @@ int main(int argc, char **argv)
    sprintf(buffer,"%s/%s/%s_IMUB.csv",link,temp_arg.c_str(),argv[1]);
   fileIMUB.open(buffer);
   ROS_INFO(buffer);
-  //sprintf(buffer,"%s/%s/%s_arpose1.csv",link,temp_arg.c_str(),argv[1]);
-  //filePAR_1.open(buffer);
-  //ROS_INFO(buffer);
-  //sprintf(buffer,"%s/%s/%s_arpose2.csv",link,temp_arg.c_str(),argv[1]);
-  //filePAR_2.open(buffer);
-  //ROS_INFO(buffer);
+  sprintf(buffer,"%s/%s/%s_arpose1_est.csv",link,temp_arg.c_str(),argv[1]);
+  filePAR1.open(buffer);
+  ROS_INFO(buffer);
+  sprintf(buffer,"%s/%s/%s_arpose2_est.csv",link,temp_arg.c_str(),argv[1]);
+  filePAR2.open(buffer);
+  ROS_INFO(buffer);
    sprintf(buffer,"%s/%s/%s_arvel1.csv",link,temp_arg.c_str(),argv[1]);
   fileVAR_1.open(buffer);
   ROS_INFO(buffer);
   sprintf(buffer,"%s/%s/%s_arvel2.csv",link,temp_arg.c_str(),argv[1]);
   fileVAR_2.open(buffer);
+  ROS_INFO(buffer);
+    sprintf(buffer,"%s/%s/%s_glide1.csv",link,temp_arg.c_str(),argv[1]);
+  fileglide_1.open(buffer);
+  ROS_INFO(buffer);
+  sprintf(buffer,"%s/%s/%s_glide2.csv",link,temp_arg.c_str(),argv[1]);
+  fileglide_2.open(buffer);
   ROS_INFO(buffer);
   sprintf(buffer,"%s/%s/%s_CCtrl.csv",link,temp_arg.c_str(),argv[1]);
   fileCCtrl.open(buffer);
@@ -376,11 +433,11 @@ int main(int argc, char **argv)
  sprintf(buffer,"%s/%s/%s_CP.csv",link,temp_arg.c_str(),argv[1]);
   fileCP.open(buffer);
   ROS_INFO(buffer);
-   sprintf(buffer,"%s/%s/%s_PAR1.csv",link,temp_arg.c_str(),argv[1]);
-  filePAR1.open(buffer);
+   sprintf(buffer,"%s/%s/%s_AR1.csv",link,temp_arg.c_str(),argv[1]);
+  fileAR_1.open(buffer);
   ROS_INFO(buffer);
-  sprintf(buffer,"%s/%s/%s_PAR3.csv",link,temp_arg.c_str(),argv[1]);
-  filePAR3.open(buffer);
+  sprintf(buffer,"%s/%s/%s_AR2.csv",link,temp_arg.c_str(),argv[1]);
+  fileAR_2.open(buffer);
   ROS_INFO(buffer);
 //////////////////////////////////////////////////////////////////////
 
@@ -447,15 +504,18 @@ int main(int argc, char **argv)
 /////////////////////////////////////////////////ArTag Recording
 
 fileIMUB   << "time,roll,pitch" << endl  ;
-//filePAR_1   << "time,x,y,z,qx,qy,qz,qw" << endl  ;
-//filePAR_2   << "time,x,y,z,qx,qy,qz,qw" << endl  ;
+fileAR_1   << "time,x,y,z,qx,qy,qz,qw" << endl  ;
+fileAR_2   << "time,x,y,z,qx,qy,qz,qw" << endl  ;
 filePAR1   << "time,x,y,z,qx,qy,qz,qw" << endl  ;
-filePAR3   << "time,x,y,z,qx,qy,qz,qw" << endl  ;
+filePAR2   << "time,x,y,z,qx,qy,qz,qw" << endl  ;
+fileglide_1   << "time,x,y,z,vx,vy,vz" << endl  ;
+fileglide_2   << "time,x,y,z,vx,vy,vz" << endl  ;
 fileVAR_1   << "time,vx,vy,vz,wx,wy,wz" << endl  ;
 fileVAR_2   << "time,vx,vy,vz,wx,wy,wz" << endl  ;
 fileCCtrl  << "time,fx,fy,fz,tx,ty,tz" << endl  ;
 fileCP     << "time,p0,p1,p2,p3,p4,p5,p6,p7" << endl  ;
 //////////////////////////////////////////////////////////////////////
+
 
 
 ////////////////////////////////////////////////////////////////////////////Gazebo recording
