@@ -1,0 +1,5 @@
+{auto_brightness: 2,exposure: 18, auto_exposure: 3, auto_focus: 2, auto_gain: 2, auto_gamma: 2
+,auto_hue: 2, auto_iris: 2, auto_saturation: 2, auto_sharpness: 2, auto_shutter: 2,
+  auto_zoom: 2,
+  frame_rate: 30.0, video_mode: 640x480_mono8, num_dma_buffers: 1, iso_speed : 400, _reset_on_open : True, _use_ros_time : True}
+

@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(ekf_tryphon)
 
+
 set(CMAKE_BUILD_TYPE Debug)
 
 ## Find catkin and any catkin packages
@@ -60,8 +61,29 @@ src/kalmanmeilleur_dock.cpp
 include/kalmanbasefilter.h
 )
 
+add_executable(kalmanmeilleur_dock_target
+src/kalmanbasefilter.cpp
+src/kalmanmeilleur_dock_target.cpp
+include/kalmanbasefilter.h
+)
+
+add_executable(ar_temp
+src/ar_temp.cpp)
+
+add_executable(ar_temp_target
+src/ar_temp_target.cpp)
+
 add_dependencies(kalmanmeilleur ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} ${PROJECT_NAME}_gencfg)
 target_link_libraries(kalmanmeilleur ${catkin_LIBRARIES})
 
 add_dependencies(kalmanmeilleur_dock ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} ${PROJECT_NAME}_gencfg)
 target_link_libraries(kalmanmeilleur_dock ${catkin_LIBRARIES})
+
+add_dependencies(ar_temp ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} ${PROJECT_NAME}_gencfg)
+target_link_libraries(ar_temp ${catkin_LIBRARIES})
+
+add_dependencies(kalmanmeilleur_dock_target ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} ${PROJECT_NAME}_gencfg)
+target_link_libraries(kalmanmeilleur_dock_target ${catkin_LIBRARIES})
+
+add_dependencies(ar_temp_target ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} ${PROJECT_NAME}_gencfg)
+target_link_libraries(ar_temp_target ${catkin_LIBRARIES})

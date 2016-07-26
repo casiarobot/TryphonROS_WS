@@ -406,6 +406,7 @@ int main(int argc, char **argv)
       {
         //props.commands[i]=AvoidNoise(Saturation(Nocrash(force2command(RealForce(commands[i][2])),props.commands[i])));
         props.commands[i]=Saturation(Nocrash(force2command(RealForce(commands[i][2])),props.commands[i]));
+        //props.commands[i]=force2command(RealForce(commands[i][2]));
       }
       props.header.stamp=ros::Time::now();
 

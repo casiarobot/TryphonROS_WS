@@ -34,7 +34,7 @@ typedef unsigned char BYTE;
 
 double dsz=0;
 double dsx=0;
- 
+ int rendezvous;
 double dsy=0;
 double dszwant=1000;
 double errorn=0;
@@ -45,6 +45,7 @@ double rz=0;
 double rzo=0;
 double rz0=0;
 int rzpos=1; // 0 between -360 and 0; 1-> 0-360; 2->360-720
+float mode_dock=0; //used to switch to docking in gazebo
 geometry_msgs::Wrench F, FOld1, FOld2;
 geometry_msgs::Pose fPose;
 geometry_msgs::PoseStamped desirPose;
@@ -140,6 +141,10 @@ void glideT(const controls::State gstate)
 
 } 
 
+void dock_mode1(const std_msgs::Float64  mdock)
+{
+  mode_dock=mdock.data;
+} 
 
 void subState(const state::state state)
 {
@@ -353,6 +358,22 @@ void callback(controls::controlConfig &config, uint32_t level) {
     On=config.onOff;
     maxPrctThrust.data=config.maxThrust;
     noInt=config.noInt;
+    rendezvous=config.rend;
+if(rendezvous==1)
+{
+posdesir(0)=.5,
+    posdesir(1)=-1.9;
+    posdesir(2)=1.75;
+    angledesir(2)=1.88;
+}
+if(rendezvous==2)
+{
+posdesir(0)=-3.0,
+    posdesir(1)=-3.0;
+    posdesir(2)=1.75;
+    angledesir(2)=-1.256;
+}
+
 }
 
 void all_vects_zero()
@@ -512,7 +533,7 @@ int main(int argc, char **argv)
   //ros::Subscriber subV = node.subscribe("ekf_node/velocity", 1, subVel);
   ros::Subscriber subP = node.subscribe("state_estimator/pose", 1, subPose);
   ros::Subscriber subV = node.subscribe("state_estimator/vel", 1, subVel);
-
+  ros::Subscriber subdockmode = node.subscribe("docking_mode", 1, dock_mode1);
   // Dynamic Reconfigure //
   dynamic_reconfigure::Server<controls::controlConfig> server;
   dynamic_reconfigure::Server<controls::controlConfig>::CallbackType f;
@@ -918,11 +939,15 @@ double x_start,y_start,z_start,tz_start;
 
       /////////////////////////////////
 
+    if(!mode_dock)  
+    {
       Controle_node.publish(F);
       Forcez_node.publish(Fz);
       Pose_node.publish(fPose);
       Desired_pose_node.publish(desirPose);
       Vel_node.publish(fVel);
+    }
+    
     }
 
       geometry_msgs::Wrench info;
@@ -951,9 +976,13 @@ double x_start,y_start,z_start,tz_start;
       F.torque.y=torque(1);
       F.torque.z=torque(2);
       intZ=0;
+      
+    if(!mode_dock)  
+    {
       Controle_node.publish(F);
       Forcez_node.publish(F);
       loop_rate.sleep();
+    }
     }
   }
 
@@ -967,9 +996,12 @@ double x_start,y_start,z_start,tz_start;
   F.torque.x=torque(0);
   F.torque.y=torque(1);
   F.torque.z=torque(2);
+  
+    if(!mode_dock)  
+    {
   Controle_node.publish(F);
   Forcez_node.publish(F);
-
+}
   return 0;
 }
 

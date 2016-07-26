@@ -23,6 +23,7 @@ generate_dynamic_reconfigure_options(
   cfg/glideslope.cfg
   cfg/formation.cfg
   cfg/dock_control.cfg
+  cfg/magnet.cfg
 )
 ## Declare a catkin package
 catkin_package( INCLUDE_DIRS include
@@ -81,6 +82,14 @@ add_dependencies(force_distribution sensors_gencpp std_msgs geometry_msgs sensor
 add_executable(dock_control src/dock_control.cpp)
 target_link_libraries(dock_control ${state_LIBRARIES} ${catkin_LIBRARIES})
 add_dependencies(dock_control sensors_gencpp std_msgs geometry_msgs sensors state)
+
+add_executable(dock_control_target src/dock_control_target.cpp)
+target_link_libraries(dock_control_target ${state_LIBRARIES} ${catkin_LIBRARIES})
+add_dependencies(dock_control_target sensors_gencpp std_msgs geometry_msgs sensors state)
+
+add_executable(magnet src/magnet.cpp)
+target_link_libraries(magnet ${catkin_LIBRARIES})
+add_dependencies(magnet sensors_gencpp std_msgs)
 
 #%EndTag(FULLTEXT)%
 

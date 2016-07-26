@@ -2,7 +2,7 @@
 #include "ctr_fuzzy.h"
 /*#define DEVICE_I2C      "/dev/i2c-3"
 typedef enum {FALSE, TRUE}
-BOOLEAN;
+bOOLEAN;
 typedef unsigned char BYTE;
 #define INTERACTION     0
 */
@@ -27,7 +27,7 @@ typedef unsigned char BYTE;
 #include "geometry_msgs/WrenchStamped.h"
 #include <dynamic_reconfigure/server.h>
 #include <controls/dock_controlConfig.h>
-
+#include <std_msgs/Bool.h>
 
 #include "controls/Commands.h"
 #include <Euler_utility.h>
@@ -42,27 +42,29 @@ Eigen::Vector3d rel_pos_1,rel_ang_1, rel_vel_1, rel_avel_1;
 Eigen::Vector3d rel_pos_2,rel_ang_2, rel_vel_2, rel_avel_2;
 Eigen::Vector3d force,torque;
 Eigen::Vector3d glidepos1,glidepos2,glidevel1,glidevel2;
-Eigen::Vector3d rho1(-1.05,1.128,0); //cm to camera 1 
-Eigen::Vector3d rho2(1.05,1.128,0);  //cm to camera 2
+Eigen::Vector3d rho1(1.05,1.128,0); //cm to camera 1 not sure if right
+Eigen::Vector3d rho2(-1.05,1.128,0);  //cm to camera 2
 Eigen::Vector3d stabilizepos(3);
 Eigen::Vector3d stabilizeang(3);
 Eigen::MatrixXd Kgain(6,18);
 Eigen::VectorXd statevect(18),stateerr(18);
 Eigen::VectorXd forcevect(6);
+ros::Publisher magnet_chaser;
+ros::Publisher magnet_target;
 
 geometry_msgs::WrenchStamped wrench_1, wrench_2,glidePS1,glidePS2;
 geometry_msgs::Wrench netwrench;
-ros::Publisher MaxPrct_node;
  bool debut_this=true;
  bool path_debut1=true;
  bool path_debut2=true;
 double path_debut_time1=0;
 double path_debut_time2=0;
- double intZ = 0;
- double inty = 0;
+ double intZ = 0.02;
+ double intY = 0.0;
+ double intX = 0.00;
  double x_initial1;
  double x_initial2;
-double a=-0.05;//(a_factor*x_initial); //define slope as a function of x_initial, (a distance of 4 m should take more time for docking than 3m) //maximum allowed velocity upon docking
+double a=-0.02;//(a_factor*x_initial); //.005 succesful docking at .47m
 double a2;
 double v_max=-.02; 
 double t1=0;
@@ -75,9 +77,11 @@ double period1,period2;
 int glide_old=0;
 int dock_ready=0;
 int glide_ready=1;
+std_msgs::Float64 dock_mode;
 std_msgs::Float64 maxPrctThrust;
-
+std_msgs::Bool magnet_on;
 double g11,g12,g13,g21,g22,g23;
+
 
 //coming in body frame
 void p1_callback(const geometry_msgs::PoseStamped p1)
@@ -85,8 +89,8 @@ void p1_callback(const geometry_msgs::PoseStamped p1)
     rel_pos_1=pose2vect_pos(p1.pose);
      // rel_pos_1(1)=rel_pos_1(1)+0.25; //taking into account docking mechanism distance if put in -y
     //taking into account docking mechanism distance if put in +y
-   rel_pos_1(0)=rel_pos_1(0)-.25*sin(rel_ang_1(2)) ; //ignoring pitch and roll .25 in target frame
-   rel_pos_1(1)=rel_pos_1(1)-0.25*cos(rel_ang_1(2));
+   rel_pos_1(0)=rel_pos_1(0);//-.20*sin(rel_ang_1(2)) ; //ignoring pitch and roll .25 in target frame
+   rel_pos_1(1)=rel_pos_1(1);//-0.20*cos(rel_ang_1(2));
     rel_ang_1=pose2vect_angle(p1.pose);
 }
 
@@ -95,8 +99,8 @@ void p2_callback(const geometry_msgs::PoseStamped p2)
 {
 	rel_pos_2=pose2vect_pos(p2.pose);
   //rel_pos_2(1)=rel_pos_2(1)+0.25; //taking into account docking mechanism distance if put in -y
- rel_pos_2(0)=rel_pos_2(0)-.25*sin(rel_ang_2(2)) ;
-   rel_pos_2(1)=rel_pos_2(1)-0.25*cos(rel_ang_2(2)); //taking into account docking mechanism distance if put in +y 
+ rel_pos_2(0)=rel_pos_2(0);//-.20*sin(rel_ang_2(2)) ;
+   rel_pos_2(1)=rel_pos_2(1);//-0.20*cos(rel_ang_2(2)); //taking into account docking mechanism distance if put in +y 
     rel_ang_2=pose2vect_angle(p2.pose);
 
 }
@@ -105,6 +109,7 @@ void v1_callback(const geometry_msgs::TwistStamped v1)
 {
  	rel_vel_1=twist2vect_linear(v1.twist);
     rel_avel_1=twist2vect_angular(v1.twist);
+
 
 }
 
@@ -131,7 +136,24 @@ void callback(controls::dock_controlConfig &config, uint32_t level)
 
 dock_ready=config.dockready;
 glide_ready=config.glideready;
+bool magnet_clicker=true;
 stabilizepos(1)=config.stab_pos;
+/*
+if(dock_ready && magnet_clicker) // i think this will work if it is a one time signal that needs to be sent
+{
+magnet_on.data=true;
+magnet_chaser.publish(magnet_on);
+magnet_target.publish(magnet_on);	
+magnet_clicker=false;
+}
+else if (!dock_ready) //magnet clciker may not be needed
+{
+magnet_on.data=false;
+magnet_chaser.publish(magnet_on);
+magnet_target.publish(magnet_on);
+magnet_clicker=true;
+}
+*/
 }
 
 double newtonRaphson(double temp_a)
@@ -193,7 +215,7 @@ if(t1<=period1)
 
 glidepos1(0)=r1*(g11);
 glidepos1(1)=r1*(g12);
-glidepos1(2)=r1*(g13);
+glidepos1(2)=r1*(g13)-.035;
 glidevel1(0)=r_dot1*(g11);
 glidevel1(1)=r_dot1*(g12);
 glidevel1(2)=r_dot1*(g13);
@@ -242,7 +264,7 @@ double temp_a,v_init,rcurrent2;
 				period2=1.0/a2*log(v_max/v_init); //The glideslope algorithm has a period (TBD)
 				
 				//ROS_INFO("Period=%f, V_init=%f, a=%f, x_inital=%f", period, v_init, a ,x_initial); //this must be possible with force of thrusters
-				//magnet_on.data=true;
+				
 				path_debut2=false;
 	ROS_INFO("period2=%f",period2);
 	
@@ -268,7 +290,7 @@ if(t2<=period2)
 
 glidepos2(0)=r2*(g21);
 glidepos2(1)=r2*(g22);
-glidepos2(2)=r2*(g23); //(-) for negative y
+glidepos2(2)=r2*(g23)-.035; //(-) for negative y
 glidevel2(0)=r_dot2*(g21);
 glidevel2(1)=r_dot2*(g22);
 glidevel2(2)=r_dot2*(g23);
@@ -300,12 +322,12 @@ int main(int argc, char **argv)
 double KpP[3],KdP[3],KpT[3],KdT[3];
 Eigen::Matrix3d RCPM1,RCPM2;
  Eigen::Vector3d vecZ,glideang;
- vecZ(0)=0;
-  vecZ(1)=0;  
-  vecZ(2)=0.02; //changed for simulation from .05
-maxPrctThrust.data=100.0;
-
-
+ vecZ(0)=.02;
+  vecZ(1)=.02;  
+  vecZ(2)=0.04; //changed for simulation from .05
+maxPrctThrust.data=90.0;
+magnet_on.data=false;
+dock_mode.data=1;
 
 glidepos1(0)=0;
 glidepos1(1)=0;//(-) for negative y
@@ -329,25 +351,25 @@ RCPM2=CPM(rho2);
 
 for (int k = 0 ; k<3;k++){stabilizepos(k)=0;};
 for (int k = 0 ; k<3;k++){stabilizeang(k)=0;};
-stabilizepos(1)=.75; //(-) for -y cameras//need to include rotation
-stabilizepos(0)=.2;
-stabilizepos(2)=.1;
-stabilizeang(2)=0;
+stabilizepos(1)=1.00; //(-) for -y cameras//need to include rotation
+stabilizepos(2)=-.025;//-.075;
 ros::init(argc, argv, "dock_control");
 ros::NodeHandle nh;
 
-ros::Subscriber  pose1_sub= nh.subscribe("/192_168_10_243/ar_pose1",1,p1_callback);
-ros::Subscriber  pose2_sub= nh.subscribe("/192_168_10_243/ar_pose2",1,p2_callback);
-ros::Subscriber  vel1_sub= nh.subscribe("/192_168_10_243/ar_vel1",1,v1_callback);
-ros::Subscriber  vel2_sub= nh.subscribe("/192_168_10_243/ar_vel2",1,v2_callback);
+ros::Subscriber  pose1_sub= nh.subscribe("/192_168_10_241/ar_pose1",1,p1_callback);
+ros::Subscriber  pose2_sub= nh.subscribe("/192_168_10_241/ar_pose2",1,p2_callback);
+ros::Subscriber  vel1_sub= nh.subscribe("/192_168_10_241/ar_vel1",1,v1_callback);
+ros::Subscriber  vel2_sub= nh.subscribe("/192_168_10_241/ar_vel2",1,v2_callback);
 
 ros::Publisher  wrench1_pub = nh.advertise<geometry_msgs::WrenchStamped>("/propForce",1);
 ros::Publisher  wrench2_pub = nh.advertise<geometry_msgs::WrenchStamped>("/derivForce",1);
 ros::Publisher  glide1_pub = nh.advertise<geometry_msgs::WrenchStamped>("/glide1",1);
 ros::Publisher  glide2_pub = nh.advertise<geometry_msgs::WrenchStamped>("/glide2",1);
-ros::Publisher  netwrench_pub = nh.advertise<geometry_msgs::Wrench>("/192_168_10_243/command_control",1); //to work currently with FD
-MaxPrct_node = nh.advertise<std_msgs::Float64>("/192_168_10_243/max_thrust",1);
-
+ros::Publisher  netwrench_pub = nh.advertise<geometry_msgs::Wrench>("/192_168_10_241/command_control",1); //to work currently with FD
+ros::Publisher MaxPrct_node=nh.advertise<std_msgs::Float64>("/192_168_10_241/max_thrust",1);
+ros::Publisher dockmode_node=nh.advertise<std_msgs::Float64>("/192_168_10_241/docking_mode",1);
+magnet_chaser=nh.advertise<std_msgs::Bool>("/192_168_10_241/magnet_on",1);
+ magnet_target=nh.advertise<std_msgs::Bool>("/192_168_10_244/magnet_on",1);
 
 dynamic_reconfigure::Server<controls::dock_controlConfig> server;
 dynamic_reconfigure::Server<controls::dock_controlConfig>::CallbackType f;
@@ -387,14 +409,14 @@ Kgain<<             0.6828,0,0,0.6828,0,0,0,0,0,3.8785,0,0,3.8785,0,0,0,0,0,  //
 
 
 //the one that was uncommented before after quebec one
-	Kgain<<             .69,0,0,.69,0,0,0,0,0,5.75,0,0,5.75,0,0,0,0,0, 
-						0,1.0580,0,0,1.0580,0,0,0,0,0,7.2450,0,0,7.245,0,0,0,0,
-						0,0,4.37,0,0,4.37,0,0,0,0,0,24.15,0,0,24.15,0,0,0,
+	Kgain<<             -.69,0,0,-.69,0,0,0,0,0,-5.75,0,0,-5.75,0,0,0,0,0, 
+						0,-1.0580,0,0,-1.0580,0,0,0,0,0,-7.2450,0,0,-7.245,0,0,0,0,
+						0,0,-4.37,0,0,-4.37,0,0,0,0,0,-24.15,0,0,-24.15,0,0,0,
 						0,0,0,0,0,0,.3,0,0,0,0,0,0,0,0,4.5,0,0,
-						0,0,-.315,0,0,.315,0,.315,0,0,0,-2.55,0,0,2.55,0,2.55,0,
-						0,1,0,0,-1,0,0,0,1,0,6,0,0,-6,0,0,0,6;
+						0,0,.315,0,0,-.315,0,.315,0,0,0,2.55,0,0,-2.55,0,2.55,0,
+						0,-1,0,0,1,0,0,0,1,0,-6,0,0,6,0,0,0,6;
 
-						*/
+	*/					
 
 //used right before sim for IFAC paper
 /* Kgain << -0.6900 ,   0.4600  , -0.0000 ,  -0.6900 ,  -0.4600 ,   0.0000    ,     0  ,  0.0000 ,  -0.4600 ,  -5.7500  ,  3.8333   ,      0 ,  -5.7500  , -3.8333   ,      0   ,     0       , 0 ,  -3.8333,
@@ -403,17 +425,49 @@ Kgain<<             0.6828,0,0,0.6828,0,0,0,0,0,3.8785,0,0,3.8785,0,0,0,0,0,  //
     0.0000 ,   0.0000 ,   0.0000 ,  -0.0000  , -0.0000   ,-0.0000 , -10.5548   , 0.0000   , 0.0000   ,      0   ,      0  ,  0.0000   ,      0   ,      0  ,  0.0000  ,  4.5600 ,        0 ,        0,
     0.0000 ,        0 ,  -5.9273  , -0.0000  ,       0  ,  5.9273   ,      0  , -5.9273   ,      0   ,      0   ,      0  ,  2.5840  ,       0  ,       0  , -2.5840  ,       0 ,   2.5840 ,      0,
     0.0000 ,  -1.0133 ,   0.0000  , -0.0000 ,   1.0133  , -0.0000   ,      0  , -0.0000  ,  1.0133  , -0.0000  , -6.0800   ,      0  , -0.0000   , 6.0800   ,      0   ,      0 ,        0 ,   6.0800;
-*/
-
-
 //For IFAC paper
-
- Kgain <<  -1.8645 ,  -0.9122 ,  -0.0000   ,-1.8645   , 0.9122   ,-0.0000  , 0.0000,   -0.0000  ,  0.8109   ,-9.6650  ,  8.3423,  -0.0000  , -9.6650  , -8.3423 ,  -0.0000 , 0.0000  , -0.0000 ,  -7.4153,
-   -0.0000  , -2.0420  ,  0.1711  , -0.0000  , -2.0420  ,  0.1592   ,-0.2644  ,  0.0053 ,  -0.0000  , -0.0000 , -10.2567 ,   0.5702 ,  -0.0000 , -10.2567   , 0.5308 ,  -3.3586 ,   0.0175  , -0.0000,
+*/
+/*
+Kgain <<  -1.8645 ,  -0.9122 ,  -0.0000   ,-1.8645   , 0.9122   ,-0.0000  , 0.0000,   -0.0000  ,  0.8109   ,-9.6650  ,  8.3423,  -0.0000  , -9.6650  , -8.3423 ,  -0.0000 , 0.0000  , -0.0000 ,  -7.4153,
+   -0.0000  , -5.0420  ,  0.1711  , -0.0000  , -5.0420  ,  0.1592   ,-0.2644  ,  0.0053 ,  -0.0000  , -0.0000 , -10.2567 ,   0.5702 ,  -0.0000 , -10.2567   , 0.5308 ,  -3.3586 ,   0.0175  , -0.0000,
    -0.0000  ,  0.1741  , -0.5867 ,  -0.0000  ,  0.1741  , -0.5751  , -3.0203   ,-0.0052 ,   0.0000  , -0.0000 ,   0.5802 ,  -5.4056 ,  -0.0000 ,   0.5802 ,  -5.3669 ,   6.4082 ,  -0.0172   , 0.0000,
     0.0000 ,  -0.0021  , -0.1448 ,   0.0000 ,  -0.0021  , -0.1507 , -17.6219   , 0.0026 ,  -0.0000  ,  0.0000,  -0.0069  , -0.4826 ,   0.0000  , -0.0069  , -0.5023  , 13.2125  ,  0.0088 ,   0.0000,
     0.0000  , -0.0061  , -5.9144 ,   0.0000  , -0.0061  ,  5.9086  ,  0.0186   ,-5.2547  , -0.0000   , 0.0000,   -0.0203  ,  2.5118,    0.0000 ,  -0.0203 ,  -2.5309  ,  0.1049   , 2.2412  , -0.0000,
    -0.0715  , -0.6080  , -0.0000 ,  -0.0715   , 0.6080  , -0.0000  ,  0.0000  , -0.0000  ,  0.5404   ,-0.2383 ,  -3.2333   ,-0.0000 ,  -0.2383 ,   3.2333,   -0.0000  ,  0.0000  , -0.0000  ,  2.8740 ;
+
+
+//working with slight changes in w terms
+ Kgain <<  -3.3645 ,  -0.9122 ,  -0.0000   ,-3.3645   , 0.9122   ,-0.0000  , 0.0000,   -0.0000  ,  0.8109   ,-11.6650  ,  10.3423,  -0.0000  , -11.6650  , -10.3423 ,  -0.0000 , 0.0000  , -0.0000 ,  -0.2153,
+   -0.0000  , -3.0420  ,  0.1711  , -0.0000  , -3.0420  ,  0.1592   ,-0.2644  ,  0.0053 ,  -0.0000  , -0.0000 , -10.2567 ,   0.5702 ,  -0.0000 , -10.2567   , 0.5308 ,  -0.2586 ,   0.0175  , -0.0000,
+   -0.0000  ,  0.1741  , -4.3867 ,  -0.0000  ,  0.1741  , -4.3751  , -2.0203   ,-0.0052 ,   0.0000  , -0.0000 ,   0.5802 ,  -7.4056 ,  -0.0000 ,   0.5802 ,  -7.3669 ,   0.2082 ,  -0.0172   , 0.0000,
+    0.0000 ,  -0.0021  , -0.1448 ,   0.0000 ,  -0.0021  , -0.1507 , -13.6219   , 0.0026 ,  -0.0000  ,  0.0000,  -0.0069  , -0.4826 ,   0.0000  , -0.0069  , -0.5023  , 0.2125  ,  0.0088 ,   0.0000,
+    0.0000  , -0.0061  , -5.9144 ,   0.0000  , -0.0061  ,  5.9086  ,  0.0186   ,-5.2547  , -0.0000   , 0.0000,   -0.0203  ,  2.5118,    0.0000 ,  -0.0203 ,  -2.5309  ,  0.1049   , 0.2412  , -0.0000,
+   -0.0715  , -0.6080  , -0.0000 ,  -0.0715   , 0.6080  , -0.0000  ,  0.0000  , -0.0000  ,  0.5404   ,-0.2383 ,  -3.2333   ,-0.0000 ,  -0.2383 ,   3.2333,   -0.0000  ,  0.0000  , -0.0000  ,  0.2740 ;
+
+*/
+
+
+//good one for docking with no gyro usage
+
+ Kgain <<  -8.8645 ,  -0.4122 ,  -0.0000   ,-8.8645   , 0.4122   ,-0.0000  , 0.0000,   -0.0000  ,  0.8109   ,-14.6650  ,  5.3423,  -0.0000  , -14.6650  , -5.3423 ,  -0.0000 , 0.0000  , -0.0000 ,  0.0000,
+   -0.0000  , -2.5420  ,  0.1711  , -0.0000  , -2.5420  ,  0.1592   ,-0.2644  ,  0.0053 ,  -0.0000  , -0.0000 , -4.8567 ,   0.5702 ,  -0.0000 , -4.8567   , 0.5308 ,  0.0000 ,   0.0000  , -0.0000,
+   -0.0000  ,  0.1741  , -13.0867 ,  -0.0000  ,  0.1741  , -13.0751  , -2.0203   ,-0.0052 ,   0.0000  , -0.0000 ,   0.5802 ,  -13.3056 ,  -0.0000 ,   0.5802 ,  -13.3669 ,   0.0000 ,  0.0000   , 0.0000,
+    0.0000 ,  -0.0021  , -0.1448 ,   0.0000 ,  -0.0021  , -0.1507 , -13.6219   , 0.0026 ,  -0.0000  ,  0.0000,  -0.0069  , -0.4826 ,   0.0000  , -0.0069  , -0.5023  , 0.0000  , 0.0000 ,   0.0000, 
+    0.0000  , -0.0061  , -5.9144 ,   0.0000  , -0.0061  ,  5.9086  ,  0.0186   ,-5.2547  , -0.0000   , 0.0000,   -0.0203  ,  2.5118,    0.0000 ,  -0.0203 ,  -2.5309  ,  0.0000   , 0.0000  , -0.0000, 
+   -0.0715  , -0.1080  , -0.0000 ,  -0.0715   , 0.1080  , -0.0000  ,  0.0000  , -0.0000  ,  3.75904   ,-0.8383 ,  -4.8333   ,-0.0000 ,  -0.8383 ,   4.8333,   -0.0000  ,  0.0000  , -0.0000  ,  0;
+ //-0.0715  , -0.1080  , -0.0000 ,  -0.0715   , 0.1080  , -0.0000  ,  0.0000  , -0.0000  ,  0.5404   ,-0.2383 ,  -3.2333   ,-0.0000 ,  -0.2383 ,   1.2333,   -0.0000  ,  0.0000  , -0.0000  ,  0; //for yaw
+
+ //-0.0000  ,  0.1741  , -7.8867 ,  -0.0000  ,  0.1741  , -7.8751  , -2.0203   ,-0.0052 ,   0.0000  , -0.0000 ,   0.5802 ,  -11.3056 ,  -0.0000 ,   0.5802 ,  -11.3669 ,   0.0000 ,  0.0000   , 0.0000, //for z
+	
+/*
+   Kgain <<  -7.8645 ,  -0.9122 ,  -0.0000   ,-7.8645   , 0.9122   ,-0.0000  , 0.0000,   -0.0000  ,  0.8109   ,-10.6650  ,  8.3423,  -0.0000  , -10.6650  , -8.3423 ,  -0.0000 , 0.0000  , -0.0000 ,  0.0000,
+   -0.0000  , -1.5420  ,  0.1711  , -0.0000  , -1.5420  ,  0.1592   ,-0.2644  ,  0.0053 ,  -0.0000  , -0.0000 , -8.2567 ,   0.5702 ,  -0.0000 , -8.2567   , 0.5308 ,  0.0000 ,   0.0000  , -0.0000,
+   -0.0000  ,  0.1741  , -10.8867 ,  -0.0000  ,  0.1741  , -10.8751  , -2.0203   ,-0.0052 ,   0.0000  , -0.0000 ,   0.5802 ,  -10.3056 ,  -0.0000 ,   0.5802 ,  -10.3669 ,   0.0000 ,  0.0000   , 0.0000,
+    0.0000 ,  -0.0021  , -0.1448 ,   0.0000 ,  -0.0021  , -0.1507 , -13.6219   , 0.0026 ,  -0.0000  ,  0.0000,  -0.0069  , -0.4826 ,   0.0000  , -0.0069  , -0.5023  , 0.0000  , 0.0000 ,   0.0000,
+    0.0000  , -0.0061  , -5.9144 ,   0.0000  , -0.0061  ,  5.9086  ,  0.0186   ,-5.2547  , -0.0000   , 0.0000,   -0.0203  ,  2.5118,    0.0000 ,  -0.0203 ,  -2.5309  ,  0.0000   , 0.0000  , -0.0000,
+   -0.0715  , -0.1080  , -0.0000 ,  -0.0715   , 0.1080  , -0.0000  ,  0.0000  , -0.0000  ,  0.8404   ,-0.2383 ,  -1.2333   ,-0.0000 ,  -0.2383 ,   1.2333,   -0.0000  ,  0.0000  , -0.0000  ,  0;
+*/
+
 	while (ros::ok())
 	 {
 
@@ -422,40 +476,51 @@ Kgain<<             0.6828,0,0,0.6828,0,0,0,0,0,3.8785,0,0,3.8785,0,0,0,0,0,  //
 	
 
 
+
 if(!dock_ready)
 {
-stateerr<<rel_pos_1-stabilizepos,rel_pos_2-stabilizepos,rel_ang_1-stabilizeang,rel_vel_1,rel_vel_2,rel_avel_1;
+stateerr<<rel_pos_1-stabilizepos,rel_pos_2-stabilizepos,rel_ang_1,rel_vel_1,rel_vel_2,rel_avel_1;
 }
 
 
 if(dock_ready)	
 {
 //statevect<<rel_pos_1,rel_pos_2,rel_ang_1,rel_vel_1,rel_vel_2,rel_avel_1;
+dockmode_node.publish(dock_mode);
+
 if(glide_ready)
 {
 glideslope1();
 glideslope2();
-glideang(2)=asin((glidepos2(1)-glidepos1(1))/2.1); //fix to real value for tryphon
+//glideang(2)=asin((glidepos2(1)-glidepos1(1))/2.1); //fix to real value for tryphon
 //ROS_INFO("glideang=%f",glideang(2));
 }
 stateerr<<rel_pos_1-glidepos1,rel_pos_2-glidepos2,rel_ang_1-glideang,rel_vel_1-glidevel1,rel_vel_2-glidevel2,rel_avel_1;
 }
 
-	forcevect=-Kgain*stateerr;
+	forcevect=-0.15*Kgain*stateerr; //.17 good
 	for (int i=0; i<3 ; i++)
 	{
 	force(i)=forcevect(i);
 //torque(i)=forcevect(i+3);
 	}
 torque(2)=forcevect(5);
-torque(1)=forcevect(4);// pitch in body frame (roll about y)
-torque(0)=forcevect(3); //ro//ll in body frame pitch for y cam)
+torque(1)=.05*forcevect(4);// pitch in body frame (roll about y) //.05 succesful ones
+torque(0)=.1*forcevect(3); //ro//ll in body frame pitch for y cam) //.1
 
- if(fabs(force(2))<2.4 && fabs(force(1))<1.2 && fabs(force(0))<1.2) // increasing only if the command is not saturating //
+ if(fabs(force(2))<maxPrctThrust.data*2.0 && maxPrctThrust.data*fabs(force(1))<1.0 && maxPrctThrust.data*fabs(force(0))<1.0) // increasing only if the command is not saturating //
      {
-        intZ+= (rel_pos_2(2)+rel_pos_1(2))/20; //integral term in z, /20 because taking average of both measurements
-        if(fabs(intZ*vecZ(2))>0.2){intZ=copysign(0.2/vecZ(2),intZ);}
-
+        /*intZ+= (rel_pos_2(2)+rel_pos_1(2))/20; //integral term in z, /20 because taking average of both measurements
+        intX+= (rel_pos_2(0)+rel_pos_1(0))/20;
+         intY+= (rel_pos_2(1)+rel_pos_1(1))/20;
+       */
+//new i think its right
+        intZ+= (stateerr(2)+stateerr(5))/20; //integral term in z, /20 because taking average of both measurements
+        intX+= (stateerr(0)+stateerr(3))/20;
+         intY+= (stateerr(1)+stateerr(4))/20;
+        if(fabs(intZ*vecZ(2))>0.505){intZ=copysign(0.505/vecZ(2),intZ);}
+        if(fabs(intX*vecZ(0))>0.1){intX=copysign(0.1/vecZ(0),intX);}
+        if(fabs(intY*vecZ(1))>0.1){intY=copysign(0.1/vecZ(1),intY);}
       }
 //ROS_INFO("IntZ=%f",intZ);
 //compute prop and deriv terms seperatly
@@ -475,7 +540,9 @@ wrench_1=wrench_2;
 
 
 MaxPrct_node.publish(maxPrctThrust);
-//force(2)=force(2)+intZ*vecZ(2);
+force(2)=force(2)+intZ*vecZ(2);
+force(0)=force(0)+intX*vecZ(0);
+force(1)=force(1)+intY*vecZ(1);
 wrench1_pub.publish(wrench_1);
 wrench2_pub.publish(wrench_2);
 

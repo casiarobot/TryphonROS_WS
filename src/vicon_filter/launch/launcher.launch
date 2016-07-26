@@ -1,0 +1,12 @@
+<launch>
+	 <node name="csv_to_bagARTAG1" pkg="vicon_filter" type="csv_to_bagARTAG1" respawn="false" output="screen" /> 
+	 <node name="csv_to_bagARTAG2" pkg="vicon_filter" type="csv_to_bagARTAG2" respawn="false" output="screen" />
+	  <node name="csv_to_bagIMU" pkg="vicon_filter" type="csv_to_bagIMU" respawn="false" output="screen" />
+	 <node name="csv_to_bagCompass" pkg="vicon_filter" type="csv_to_bagCompass" respawn="false" output="screen" /> 
+
+
+
+			 <!--<node name="rosbag" pkg="rosbag" type="rosbag" output="screen" args="record -O /home/patrick/ROSTryphon_groundstation/src/vicon_filter/rosbag/ekf_test /192_168_10_243/compass /192_168_10_243/imubuff /192_168_10_243/artags1/artag/ar_pose_marker /192_168_10_243/artags2/artag/ar_pose_marker /192_168_10_241/ar_pose1 /192_168_10_241/ar_pose2 /192_168_10_241/ar_vel1 /192_168_10_241/ar_vel2 /> -->
+</launch>
+
+

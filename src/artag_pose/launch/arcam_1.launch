@@ -1,22 +1,22 @@
 <launch>
 
- <group ns="192_168_10_243">
+ <group ns="192_168_10_241">
                 <group ns="artags1">
 
 
-<node name="republish1" type="republish" pkg="image_transport" output="screen" args="compressed in:=/192_168_10_243/arcam1/image_raw raw out:=/192_168_10_243/arcam1/arraw1" />
+<node name="republish1" type="republish" pkg="image_transport" output="screen" args="compressed in:=/192_168_10_241/arcam1/image_raw raw out:=/192_168_10_241/arcam1/arraw1" />
 
 
 <!-- Marker tracker -->
-			<arg name="marker_size" default="4" />
+			<arg name="marker_size" default="5.1" />
 			<arg name="max_new_marker_error" default="0.08" />
 			<arg name="max_track_error" default="0.2" />
 			<arg name="image_transport" default="compressed" />
-			<arg name="cam_image_topic" default="/192_168_10_243/arcam1/arraw1"/>
+			<arg name="cam_image_topic" default="/192_168_10_241/arcam1/arraw1"/>
 
-			<arg name="cam_info_topic" default="/192_168_10_243/arcam1/camera_info" />	
-			<!--<arg name="cam_info_topic" default="/192_168_10_243/arcam1/camera_info" />	-->
-			<arg name="output_frame" default="/192_168_10_243/arcam1" />
+			<arg name="cam_info_topic" default="/192_168_10_241/arcam1/camera_info" />	
+			<!--<arg name="cam_info_topic" default="/192_168_10_241/arcam1/camera_info" />	-->
+			<arg name="output_frame" default="/192_168_10_241/arcam1" />
 
 			<node ns="artag" name="ar_track_alvar" pkg="ar_track_alvar" type="individualMarkersNoKinect" respawn="false" output="screen" args="$(arg marker_size) $(arg max_new_marker_error) $(arg max_track_error) $(arg cam_image_topic) $(arg cam_info_topic) $(arg output_frame)" />
 	

@@ -56,11 +56,14 @@ double x=0;
 double y=0;
 double z=0;
 
+double biaswx=0;
+double biaswy=0;
+double biaswz=0;
 
 double tx=0;
 double ty=0;
 double tz=0;
-
+int imu_counter=0;
 
 // Sensors
 const int sensorNb = 4;
@@ -75,8 +78,12 @@ std::vector<float> RCoeffs(sensorNb);
 int countRoll = 0;
 int countPitch = 0;
 int countYaw = 0;
-double offRoll =0;
-double offPitch =0;
+double offRoll =3.14;
+double offPitch =-.863;
+
+bool gyro_bias;
+double biaswx1,biaswy1,biaswz1,biaswxavg[300],biaswyavg[300],biaswzavg[300];
+
 
 // Sonars
 const int sonarNb = 2;
@@ -85,17 +92,20 @@ std::vector<bool> sonarActive(sonarNb);
 float gainIIR;
 
 //ARtags
-Eigen::Vector3d ALVAR1position1, ALVAR1position2,ALVAR2position1, ALVAR2position2;
+Eigen::Vector3d ALVAR1position1, ALVAR1position2,ALVAR2position1, ALVAR2position2,ALVARangle;
 Eigen::Quaterniond quatposAR(.7071,-.7071,0,0); //to make x y z of camera/artag output alligned with tryphon body frame 
-Eigen::Quaterniond quat15degyawAR( 0.9962,0,0,-.0872);
-Eigen::Quaterniond quattempAR=quat15degyawAR*quatposAR;
+//Eigen::Quaterniond quat15degyawAR( 0.9962,0,0,-.0872);
+//Eigen::Quaterniond quattempAR=quat15degyawAR*quatposAR;
+Eigen::Quaterniond quattempAR=quatposAR; //no camera angle
 Eigen::Matrix3d RmatrixAR=quattempAR.toRotationMatrix();
-geometry_msgs::PoseStamped Poseforrviz;
+geometry_msgs::PoseStamped Poseforrviz,IMU_out;
 
 //For Real Tryphom
+Eigen::Quaterniond quatIMU(0.9914,0.0000,-0.1305,0.0000); //for 242 in dock setup
+
 //Eigen::Quaterniond quatIMU(0.99255, 0,0.12187, 0); // quat of the rotation matrix between the tryphon frame and the IMU frame
 //For Gazebo
-Eigen::Quaterniond quatIMU(1, 0,0, 0); // quat of the rotation matrix between the tryphon frame and the IMU frame
+//Eigen::Quaterniond quatIMU(1, 0,0, 0); // quat of the rotation matrix between the tryphon frame and the IMU frame
 
 Eigen::Matrix3d RIMUmatrix;
 
@@ -125,6 +135,13 @@ void callback(ekf_tryphon::kalmanfilterConfig &config, uint32_t level)
     RCoeffs[2] = config.ArTag;
      RCoeffs[3] = config.Leddar;
     reconfigure = true;
+
+biaswx=config.biaswx;
+biaswy=config.biaswy;
+biaswz=config.biaswz;
+gyro_bias=config.bias_check;
+
+
 }
 
 inline float IIR(float old, float in, float gain)
@@ -159,25 +176,59 @@ void updateSensorInfo(int nb)
 }
 
 
-
+//For Real tryphon
+//for compass
+/*
 void subComp(const sensors::compass::ConstPtr& msg) //in gazebo relative yaw from compas is given (ideally), t.b.d in real tryphon
 {
+       double  yaw_desired=187/180.0*M_PI; //for real tryphon
     //ROS_INFO("Comp");
     updateSensorInfo(0);
         if(msg->id == (int)(0xC0)/2)
         {
-        tz = msg->rz[0]/180.0*M_PI;
-        measures[0] << updateAngleCount(msg->rz[0]/180.0*M_PI, measures[0][0], countYaw);
+        tz=yaw_desired-msg->rz[0]/180.0*M_PI;
+        measures[0] << tz ;//updateAngleCount(msg->rz[0]/180.0*M_PI, measures[0][0], countYaw);
         measureTimes[0] = ros::Time::now();
 
     }
 }
+*/
+//for artag hack
+void subComp(const geometry_msgs::PoseStamped compasspose) //in gazebo relative yaw from compas is given (ideally), t.b.d in real tryphon
+{
+       double  yaw_desired=0.0/180.0*M_PI; //for real tryphon
+    //ROS_INFO("Comp");
+    updateSensorInfo(0);
+       
+        tz=compasspose.pose.orientation.z-yaw_desired;///180.0*M_PI;
+        measures[0] << tz ;//updateAngleCount(msg->rz[0]/180.0*M_PI, measures[0][0], countYaw);
+        measureTimes[0] = ros::Time::now();
 
-//For Real tryphon
-/*
+ 
+}
+
 
 void subImu(const sensors::imubuff Imu)  //might have to find a way to deal with offset
 {
+    if(gyro_bias)
+    {
+        if(imu_counter<300)
+            {imu_counter+=1;}
+
+            for (int j1=1;j1<imu_counter;j1++)
+            {
+                biaswx1=biaswx1+biaswxavg[j1];
+                biaswy1=biaswy1+biaswyavg[j1];
+                biaswz1=biaswz1+biaswzavg[j1];
+            }
+                biaswx1=biaswx1/(double)imu_counter;
+                biaswy1=biaswy1/(double)imu_counter;
+                biaswz1=biaswz1/(double)imu_counter;
+        
+        ROS_INFO("biaswx1: %f,biaswy1: %f,biaswz1: %f",biaswx1,biaswy1,biaswz1);
+    }
+
+
     //ROS_INFO("Imu");
     updateSensorInfo(1);
     sensor_msgs::Imu Imu_msg;
@@ -197,21 +248,40 @@ void subImu(const sensors::imubuff Imu)  //might have to find a way to deal with
     EulerU::getRollPitchIMU(Imu_msg,roll,pitch);
 
     Eigen::Vector3d avel_temp;
-    avel_temp(0)=Imu_msg.angular_velocity.x; // defined in IMU frame
-    avel_temp(1)=Imu_msg.angular_velocity.y;
-    avel_temp(2)=Imu_msg.angular_velocity.z;
+    avel_temp(0)=Imu_msg.angular_velocity.x-biaswx; // defined in IMU frame
+    avel_temp(1)=Imu_msg.angular_velocity.y-biaswy;
+    avel_temp(2)=Imu_msg.angular_velocity.z-biaswz;
     avel_temp=RIMUmatrix*avel_temp;  // defined in body frame
-
     tx = roll;
     ty = pitch;
-    avel_temp=EulerU::RbodyEuler(roll,pitch)*avel_temp;
-    measures[1] << updateAngleCount(roll-offRoll, measures[1][0], countRoll), updateAngleCount(pitch-offPitch, measures[1][1], countPitch); //, avel_temp;
+   // avel_temp=EulerU::RbodyEuler(roll,pitch)*avel_temp; //I think this is transforming from angular vel to euler rates which is incorrect
+    measures[1] << updateAngleCount(roll-offRoll, measures[1][0], countRoll), updateAngleCount(pitch-offPitch, measures[1][1], countPitch),avel_temp(0),avel_temp(1),avel_temp(2); //, avel_temp; - the bias of gyro
     //ROS_INFO("IMU: %f, %f, %f, %f, %f",roll, pitch, Imu_msg.linear_acceleration.x, Imu_msg.linear_acceleration.y, Imu_msg.linear_acceleration.z);
     measureTimes[1] = ros::Time::now();
+
 }
+
+
+
+void subArTag1(const geometry_msgs::PoseStamped Pose1)
+{
+    updateSensorInfo(2);   
+    measures[2] <<  Pose1.pose.position.x,  Pose1.pose.position.y,  Pose1.pose.position.z; //or some distance between and also in target frame so not quite right!!
+ measureTimes[2] = ros::Time::now();
+}
+
 //will need to be fixed
+void subArTag2(const  geometry_msgs::PoseStamped Pose1)
+{
+    updateSensorInfo(3);
+    measures[3] <<  Pose1.pose.position.x,  Pose1.pose.position.y,  Pose1.pose.position.z; //or some distance between and also in target frame so not quite right!!
+ measureTimes[3] = ros::Time::now();
+}
 
 
+//will need to be fixed
+//old artag replaced with artemp
+/*
 void subArTag1(const ar_track_alvar_msgs::AlvarMarkers Aposes1)
 {
     updateSensorInfo(2);
@@ -229,8 +299,8 @@ RmatrixAR=quattempAR.toRotationMatrix();
         for (int c=0;c<Aposes1.markers.size();c++)
         {
             
-            if(Aposes1.markers[c].id==2 && !id_2){alvartemp1=Aposes1.markers[c];Pose1=alvartemp1.pose.pose;id_2=true;}
-            else if (Aposes1.markers[c].id==3 && !id_3){alvartemp2=Aposes1.markers[c];Pose2=alvartemp2.pose.pose;id_3=true;}
+            if(Aposes1.markers[c].id==2 && !id_2){alvartemp1=Aposes1.markers[c];Pose2=alvartemp1.pose.pose;id_2=true;}
+            else if (Aposes1.markers[c].id==3 && !id_3){alvartemp2=Aposes1.markers[c];Pose1=alvartemp2.pose.pose;id_3=true;}
         }
 
         if(id_2 && id_3){both=true;}
@@ -238,7 +308,7 @@ RmatrixAR=quattempAR.toRotationMatrix();
     else if(Aposes1.markers.size()==0){ROS_INFO("no tag seen 1");return;}
   
 
-if(id_2)
+if(id_3)
 {
 
   ALVAR1position1(0)=Pose1.position.x; //  switch direction of vector
@@ -247,7 +317,7 @@ if(id_2)
 ALVAR1position1=RmatrixAR*ALVAR1position1;
 }
 
-if(id_3)
+if(id_2)
 {
   ALVAR1position2(0)=Pose2.position.x; //  switch direction of vector
   ALVAR1position2(1)=Pose2.position.y;
@@ -255,17 +325,17 @@ if(id_3)
 ALVAR1position2=RmatrixAR*ALVAR1position2;
 }
 
-/*
+
 else
 {
 ALVAR1position2=ALVAR1position2;
 }
 
 //ROS_INFO("angle= %f",angletemp1(1));
-if(id_3 && !both)
+if(id_2 && !both)
 {
 
-measures[2] << ALVAR1position2(0), ALVAR1position2(1), ALVAR1position2(2)-.075;
+measures[2] << ALVAR1position2(0), ALVAR1position2(1), ALVAR1position2(2)+.1;
 }
 else 
 {
@@ -319,18 +389,32 @@ ALVAR2position2=RmatrixAR*ALVAR2position2;
 
 if(id_1 && !both)
 {
-    measures[3] <<  ALVAR2position2(0),  ALVAR2position2(1),  ALVAR2position2(2)-.075; //or some distance between and also in target frame so not quite right!!
+    measures[3] <<  ALVAR2position2(0),  ALVAR2position2(1),  ALVAR2position2(2)+.1; //or some distance between and also in target frame so not quite right!!
 }
 else 
 {
     measures[3] << ALVAR2position1(0), ALVAR2position1(1), ALVAR2position1(2);
-}
+} 
 
 }
 */
 
 
 //For Gazebo
+/*
+
+void subComp(const sensors::compass::ConstPtr& msg) //in gazebo relative yaw from compas is given (ideally), t.b.d in real tryphon
+{
+    //ROS_INFO("Comp");
+    updateSensorInfo(0);
+        if(msg->id == (int)(0xC0)/2)
+        {
+        tz = msg->rz[0]/180.0*M_PI;
+        measures[0] << updateAngleCount(msg->rz[0]/180.0*M_PI, measures[0][0], countYaw);
+        measureTimes[0] = ros::Time::now();
+
+    }
+}
 
 double GaussNoise()
 {
@@ -386,6 +470,13 @@ updateSensorInfo(1);
     //ROS_INFO("IMU: %f, %f, %f, %f, %f",roll, pitch, Imu_msg.linear_acceleration.x, Imu_msg.linear_acceleration.y, Imu_msg.linear_acceleration.z);
     measureTimes[1] = ros::Time::now();
 
+IMU_out.pose.position.x=roll; //rpy
+IMU_out.pose.position.y=pitch;
+IMU_out.pose.orientation.x=avel_temp(0);  //avel
+IMU_out.pose.orientation.y=avel_temp(1); 
+IMU_out.pose.orientation.z=avel_temp(2); 
+
+
 }
 
 
@@ -411,9 +502,11 @@ void subArTag2(const  geometry_msgs::PoseStamped Pose1)
 }
 
 
+///////////////////////////end of gazebo
 
+*/
 
-
+/*
 void subSonar(const sensors::sonarArray::ConstPtr& msg)
 {
     //ROS_INFO("Sonars");
@@ -475,7 +568,7 @@ void subLeddar(const sensors::leddarArray::ConstPtr& msg)  // sensor 0
     z=dsz;
     measureTimes[4] = ros::Time::now();
 }
-
+*/
 
 void subLeddar2(const leddartech::leddar_data msg)  // sensor 0
 {
@@ -538,7 +631,7 @@ float funky(std::vector<bool> sa)
 
 int main(int argc, char **argv)
 {
-    ros::init(argc, argv, "ekf_tryphon");
+    ros::init(argc, argv, "kalmanmeilleur_dock");
     ros::NodeHandle n;
     ros::NodeHandle nh("~");
     //  Get Params
@@ -548,27 +641,38 @@ int main(int argc, char **argv)
 
 
     //ros::Subscriber subM = nh.subscribe("mcptam/tracker_pose_array",1,subMCPTAM);
-    ros::Subscriber subS = n.subscribe("/192_168_10_243/sonars", 1, subSonar);
-    ros::Subscriber subL = n.subscribe("/192_168_10_243/leddars", 1, subLeddar);
-    ros::Subscriber subC = n.subscribe("/192_168_10_243/compass",1, subComp);
-      ros::Subscriber subAr1 = n.subscribe("/192_168_10_243/artags1/artag/ar_pose_marker",1, subArTag1);
-    ros::Subscriber subAr2 = n.subscribe("/192_168_10_243/artags2/artag/ar_pose_marker",1, subArTag2);
-    //ros::Subscriber subI = n.subscribe("/192_168_10_243/imubuff",1, subImu);
+   // ros::Subscriber subS = n.subscribe("/192_168_10_243/sonars", 1, subSonar);
+   // ros::Subscriber subL = n.subscribe("/192_168_10_243/leddars", 1, subLeddar);
+    //ros::Subscriber subC = n.subscribe("/192_168_10_242/compass",1, subComp);
+       ros::Subscriber subC = n.subscribe("/192_168_10_242/compasscheat",1, subComp);
+//For Real Tryphon
+  
+     ros::Subscriber subAr1 = n.subscribe("/192_168_10_241/artemp_pose1",1, subArTag1);
+    ros::Subscriber subAr2 = n.subscribe("/192_168_10_242/artemp_pose2",1, subArTag2);
+        ros::Subscriber subI = n.subscribe("/192_168_10_242/imubuff",1, subImu);
     
+
     //For Gazebo
-    ros::Subscriber subI = n.subscribe("/192_168_10_243/raw_imu",1, subImu);
+    /*
+    ros::Subscriber subAr1 = n.subscribe("/192_168_10_243/artags1/artag/ar_pose_marker",1, subArTag1);
+   ros::Subscriber subAr2 = n.subscribe("/192_168_10_243/artags2/artag/ar_pose_marker",1, subArTag2);
+     ros::Subscriber subI = n.subscribe("/192_168_10_243/raw_imu",1, subImu);
+*/
+    
+
+
 
     //ros::Subscriber subL2 = n.subscribe("/leddar_one", 1, subLeddar2);
     
 
       //Publishers //
-    ros::Publisher pubAR1 = n.advertise<geometry_msgs::PoseStamped>("/192_168_10_243/ar_pose1",1);
-    ros::Publisher pubAR2 = n.advertise<geometry_msgs::PoseStamped>("/192_168_10_243/ar_pose2",1);
-    ros::Publisher pubvel1 = n.advertise<geometry_msgs::TwistStamped>("/192_168_10_243/ar_vel1",1);
-    ros::Publisher pubvel2 = n.advertise<geometry_msgs::TwistStamped>("/192_168_10_243/ar_vel2",1);
+    ros::Publisher pubAR1 = n.advertise<geometry_msgs::PoseStamped>("/192_168_10_241/ar_pose1",1);
+    ros::Publisher pubAR2 = n.advertise<geometry_msgs::PoseStamped>("/192_168_10_241/ar_pose2",1);
+    ros::Publisher pubvel1 = n.advertise<geometry_msgs::TwistStamped>("/192_168_10_241/ar_vel1",1);
+    ros::Publisher pubvel2 = n.advertise<geometry_msgs::TwistStamped>("/192_168_10_241/ar_vel2",1);
     //ros::Publisher pubS = n.advertise<sensor_msgs::Range>("state_estimator/sonars",1);
     ros::Publisher pubPraw = n.advertise<geometry_msgs::PoseStamped>("state_estimator/rawpose",1);
-
+   ros::Publisher pubIMUout = n.advertise<geometry_msgs::PoseStamped>("/IMU_out",1);
     // tf
     static tf::TransformBroadcaster br;
     tf::Transform transform;
@@ -670,6 +774,8 @@ int main(int argc, char **argv)
 
     while (ros::ok())
     {
+
+        pubIMUout.publish(IMU_out);
         if(reconfigure){
             updateRmatrices(kalCompass, 0);
             updateRmatrices(kalIMU,1);
@@ -689,9 +795,9 @@ int main(int argc, char **argv)
                 if(i==0)
                 {
                     ROS_INFO("ok2");
-                        Eigen::Vector2d vals = kalCompass.update(measures[i], 0, difRosTime(ros::Time::now(),beginTime)).head(2);
+                        Eigen::VectorXd vals = kalCompass.update(measures[i], 0, difRosTime(ros::Time::now(),beginTime)).head(2);
                         state[8] = vals[0];
-                        //state[17] = vals[1]; //this is yaw dot, we need w_z from imu section
+                        state[17] = vals[1]; //this is yaw dot, we need w_z from imu section
             
                 }
                 if(i==1)
@@ -717,6 +823,8 @@ int main(int argc, char **argv)
                         state[10] = vals[4];
                         state[11] = vals[5];
                         ROS_INFO("ok1");
+                         //state[8]=asin((state[4]-state[1])/1.95);;//of main tag (-) for proper orientation (+) y cameras   ///(-) removed for -y camera
+
                 }
                 if(i==3)
                 {
@@ -730,6 +838,7 @@ int main(int argc, char **argv)
                         state[13] = vals[4];
                         state[14] = vals[5];
                         ROS_INFO("ok1");
+                        //state[8]=asin((state[4]-state[1])/1.95);//of main tag (-) for proper orientation (+) y cameras   ///(-) removed for -y camer
                 }
 
                 if(i==4)
@@ -738,7 +847,7 @@ int main(int argc, char **argv)
                         ROS_INFO("Sensor : %i", i);
                         state[3] = vals[0];
                         ROS_INFO("Sensor : %i", i);
-                        state[8] = vals[1];
+                       // state[8] = vals[1];
                         ROS_INFO("ok1");
                 }
                    if(i==5)
